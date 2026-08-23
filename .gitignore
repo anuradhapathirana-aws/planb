@@ -1,0 +1,15 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Never commit environment files (each sub-project also has its own rule)
+.env
+.env.*
+!.env.example
+
+# Dependency directories (each sub-project also ignores its own)
+node_modules/
+vendor/

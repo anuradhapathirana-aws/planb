@@ -34,7 +34,7 @@ Each folder has its own `package.json` / `composer.json`. Do not create shared r
 
 ## 3. Tech Stack (Do Not Change Without Asking)
 
-**Backend:** Laravel 11, PHP 8.2+, MySQL 8, Redis, Sanctum (cookie-based SPA auth), Horizon (queues), Spatie Permission, Spatie Media Library.
+**Backend:** Laravel 11, PHP 8.2+, MySQL 8, Redis, Sanctum (cookie-based SPA auth), Horizon (queues), Spatie Permission, Spatie Media Library, Intervention Image (re-encodes every uploaded image before storage, per §7.4).
 
 **Web (`web/`):** React 18, TypeScript, Vite, `vite-plugin-pwa` (PWA), shadcn/ui, Tailwind CSS, TanStack Query (server state), TanStack Table (data grids), React Hook Form + Zod (forms), Zustand (client state), React Router v6, Axios, Lucide React (icons), Recharts (charts), Sonner (toasts), Framer Motion (animations), react-i18next (Sinhala/English).
 
@@ -63,15 +63,16 @@ Each folder has its own `package.json` / `composer.json`. Do not create shared r
 
 1. **Feature-based organization** in `src/features/{role}/{feature}/`. Roles: `marketing`, `auth`, `student`, `admin`.
 2. **Three layout components** — `PublicLayout`, `StudentLayout`, `AdminLayout`. Route guards wrap each area.
-3. **Shared UI in `src/components/ui/`** — shadcn/ui primitives. Never edit shadcn components directly unless customizing globally.
-4. **Server state via TanStack Query.** No manual `useEffect + fetch`. Every API call goes through a typed function in `src/api/` called via `useQuery` or `useMutation`.
-5. **Client state via Zustand** for anything that persists across pages. Prefer local component state otherwise.
-6. **Forms use React Hook Form + Zod.** One schema, one form. Never uncontrolled inputs.
-7. **Types match backend API Resources exactly.** When a Resource changes, update the corresponding TypeScript type in `src/types/`.
-8. **Auth via httpOnly cookies (Sanctum).** No tokens in `localStorage`. React app calls `/sanctum/csrf-cookie` first, then cookies flow automatically.
-9. **All API errors surface as toasts via Sonner.** Never leave a failed mutation silent.
-10. **Loading states are explicit.** Every data-fetching component shows a skeleton or spinner.
-11. **Route guards enforce role separation.** Student cannot access `/admin/*`; admin cannot access `/app/*` as a student (unless dual-role). Use a `RequireRole` component wrapper.
+3. **Shared UI in `src/components/ui/`** (shadcn/ui primitives — never edit directly unless customizing globally) **and `src/components/shared/`** (custom composites built on top: `DataTable`, `FilterCard`, `ConfirmDialog`, `EmptyState`, `Pagination`, `StatusBadge`, `Breadcrumbs`, `FullScreenSpinner`, `PageLoader`, and the Sectioned Admin Forms building blocks `FormSection`, `FieldLabel`/`FieldError`, `SegmentedToggle`). A pattern used by more than one feature belongs in `shared/`, not copy-pasted per feature.
+4. **Routes are code-split.** Every page component (and `AdminLayout` itself) is `React.lazy`-loaded in `src/routes/router.tsx`, each wrapped in its own `<Suspense>` (`PageLoader` inside the admin shell, `FullScreenSpinner` before it). Keeps the admin bundle from shipping student/marketing-area code and vice versa once those areas exist — cheap to keep up as new routes are added, expensive to retrofit later.
+5. **Server state via TanStack Query.** No manual `useEffect + fetch`. Every API call goes through a typed function in `src/api/` called via `useQuery` or `useMutation`.
+6. **Client state via Zustand** for anything that persists across pages. Prefer local component state otherwise.
+7. **Forms use React Hook Form + Zod.** One schema, one form. Never uncontrolled inputs.
+8. **Types match backend API Resources exactly.** When a Resource changes, update the corresponding TypeScript type in `src/types/`.
+9. **Auth via httpOnly cookies (Sanctum).** No tokens in `localStorage`. React app calls `/sanctum/csrf-cookie` first, then cookies flow automatically.
+10. **All API errors surface as toasts via Sonner.** Never leave a failed mutation silent.
+11. **Loading states are explicit.** Every data-fetching component shows a skeleton or spinner.
+12. **Route guards enforce role separation.** Student cannot access `/admin/*`; admin cannot access `/app/*` as a student (unless dual-role). Use a `RequireRole` component wrapper.
 
 ### PWA Requirements
 
@@ -177,9 +178,10 @@ Students will access primarily from phones. **Design mobile-first, enhance for d
 - **Font:** Inter (English UI) + Noto Sans Sinhala (Sinhala UI).
 - **Spacing:** Tailwind default (4px base).
 - **Border radius:** `rounded-lg` (8px) cards, `rounded-md` (6px) buttons, `rounded-2xl` (16px) modals.
-- **Shadows:** subtle only. `shadow-sm` cards, `shadow-md` modals, no shadow on flat surfaces.
-- **Colors:** one accent + `slate-*` grays. Never more than 3 semantic colors (success/warning/danger).
+- **Shadows:** cards use border only, no shadow (`web/src/components/ui/card.tsx`) — a page with many stacked cards gets visually heavy fast otherwise. Dialogs/Sheets/AlertDialogs use `shadow-lg` (they float above the page, so a shadow reads correctly there). No shadow on other flat surfaces.
+- **Colors:** one accent + `slate-*` grays. Never more than 3 semantic colors (success/warning/danger). use 'PBLogo.PNG' logo for color inspiration
 - **Optimized Screen** Always try to set all component scalable withing the screen, Then user reduce to scroll
+- **Read and follow UI_UX_GUIDELINES.md file for UI UX instructions**
 
 ### Student UX (Mobile-First)
 
@@ -199,6 +201,34 @@ Students will access primarily from phones. **Design mobile-first, enhance for d
 - **Bulk actions** where relevant (bulk approve bank transfers, bulk send notifications).
 - **Confirm dialogs** on destructive actions.
 - **Toasts** on every mutation.
+
+### Compact Admin Data Tables (standard pattern — use for every new list page)
+
+Established on the Students list page; reuse this exact pattern for Courses, Orders, Payments, Checklists, Jobs, Accounts, Reports, etc. Don't reinvent it per page.
+
+- **No summary/stat cards above a data table's header.** Stat cards belong on the Dashboard only. A list page header is just: title + one-line description on the left, primary actions (small buttons) on the right. Nothing else.
+- **Filters live in a collapsible `FilterCard`** (`web/src/components/shared/FilterCard.tsx`), collapsed by default. The toggle is a slim bar: filter icon + "Filters" + an active-filter-count badge + a chevron that flips on open. Never show filter fields inline/always-visible on the page — they go inside the collapsible card.
+- **Filters are staged, not live.** Editing a search box or dropdown inside the filter card does _not_ refetch immediately. Track `draft*` state (what's being edited) separately from `applied*` state (what the query actually uses); only sync them on **"Apply Filter"**. Show a **"Clear"** button (only when `activeCount > 0`) that resets both draft and applied state. Enter in the search field should also trigger Apply. This avoids refiring the query on every keystroke and matches the client's reference UI.
+- **Small buttons everywhere in table-adjacent UI.** Use the Button `size="sm"` (or `size="xs"` for pagination/back-links, `size="icon-sm"` for row-action triggers) — never the `default` (h-10) size in list-page headers, filter bars, table row actions, or pagination. `default` size is reserved for standalone primary CTAs outside dense admin screens (e.g. the login submit button).
+- **Compact table density.** The shared `Table`/`TableHead`/`TableCell` primitives (`web/src/components/ui/table.tsx`) are already tuned for this: `h-9` uppercase 11px headers, `px-3 py-2` cells. Don't override these to be taller/looser on a per-page basis.
+- **Tight page rhythm.** Page-level wrapper uses `space-y-3`–`space-y-4`, not `space-y-6`+. Dialog/AlertDialog content padding is `p-5` with `gap-3` (already the shared default) — don't add extra padding per-dialog.
+- **Row actions are individual icon buttons**, not a dropdown menu. Use the shared `RowActions` component (`web/src/components/shared/RowActions.tsx`) in every `*Columns.tsx` actions column — pass it an array of `{ label, icon, onClick, variant?, disabled?, hidden? }`. It renders one `icon-sm` ghost button per action (destructive ones tinted `text-destructive`), each labelled by a `Tooltip` and `aria-label` since the buttons are icon-only, and it stops click propagation so a row's own `onRowClick` doesn't fire. Icons are always visible, never hover-only — hover-reveal is invisible on touch. To keep the column width predictable as tables grow, anything past the first 3 actions collapses into a trailing `MoreHorizontal` overflow menu automatically (`maxInline` is configurable). Never hand-roll a dropdown or a bare row of `Button`s per page.
+- **Sticky header + sticky action column** (UI_UX_GUIDELINES.md §3), built into the shared primitives so every list page gets it automatically: the `Table` container (`web/src/components/ui/table.tsx`) is `max-h-[65vh] overflow-auto` (not `overflow-x-auto` alone — that silently breaks `position: sticky`, see the code comment) so the `TableHeader` stays pinned on vertical scroll. Give a trailing row-actions column `meta: { sticky: 'right' }` in its `ColumnDef` (see any `*Columns.tsx`) and `DataTable` pins it during horizontal scroll — needed once a table has enough columns to scroll on tablet/laptop widths.
+
+### Breadcrumbs & Desktop Width
+
+- **Breadcrumbs on nested/drilled-into pages only** (UI_UX_GUIDELINES.md §1) — e.g. Student Detail shows `Students > [name]` via the shared `Breadcrumbs` component (`web/src/components/shared/Breadcrumbs.tsx`). Top-level sidebar pages (Dashboard, Students, Industries, Professions) skip it — the sidebar already shows where you are. Use it in place of a manual "Back to X" button, not alongside one.
+- **Content width caps at `max-w-7xl`** on very wide monitors (UI_UX_GUIDELINES.md §3 "Desktop Maximization") — set once on `AdminLayout`'s `<main>`, not per-page. Standard 1366–1920px business monitors never hit the cap; it only stops content stretching edge-to-edge on ultra-wide displays.
+
+### Sectioned Admin Forms (standard pattern — use for every new multi-field create/edit form)
+
+Established on the Add/Edit Student dialog (`web/src/features/admin/students/components/StudentFormDialog.tsx`); reuse for future multi-section forms (Courses, Jobs, Orders, etc) via the shared building blocks in `web/src/components/shared/` — `FormSection.tsx`, `FormField.tsx` (`FieldLabel`/`FieldError`), `SegmentedToggle.tsx`. Import them, don't re-implement per form. Tiny 1–2 field dialogs (Industry, Profession) don't need this — it's for forms with several logical groups of fields.
+
+- **Group fields into bordered card sections**, each with a small uppercase label row (icon + title) via `FormSection` — e.g. "Photo", "Basic information", "Contact details". Don't run every field together in one flat list.
+- **Photo upload is a dropzone, not a tiny avatar-only control.** A dashed-border box (`UploadCloud` icon, "Click to upload or drag and drop", accepted types/size hint) that accepts both click and drag-and-drop. Once a photo exists it fills the box (`object-cover`) with small overlaid change/remove buttons — never a bare circular avatar off to the side as the only way to attach a photo.
+- **Binary/small (2–3 option) choice fields are a segmented control, not a `Select` dropdown.** Use `SegmentedToggle` — a single `rounded-full bg-primary` track holding the options, where the selected one lifts out as a `bg-background text-primary` pill and unselected ones are `text-primary-foreground/70`. Reserve `Select` for fields with more options than comfortably fit in a track (e.g. Industry/Profession).
+- **Required fields get a `FieldLabel` with a small leading icon and a red `*`.** Optional fields skip the asterisk. Every field shows inline `FieldError` text under it once touched. Validation runs on blur only (`mode: 'onBlur'`, `reValidateMode: 'onBlur'` on the RHF form) — never on keystroke, so an error never appears or updates while the admin is still typing a value.
+- **Colors stay Plan B brand** — selected/active states use `--primary` (navy), never an arbitrary accent color pulled from a design reference image.
 
 ### Interaction
 
@@ -318,6 +348,13 @@ Even though this is web-only for Phase 1:
 3. **Auth uses Sanctum SPA cookies for web now**, but the same Sanctum can issue API tokens for a mobile app later without backend changes.
 4. **No web-specific logic in the API.** All UI concerns stay in the React app.
 
+## 17. Deeply follow these for development
+
+- set appropriate placeholders for each input fields.
+- Always Properly read existing code before start development to avoid making an messy code
+- Properly optimized Page Layout withing the screen to reduce scroll, That will user friendly.
+- Read and Follow C:\laragon\www\planb\.agents\skills\laravel-specialist\SKILL.md file for backend Guidelines
+
 ---
 
-**Last updated:** 13 August 2026. **Update this file whenever conventions change.**
+**Last updated:** 15 August 2026. **Update this file whenever conventions change.**
