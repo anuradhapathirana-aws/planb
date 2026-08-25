@@ -7,6 +7,7 @@ import {
   ListChecks,
   Briefcase,
   Factory,
+  FolderTree,
   IdCard,
   Star,
   Bell,
@@ -41,7 +42,14 @@ export const adminNavGroups: AdminNavGroup[] = [
   {
     label: 'Content',
     items: [
-      { label: 'Courses', icon: BookOpen, comingSoon: true },
+      {
+        label: 'Courses',
+        icon: BookOpen,
+        children: [
+          { label: 'All Courses', icon: BookOpen, href: paths.admin.courses },
+          { label: 'Categories', icon: FolderTree, href: paths.admin.courseCategories },
+        ],
+      },
       { label: 'Checklists', icon: ListChecks, comingSoon: true },
       {
         label: 'Jobs',

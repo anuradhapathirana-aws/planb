@@ -29,6 +29,21 @@ const IndustriesListPage = lazy(() =>
 const ProfessionsListPage = lazy(() =>
   import('@/features/admin/professions/pages/ProfessionsListPage').then((m) => ({ default: m.ProfessionsListPage })),
 );
+const CoursesListPage = lazy(() =>
+  import('@/features/admin/courses/pages/CoursesListPage').then((m) => ({ default: m.CoursesListPage })),
+);
+// Its own chunk keeps the rich-text editor off every other admin page.
+const CourseFormPage = lazy(() =>
+  import('@/features/admin/courses/pages/CourseFormPage').then((m) => ({ default: m.CourseFormPage })),
+);
+const CoursePaperPage = lazy(() =>
+  import('@/features/admin/courses/pages/CoursePaperPage').then((m) => ({ default: m.CoursePaperPage })),
+);
+const CourseCategoriesListPage = lazy(() =>
+  import('@/features/admin/courseCategories/pages/CourseCategoriesListPage').then((m) => ({
+    default: m.CourseCategoriesListPage,
+  })),
+);
 
 /** Wraps a lazy page so its chunk loading shows an in-content spinner, not a blank page. */
 function page(element: ReactNode) {
@@ -60,6 +75,12 @@ export const router = createBrowserRouter([
       { path: 'students/:id', element: page(<StudentDetailPage />) },
       { path: 'industries', element: page(<IndustriesListPage />) },
       { path: 'professions', element: page(<ProfessionsListPage />) },
+      { path: 'courses', element: page(<CoursesListPage />) },
+      // Static segments before the :id route so /courses/categories isn't read as an id.
+      { path: 'courses/categories', element: page(<CourseCategoriesListPage />) },
+      { path: 'courses/new', element: page(<CourseFormPage />) },
+      { path: 'courses/:id/edit', element: page(<CourseFormPage />) },
+      { path: 'courses/:id/paper', element: page(<CoursePaperPage />) },
     ],
   },
   { path: '*', element: <Navigate to={paths.admin.dashboard} replace /> },

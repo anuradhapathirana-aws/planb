@@ -36,7 +36,7 @@ Each folder has its own `package.json` / `composer.json`. Do not create shared r
 
 **Backend:** Laravel 11, PHP 8.2+, MySQL 8, Redis, Sanctum (cookie-based SPA auth), Horizon (queues), Spatie Permission, Spatie Media Library, Intervention Image (re-encodes every uploaded image before storage, per §7.4).
 
-**Web (`web/`):** React 18, TypeScript, Vite, `vite-plugin-pwa` (PWA), shadcn/ui, Tailwind CSS, TanStack Query (server state), TanStack Table (data grids), React Hook Form + Zod (forms), Zustand (client state), React Router v6, Axios, Lucide React (icons), Recharts (charts), Sonner (toasts), Framer Motion (animations), react-i18next (Sinhala/English).
+**Web (`web/`):** React 18, TypeScript, Vite, `vite-plugin-pwa` (PWA), shadcn/ui, Tailwind CSS, TanStack Query (server state), TanStack Table (data grids), React Hook Form + Zod (forms), Zustand (client state), React Router v6, Axios, Lucide React (icons), Recharts (charts), Sonner (toasts), Framer Motion (animations), react-i18next (Sinhala/English), TipTap (rich-text editing for admin-authored content — headless, so the toolbar is our own shadcn buttons).
 
 **Video player:** `video.js` or `plyr` with custom no-skip logic (see Section 4).
 
@@ -63,7 +63,7 @@ Each folder has its own `package.json` / `composer.json`. Do not create shared r
 
 1. **Feature-based organization** in `src/features/{role}/{feature}/`. Roles: `marketing`, `auth`, `student`, `admin`.
 2. **Three layout components** — `PublicLayout`, `StudentLayout`, `AdminLayout`. Route guards wrap each area.
-3. **Shared UI in `src/components/ui/`** (shadcn/ui primitives — never edit directly unless customizing globally) **and `src/components/shared/`** (custom composites built on top: `DataTable`, `FilterCard`, `ConfirmDialog`, `EmptyState`, `Pagination`, `StatusBadge`, `Breadcrumbs`, `FullScreenSpinner`, `PageLoader`, and the Sectioned Admin Forms building blocks `FormSection`, `FieldLabel`/`FieldError`, `SegmentedToggle`). A pattern used by more than one feature belongs in `shared/`, not copy-pasted per feature.
+3. **Shared UI in `src/components/ui/`** (shadcn/ui primitives — never edit directly unless customizing globally) **and `src/components/shared/`** (custom composites built on top: `DataTable`, `FilterCard`, `ConfirmDialog`, `EmptyState`, `Pagination`, `StatusBadge`, `Breadcrumbs`, `FullScreenSpinner`, `PageLoader`, and the Sectioned Admin Forms building blocks `FormSection`, `FieldLabel`/`FieldError`, `SegmentedToggle`, `RichTextEditor`). A pattern used by more than one feature belongs in `shared/`, not copy-pasted per feature.
 4. **Routes are code-split.** Every page component (and `AdminLayout` itself) is `React.lazy`-loaded in `src/routes/router.tsx`, each wrapped in its own `<Suspense>` (`PageLoader` inside the admin shell, `FullScreenSpinner` before it). Keeps the admin bundle from shipping student/marketing-area code and vice versa once those areas exist — cheap to keep up as new routes are added, expensive to retrofit later.
 5. **Server state via TanStack Query.** No manual `useEffect + fetch`. Every API call goes through a typed function in `src/api/` called via `useQuery` or `useMutation`.
 6. **Client state via Zustand** for anything that persists across pages. Prefer local component state otherwise.
@@ -230,6 +230,34 @@ Established on the Add/Edit Student dialog (`web/src/features/admin/students/com
 - **Required fields get a `FieldLabel` with a small leading icon and a red `*`.** Optional fields skip the asterisk. Every field shows inline `FieldError` text under it once touched. Validation runs on blur only (`mode: 'onBlur'`, `reValidateMode: 'onBlur'` on the RHF form) — never on keystroke, so an error never appears or updates while the admin is still typing a value.
 - **Colors stay Plan B brand** — selected/active states use `--primary` (navy), never an arbitrary accent color pulled from a design reference image.
 
+### Rich Text & Nested Repeaters (standard pattern — established on the Course form)
+
+Established on the Add/Edit Course page (`web/src/features/admin/courses/pages/CourseFormPage.tsx`). Reuse for any future content that nests repeatable rows (Checklist items, Assessment question banks, Premium Service tiers).
+
+- **Rich text goes through the shared `RichTextEditor`** (`web/src/components/shared/RichTextEditor.tsx`, TipTap). Never add a second editor library, and never expose a formatting control the backend sanitizer will strip — the toolbar and `App\Support\HtmlSanitizer`'s allowlist are kept in step deliberately.
+- **Admin-authored HTML is sanitized server-side on write**, in the Service, before it reaches the database — not on render. Rendering saved HTML anywhere still needs `dangerouslySetInnerHTML` + DOMPurify (§7.6); admin list views show a plain-text excerpt instead so they need neither.
+- **A form with several logical groups plus repeatable rows is a full page, not a dialog.** Dialogs are for short forms. Give the page `Breadcrumbs`, put its Save/Cancel in the page header, and keep the fixed detail fields in a `lg:sticky` side column so they stay visible while the admin works down a long list.
+- **Repeatable rows are collapsible cards with explicit up/down reorder buttons** plus Expand all / Collapse all. Position in the submitted array is the `sort_order` the backend stores — don't send an explicit order field.
+- **Give each repeatable row a `client_key`** (`newClientKey()`) in the form schema. `useFieldArray` reserves `id` for its own React key and will overwrite a server id, so the server id lives in `saved_id`, and anything held outside the form (staged files, upload progress) is keyed by `client_key` so it survives reordering.
+- **Large file uploads never ride along with the form submit.** Save the record first, then upload each staged file against the returned row ids, **sequentially**, behind a progress dialog. Match staged file to saved row by array position — the backend returns rows in `sort_order`.
+- **Nested 422s land on the exact input**: pass `{ nested: true }` to `applyServerValidationErrors` from a form that renders every level of the path. Flat forms keep the default root anchoring.
+
+### Answer Keys & Student-Facing Payloads (non-negotiable)
+
+Established on the Q&A paper (`course_question_options.is_correct`).
+
+- **An API Resource that carries an answer key is admin-only.** `CourseQuestionOptionResource` includes `is_correct` because only admins read that endpoint. Any student-facing endpoint over the same data needs its **own** Resource that omits it — a frontend that simply doesn't render the field still ships the answers in the network tab.
+- **Grading happens on the backend.** Never send the correct answers to a student client and compare there.
+- **Rules the array syntax can't express go in a Form Request `after()` hook**, not the Service — e.g. "exactly one correct answer per question". Mirror them in the Zod schema too, so the admin sees the problem before saving, but the backend stays the enforcement point (§7.3).
+
+### Video Handling (non-negotiable)
+
+- **A video file URL is never returned by an API Resource.** Resources expose `has_file`, `file_name`, `file_size_bytes`, `duration_seconds`, `thumbnail_url` — nothing that locates the file.
+- **Uploaded lesson files live on the private `course_videos` disk**, which has no `url` configured on purpose.
+- **Playback always goes through the two-step signed flow**: an authenticated endpoint returns `{ url, expires_at }` (≤2h), and the URL points at a `signed`-middleware route outside the session guard — a `<video>` element sends no cookies, so the signature is the authorization.
+- **The playback route must serve HTTP `Range` requests** (Laravel's `response()->file()` does), or the player downloads the whole lesson before it can start.
+- **Durations are read in the browser** from the picked file before upload; never ask an admin to type one, and never probe a large file server-side.
+
 ### Interaction
 
 - Every button click gives feedback within 100ms.
@@ -353,8 +381,11 @@ Even though this is web-only for Phase 1:
 - set appropriate placeholders for each input fields.
 - Always Properly read existing code before start development to avoid making an messy code
 - Properly optimized Page Layout withing the screen to reduce scroll, That will user friendly.
-- Read and Follow C:\laragon\www\planb\.agents\skills\laravel-specialist\SKILL.md file for backend Guidelines
+- Read and Follow `C:\laragon\www\planb\.agents\skills\laravel-specialist\SKILL.md` file for backend Guidelines
+- Read and Follow `C:\laragon\www\planb\.agents\skills\ui-ux-pro-max\SKILL.md` file for frontend development
+- Always Follow last changed & existing UI and styles withing the whole app to keep the same UI consistency of Admin.
+- Ask questions if need more clarification.
 
 ---
 
-**Last updated:** 15 August 2026. **Update this file whenever conventions change.**
+**Last updated:** 24 August 2026. **Update this file whenever conventions change.**

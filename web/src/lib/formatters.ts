@@ -30,3 +30,36 @@ export function labelizeVisaStatus(status: 'visit' | 'employment' | null): strin
   if (!status) return 'Not set';
   return status === 'visit' ? 'Visit' : 'Employment';
 }
+
+/** "12.4 MB" — file sizes in the video list. */
+export function formatBytes(bytes: number | null | undefined): string {
+  if (bytes == null || Number.isNaN(bytes)) return '—';
+  if (bytes < 1024) return `${bytes} B`;
+
+  const units = ['KB', 'MB', 'GB'];
+  let value = bytes / 1024;
+  let unit = 0;
+
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit += 1;
+  }
+
+  return `${value.toFixed(value >= 10 || unit === 0 ? 0 : 1)} ${units[unit]}`;
+}
+
+/** "8:05" / "1:02:30" — lesson lengths. */
+export function formatDuration(seconds: number | null | undefined): string {
+  if (seconds == null || Number.isNaN(seconds) || seconds < 0) return '—';
+
+  const total = Math.round(seconds);
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const secs = total % 60;
+
+  const paddedSecs = String(secs).padStart(2, '0');
+
+  return hours > 0
+    ? `${hours}:${String(minutes).padStart(2, '0')}:${paddedSecs}`
+    : `${minutes}:${paddedSecs}`;
+}

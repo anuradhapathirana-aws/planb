@@ -25,11 +25,15 @@ export function getValidationErrors(error: unknown): Record<string, string[]> | 
  * render — RHF would hold that error forever and block resubmit with nothing
  * on screen to explain why. Anything unmatched comes back for the caller to
  * show some other way.
+ *
+ * `options.nested` opts into setting the error on the full dotted path instead
+ * of the root — only safe when the form renders every level of that path.
  */
 export function applyServerValidationErrors<T extends FieldValues>(
   error: unknown,
   setError: UseFormSetError<T>,
   knownFields: readonly string[],
+  options: { nested?: boolean } = {},
 ): { applied: number; unmatched: string[] } {
   const errors = getValidationErrors(error);
   if (!errors) return { applied: 0, unmatched: [] };
@@ -46,7 +50,11 @@ export function applyServerValidationErrors<T extends FieldValues>(
     const root = field.split('.')[0];
 
     if (known.has(root)) {
-      setError(root as Path<T>, { type: 'server', message }, { shouldFocus: applied === 0 });
+      // Forms that actually render the nested rows (e.g. the Course form's
+      // topics[].videos[]) want the error on the exact row; flat forms anchor to
+      // the root so an error can't land on an input that isn't on screen.
+      const target = options.nested ? field : root;
+      setError(target as Path<T>, { type: 'server', message }, { shouldFocus: applied === 0 });
       applied += 1;
     } else {
       unmatched.push(message);

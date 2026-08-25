@@ -143,3 +143,56 @@
     @apply bg-background text-foreground font-sans antialiased;
   }
 }
+
+/*
+ * Rich-text content authored in the admin editor (topic descriptions). Tailwind
+ * resets every element, so the handful of tags the sanitizer allows need their
+ * spacing and weight put back — both inside the editor and wherever the saved
+ * HTML is later rendered.
+ */
+@layer components {
+  .pb-rich-text {
+    @apply text-sm leading-relaxed;
+  }
+  .pb-rich-text p {
+    @apply my-1.5;
+  }
+  .pb-rich-text p:first-child {
+    @apply mt-0;
+  }
+  .pb-rich-text p:last-child {
+    @apply mb-0;
+  }
+  .pb-rich-text h2,
+  .pb-rich-text h3,
+  .pb-rich-text h4 {
+    @apply mt-3 mb-1 font-semibold text-foreground first:mt-0;
+  }
+  .pb-rich-text h2 {
+    @apply text-base;
+  }
+  .pb-rich-text h3 {
+    @apply text-sm;
+  }
+  .pb-rich-text h4 {
+    @apply text-[13px];
+  }
+  .pb-rich-text ul {
+    @apply my-1.5 list-disc space-y-0.5 pl-5;
+  }
+  .pb-rich-text ol {
+    @apply my-1.5 list-decimal space-y-0.5 pl-5;
+  }
+  .pb-rich-text a {
+    @apply font-medium text-primary underline underline-offset-2 hover:text-primary/80;
+  }
+  .pb-rich-text blockquote {
+    @apply my-2 border-l-2 border-border pl-3 text-muted-foreground;
+  }
+  .pb-rich-text code {
+    @apply rounded bg-muted px-1 py-0.5 font-mono text-xs;
+  }
+  .pb-rich-text strong {
+    @apply font-semibold;
+  }
+}

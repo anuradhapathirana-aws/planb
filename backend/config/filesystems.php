@@ -38,6 +38,17 @@ return [
             'report' => false,
         ],
 
+        // Admin-uploaded course lesson files. Deliberately has no `url` — videos
+        // are only ever served through the signed playback route so they can't be
+        // hot-linked or downloaded straight from storage (CLAUDE.md §7.11).
+        'course_videos' => [
+            'driver' => 'local',
+            'root' => storage_path('app/course-videos'),
+            'visibility' => 'private',
+            'throw' => false,
+            'report' => false,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

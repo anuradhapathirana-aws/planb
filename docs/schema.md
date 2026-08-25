@@ -84,11 +84,119 @@ FR-ADM-012. Every profession belongs to exactly one industry; the Student form's
 | is_active | boolean, default true | Same deactivate-not-delete pattern as `industries`. |
 | created_at / updated_at | timestamps | |
 
+## `course_categories`
+
+FR-ADM-008 (Course Module). Top-level grouping the admin picks first on the Course form — e.g. "UAE Migration Program", "English & Communication". Same deactivate-instead-of-delete pattern as `industries`/`professions`.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | bigIncrements | |
+| name | string, unique | e.g. "UAE Migration Program" |
+| description | string(500), nullable | Short plain-text blurb shown under the category name in the admin list. |
+| is_active | boolean, default true | Inactive categories drop out of the Course form's select but stay attached to existing courses. No hard delete. |
+| sort_order | unsignedInteger, default 0 | Display order (FR-ADM-008 reorder). |
+| created_at / updated_at | timestamps | |
+
+## `course_programmes`
+
+FR-ADM-008. A **Course Programme** is one learning programme inside a category — the SRS's "Phase" level (Appendix A's 8 phases become 8 programmes under one category). Holds an ordered list of topics.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | bigIncrements | |
+| course_category_id | unsignedBigInteger, FK → `course_categories.id`, cascade delete | Required — a programme always sits under a category. |
+| name | string | Unique per category (`unique(course_category_id, name)`), not globally. |
+| description | text, nullable | Optional plain-text summary for the student course card. |
+| status | enum: `draft`, `published`, default `draft` | PHP enum `App\Enums\CourseStatus`. Draft programmes are invisible to students; nothing publishes by accident while an admin is still adding topics. |
+| sort_order | unsignedInteger, default 0 | Order within the category (FR-ADM-008 reorder). |
+| created_at / updated_at / deleted_at | timestamps + soft delete | FR-ADM-008 delete is recoverable, matching `students`. |
+
+## `course_topics`
+
+FR-ADM-008a. A learning unit inside a programme, holding one or more videos (and — in a later pass — exactly one assessment, FR-ADM-008c).
+
+| Column | Type | Notes |
+|---|---|---|
+| id | bigIncrements | |
+| course_programme_id | unsignedBigInteger, FK → `course_programmes.id`, cascade delete | |
+| title | string | |
+| description | text, nullable | **Sanitized HTML** authored in the admin's rich-text editor (TipTap), so a topic description can carry hyperlinks and basic formatting. Never stored as received: `App\Support\HtmlSanitizer` strips everything outside a tag/attribute allowlist on write (CLAUDE.md §7.6), and only `http`/`https`/`mailto` links survive. |
+| sort_order | unsignedInteger, default 0 | Order within the programme (FR-ADM-008a reorder). Also drives FR-MOB-028 sequential unlocking later. |
+| created_at / updated_at | timestamps | |
+
+## `course_videos`
+
+FR-ADM-008b. One video lesson inside a topic. The file itself is **not** a column — it lives in the `video_file` Media Library collection on a private disk (see below).
+
+| Column | Type | Notes |
+|---|---|---|
+| id | bigIncrements | |
+| course_topic_id | unsignedBigInteger, FK → `course_topics.id`, cascade delete | |
+| title | string | FR-ADM-008b. |
+| provider | enum: `upload`, `external`, default `upload` | PHP enum `App\Enums\VideoProvider`. `upload` = admin-uploaded file (the only flow built now). `external` exists so a Bunny Stream / hosted URL can be added later without a migration — see the note below. |
+| external_url | string, nullable | Only for `provider = external`. Null for uploads. |
+| duration_seconds | unsignedInteger, nullable | FR-ADM-008b. Read from the file's metadata in the browser at upload time, so the admin doesn't type it by hand. |
+| sort_order | unsignedInteger, default 0 | Order within the topic. |
+| created_at / updated_at | timestamps | |
+
+Media collections on `CourseVideo` (Spatie Media Library, per CLAUDE.md §4.10):
+
+- **`video_file`** — single file, private disk `course_videos` (`storage/app/course-videos`, no public URL). MP4/MOV only. Never linked directly: playback goes through a short-lived signed URL (CLAUDE.md §7.11), see `api-endpoints.md`.
+- **`thumbnail`** — single file, default (public) disk. Re-encoded with Intervention Image (1280×720 cover crop) before storage, per CLAUDE.md §7.4 — same treatment as student profile photos.
+
+**Video hosting note.** Videos are admin-uploaded to the app server for now. Playback is already funnelled through `GET /admin/course-videos/{video}/stream` → a 2-hour signed URL → a byte-range-serving playback route, which is the same contract Bunny Stream will use. Switching to Bunny Stream later means setting `provider = external` and pointing the stream endpoint at Bunny's token-signed URL — no schema change, and no change to how the player consumes it.
+
+## `course_papers`
+
+FR-ADM-008c / FR-MOB-022–024. The **Q&A paper** for a course programme — a set of pre-defined questions the student answers once every video in the programme has been watched.
+
+**Optional and one-per-programme** (`unique` on the FK). A programme with no paper row, or a paper holding no questions, simply shows no paper to the student — there is no "empty assessment" state.
+
+Attached to the programme rather than to each topic at the client's request (the SRS put one assessment per topic, FR-MOB-018).
+
+| Column | Type | Notes |
+|---|---|---|
+| id | bigIncrements | |
+| course_programme_id | unsignedBigInteger, **unique**, FK → `course_programmes.id`, cascade delete | One paper per programme, deleted with it. |
+| title | string | Shown to the student above the questions, e.g. "Phase 1 — Final assessment". |
+| instructions | text, nullable | **Sanitized HTML** from the same rich-text editor as topic descriptions, so instructions can carry links. Cleaned by `App\Support\HtmlSanitizer` on write. |
+| pass_mark | unsignedTinyInteger, default 70 | Percentage, 1–100 (FR-MOB-023). All questions carry equal weight, so the score is `correct / total`. |
+| max_attempts | unsignedSmallInteger, nullable | Null = unlimited retries (FR-MOB-024). |
+| requires_all_videos_watched | boolean, default true | FR-MOB-021. Stored now; enforced when the student area and watch tracking exist. |
+| created_at / updated_at | timestamps | |
+
+## `course_questions`
+
+FR-ADM-008c. One question on a paper, with a single correct answer.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | bigIncrements | |
+| course_paper_id | unsignedBigInteger, FK → `course_papers.id`, cascade delete | |
+| text | text | The question itself. Plain text — questions don't take formatting. |
+| type | enum: `yes_no`, `multiple_choice`, default `multiple_choice` | PHP enum `App\Enums\QuestionType`. Both store their answers in `course_question_options`; `yes_no` is just the two-option case, kept as its own type so the student UI can render it as a two-button control and so validation can hold it to exactly two options. |
+| sort_order | unsignedInteger, default 0 | Order on the paper. |
+| created_at / updated_at | timestamps | |
+
+## `course_question_options`
+
+FR-ADM-008c. One selectable answer. Exactly one option per question carries `is_correct` — enforced in `CoursePaperRequest`, not by a DB constraint.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | bigIncrements | |
+| course_question_id | unsignedBigInteger, FK → `course_questions.id`, cascade delete | |
+| text | string | The answer text. For a `yes_no` question these are "Yes" and "No". |
+| is_correct | boolean, default false | Exactly one true per question. |
+| sort_order | unsignedInteger, default 0 | |
+| created_at / updated_at | timestamps | |
+
 ### Deferred (not built yet, referenced by future features)
 
 These are named in the SRS but belong to other, not-yet-built modules. `students` does not reference them yet; the Student Detail page shows placeholder tabs instead:
 
-- Course progress (`Phase`, `Topic`, `Video`, `Assessment`, `Progress`) — Course Module feature.
+- Student paper attempts and scoring (`CoursePaperAttempt`, `CoursePaperAnswer`) — FR-MOB-024/025, needs the student-facing area.
+- Student course progress (`VideoWatch`, `TopicProgress`) — FR-MOB-020/025/027, needs the student-facing area.
 - Payments (`Order`, `Payment`, `BankTransfer`) — Payment Gateway feature.
 - Premium service orders (`PremiumService`, `ServiceOrder`) — Premium Services feature.
 
@@ -101,4 +209,6 @@ These are named in the SRS but belong to other, not-yet-built modules. `students
 | 2026-08-13 | Initial schema: `users` (staff/admin auth) and `students` (Student Management). |
 | 2026-08-14 | `student_id` on single-record create is now server-generated, not admin-supplied. Profile photo upload (`profile_photo` media collection, already in the initial schema) is now wired up end-to-end via `POST/DELETE /admin/students/{student}/photo`. |
 | 2026-08-14 | Added `industries` and `professions` (FR-ADM-012 master data, with an Industry→Profession grouping requested beyond the original flat-list SRS wording). `students.profession_category` (free-text placeholder) removed in favor of `students.industry_id` / `students.profession_id`. |
+| 2026-08-24 | Added the Q&A paper tables (FR-ADM-008c): `course_papers`, `course_questions`, `course_question_options`. One optional paper per **programme** (client's call, where the SRS had one per topic); questions are single-correct multiple choice, with Yes/No as the two-option case. Student attempt/scoring tables are still deferred. |
+| 2026-08-24 | Added the Course Module content tables (FR-ADM-008/008a/008b): `course_categories`, `course_programmes`, `course_topics`, `course_videos`. Hierarchy is Category → Programme → Topic → Video, with the SRS's 8 phases (Appendix A) modelled as 8 programmes under one category. Video files and thumbnails are Media Library collections, not columns. Assessments (FR-ADM-008c) and student progress are still deferred. |
 | 2026-08-15 | `full_name`, `contact_number`, `address`, `date_of_birth`, `visa_status`, `industry_id`, `profession_id` are now required on the admin Add/Edit student form (client-requested; columns stay DB-nullable for CSV import / not-yet-self-registered students). |

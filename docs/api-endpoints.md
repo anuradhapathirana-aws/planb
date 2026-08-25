@@ -51,6 +51,74 @@ Master data for the Student form's Industry → Profession cascading select. No 
 
 Student Management's `industry_id`/`profession_id` fields (replacing the old free-text `profession_category`) are validated together: `profession_id` must belong to the given `industry_id` when both are present.
 
+## Course Module (FR-ADM-008 / 008a / 008b)
+
+Hierarchy: **Course Category → Course Programme → Topic → Video**. The SRS's 8 phases (Appendix A) are modelled as 8 programmes under one category.
+
+Categories follow the same activate/deactivate-instead-of-delete pattern as industries. Programmes are soft-deleted.
+
+| Method | Path | Auth / role | Notes |
+|---|---|---|---|
+| GET | `/admin/course-categories` | any admin role | Query: `search, is_active(1\|0), sort(name\|sort_order\|created_at), direction, per_page, page`. Paginated. Each row carries `programmes_count`. |
+| POST | `/admin/course-categories` | Super Admin, Content Manager | `{ name, description? }`. `sort_order` is assigned server-side (appended last). |
+| GET | `/admin/course-categories/{category}` | any admin role | |
+| PUT | `/admin/course-categories/{category}` | Super Admin, Content Manager | `{ name, description? }`. |
+| POST | `/admin/course-categories/{category}/activate` | Super Admin, Content Manager | |
+| POST | `/admin/course-categories/{category}/deactivate` | Super Admin, Content Manager | No destroy route — a DELETE returns 405. |
+
+### Course programmes
+
+`store`/`update` take the **whole tree in one request** — programme, its topics and each topic's video *metadata*. Video files are not in this payload (see below). Topic and video position in the submitted arrays becomes their `sort_order`, and responses return them in that order, so array index identifies a row.
+
+On `update`, a topic/video carrying an `id` is updated in place, one without an `id` is created, and anything missing from the payload is deleted (a deleted video's uploaded file goes with it). An `id` belonging to a different programme is rejected with a 422 rather than silently duplicated.
+
+| Method | Path | Auth / role | Notes |
+|---|---|---|---|
+| GET | `/admin/course-programmes` | any admin role | Query: `search, course_category_id, status(draft\|published), sort(name\|sort_order\|created_at), direction, per_page, page`. Rows carry `topics_count` / `videos_count`. |
+| POST | `/admin/course-programmes` | Super Admin, Content Manager | `{ course_category_id, name, description?, status?, topics: [{ title, description?, videos: [{ title, duration_seconds? }] }] }`. At least one topic is required (FR-MOB-017). Topic `description` is rich-text HTML, sanitized server-side against a tag/attribute allowlist before storage. |
+| GET | `/admin/course-programmes/{programme}` | any admin role | Returns the full tree (`topics[].videos[]`). |
+| PUT | `/admin/course-programmes/{programme}` | Super Admin, Content Manager | Same body, plus optional `topics[].id` / `topics[].videos[].id`. |
+| DELETE | `/admin/course-programmes/{programme}` | Super Admin | Soft delete; topics, videos and uploaded files are kept. |
+| POST | `/admin/course-programmes/{programme}/publish` | Super Admin, Content Manager | |
+| POST | `/admin/course-programmes/{programme}/unpublish` | Super Admin, Content Manager | Back to `draft`. |
+
+### Lesson files
+
+Uploaded one at a time against an already-saved video row — a course can hold hundreds of megabytes of video, which no single form post survives. The admin UI saves the course first, then uploads each staged file against the returned video ids.
+
+Server cap: `config('courses.max_video_upload_mb')` (default 512, `COURSE_MAX_VIDEO_UPLOAD_MB`). **PHP's own `upload_max_filesize`, `post_max_size` and `max_execution_time` must be raised to match** — they reject the request before Laravel sees it.
+
+| Method | Path | Auth / role | Notes |
+|---|---|---|---|
+| POST | `/admin/course-videos/{video}/file` | Super Admin, Content Manager | Multipart `file` (MP4/MOV, validated by both `mimetypes` and extension) + optional `duration_seconds` (read from the file in the browser). Replaces any existing file. |
+| DELETE | `/admin/course-videos/{video}/file` | Super Admin, Content Manager | Removes the file; the video row stays so a replacement can be uploaded. |
+| POST | `/admin/course-videos/{video}/thumbnail` | Super Admin, Content Manager | Multipart `thumbnail` (jpeg/png, max 2MB). Re-encoded via Intervention Image (1280×720 cover crop) before storage. |
+| DELETE | `/admin/course-videos/{video}/thumbnail` | Super Admin, Content Manager | |
+| GET | `/admin/course-videos/{video}/stream` | any admin role | `{ url, expires_at }` — a **signed, ~90-minute** playback link. 404 when the video has no file. Never returns a storage URL. |
+| GET | `/course-videos/{video}/playback` | **signed URL only** | Serves the bytes. Outside `/admin` and outside the session guard on purpose: a `<video>` element fetches its source without cookies, so the signature is the authorization. Supports HTTP `Range`, so the player seeks and buffers instead of downloading the whole lesson first. |
+
+`CourseVideoResource` never exposes a file URL — only `has_file`, `file_name`, `file_size_bytes`, `duration_seconds` and `thumbnail_url`.
+
+**Video hosting.** Files live on the private `course_videos` disk (`storage/app/course-videos`) for now. `provider` (`upload` | `external`) and `external_url` already exist on the row, so moving to Bunny Stream later means pointing the stream endpoint at Bunny's token-signed URL — no schema change, and no change to how any player consumes it.
+
+### Q&A paper (FR-ADM-008c)
+
+The **question paper** is a singleton under its programme: at most one, and often none. `show` therefore answers `{ "data": null }` rather than a 404 — "this programme has no paper" is the normal starting state, not an error, and it is what tells the student app to show nothing after the videos.
+
+`update` is an upsert that takes the whole paper in one request — settings, questions and each question's answers — inside a transaction. Questions/answers carrying an `id` are updated in place, ones without are created, and anything missing from the payload is deleted. A question `id` belonging to a different paper is a 422.
+
+Two rules the array validation can't express are enforced in `SaveCoursePaperRequest::after()`: **every question must have exactly one correct answer**, and a `yes_no` question must have exactly two. Without them a paper could be saved that is impossible to score.
+
+| Method | Path | Auth / role | Notes |
+|---|---|---|---|
+| GET | `/admin/course-programmes/{programme}/paper` | any admin role | Full paper with `questions[].options[]`, or `data: null`. |
+| PUT | `/admin/course-programmes/{programme}/paper` | Super Admin, Content Manager | `{ title, instructions?, pass_mark?, max_attempts?, requires_all_videos_watched?, questions: [{ id?, text, type, options: [{ id?, text, is_correct }] }] }`. At least one question; 2–6 answers each. `type` is `yes_no` or `multiple_choice`. `instructions` is rich-text HTML, sanitized server-side. `pass_mark` defaults to 70, `max_attempts` null = unlimited retries. |
+| DELETE | `/admin/course-programmes/{programme}/paper` | Super Admin, Content Manager | Removes the paper, its questions and answers. 404 when there is no paper. |
+
+`CourseProgrammeResource` carries a `paper` summary (`title`, `pass_mark`, `questions_count`, no questions) on both the list and detail responses, so the Courses table and Course form can show "N questions" without a second request. It is `null` when the programme has no paper.
+
+**`is_correct` is admin-only.** `CourseQuestionOptionResource` includes it because only admins read this endpoint. The student-facing paper endpoint (not built yet) must use its own resource that omits it.
+
 ## Conventions
 
 - Every response wraps the payload in `{ data: ... }` (list endpoints add `{ data, meta }` with pagination info).
@@ -60,4 +128,4 @@ Student Management's `industry_id`/`profession_id` fields (replacing the old fre
 
 ---
 
-**Last updated:** 14 August 2026 — added Industries & Professions master data endpoints (FR-ADM-012); Student Management's `profession_category` replaced by `industry_id`/`profession_id`.
+**Last updated:** 24 August 2026 — added the Course Module endpoints (FR-ADM-008/008a/008b/008c): course categories, course programmes (whole-tree save), lesson file uploads, signed video playback, and the per-programme Q&A paper.
