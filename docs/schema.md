@@ -191,12 +191,30 @@ FR-ADM-008c. One selectable answer. Exactly one option per question carries `is_
 | sort_order | unsignedInteger, default 0 | |
 | created_at / updated_at | timestamps | |
 
+## `checklist_items`
+
+The **arrival checklists** a student works through in the app — one row per step, split across two fixed phases.
+
+**The phase is a PHP enum (`App\Enums\ChecklistPhase`), not a table.** The client's process has exactly two stages, and the student app renders them as two fixed tabs, so an admin-managed "checklist groups" table would have been a second CRUD screen maintaining data that never changes. Adding a third phase later is a migration plus one enum case.
+
+There is **no `is_active` flag and no soft delete**: a phase is saved as one document (the admin edits the whole list, reorders it and saves once), and an item dropped from that list is deleted. Student tick-off progress is not built yet — see *Deferred* below — and will need a `student_checklist_items` table plus a decision on what happens to progress when an item is removed.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | bigIncrements | |
+| phase | string(32), indexed with `sort_order` | PHP enum `App\Enums\ChecklistPhase`: `before_arrival`, `after_arrival`. |
+| title | string | What the student must do, e.g. "Valid passport with 6+ months left". Plain text. |
+| description | text, nullable | **Sanitized HTML** from the same rich-text editor as topic descriptions, so a step can carry sub-steps and links. Cleaned by `App\Support\HtmlSanitizer` on write. Null when the admin wrote nothing. |
+| sort_order | unsignedInteger, default 0 | Position within the phase. Set from the submitted array's index — the admin never types an order. |
+| created_at / updated_at | timestamps | |
+
 ### Deferred (not built yet, referenced by future features)
 
 These are named in the SRS but belong to other, not-yet-built modules. `students` does not reference them yet; the Student Detail page shows placeholder tabs instead:
 
 - Student paper attempts and scoring (`CoursePaperAttempt`, `CoursePaperAnswer`) — FR-MOB-024/025, needs the student-facing area.
 - Student course progress (`VideoWatch`, `TopicProgress`) — FR-MOB-020/025/027, needs the student-facing area.
+- Student checklist progress (`student_checklist_items`: which items a student has ticked, and when) — needs the student-facing area. `checklist_items` is authoring-only for now.
 - Payments (`Order`, `Payment`, `BankTransfer`) — Payment Gateway feature.
 - Premium service orders (`PremiumService`, `ServiceOrder`) — Premium Services feature.
 
@@ -212,3 +230,4 @@ These are named in the SRS but belong to other, not-yet-built modules. `students
 | 2026-08-24 | Added the Q&A paper tables (FR-ADM-008c): `course_papers`, `course_questions`, `course_question_options`. One optional paper per **programme** (client's call, where the SRS had one per topic); questions are single-correct multiple choice, with Yes/No as the two-option case. Student attempt/scoring tables are still deferred. |
 | 2026-08-24 | Added the Course Module content tables (FR-ADM-008/008a/008b): `course_categories`, `course_programmes`, `course_topics`, `course_videos`. Hierarchy is Category → Programme → Topic → Video, with the SRS's 8 phases (Appendix A) modelled as 8 programmes under one category. Video files and thumbnails are Media Library collections, not columns. Assessments (FR-ADM-008c) and student progress are still deferred. |
 | 2026-08-15 | `full_name`, `contact_number`, `address`, `date_of_birth`, `visa_status`, `industry_id`, `profession_id` are now required on the admin Add/Edit student form (client-requested; columns stay DB-nullable for CSV import / not-yet-self-registered students). |
+| 2026-08-25 | Added `checklist_items` — the Before Arrival / After Arrival checklists. Phase is a fixed PHP enum rather than an admin-managed table; each phase is saved whole, so `sort_order` comes from the submitted array's position. Student tick-off progress is still deferred. |

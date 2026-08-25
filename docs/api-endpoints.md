@@ -119,6 +119,25 @@ Two rules the array validation can't express are enforced in `SaveCoursePaperReq
 
 **`is_correct` is admin-only.** `CourseQuestionOptionResource` includes it because only admins read this endpoint. The student-facing paper endpoint (not built yet) must use its own resource that omits it.
 
+## Arrival Checklists
+
+Two fixed checklists — `before_arrival` and `after_arrival` (`App\Enums\ChecklistPhase`). `{phase}` resolves by **implicit enum binding**, so any other value is a 404 before the controller runs.
+
+Each phase is **one document, not a paginated resource**: the admin edits the whole list in a tab, reorders it and saves once, so `update` replaces the phase entirely. Items carrying an `id` are updated in place, ones without are created, and anything missing from the payload is deleted — all in one transaction. Position in `items` becomes the stored `sort_order`; there is no order field to send.
+
+**An empty `items` array is valid** and clears the phase — "nothing to do at this stage yet" is a real state, unlike a Q&A paper with no questions.
+
+An item `id` belonging to the *other* phase is a **422**, not a silent move across tabs.
+
+| Method | Path | Auth / role | Notes |
+|---|---|---|---|
+| GET | `/admin/checklists/{phase}` | any admin role | Full list for the phase, already in `sort_order`. `{ data: [...] }`, empty array when nothing is set up. |
+| PUT | `/admin/checklists/{phase}` | Super Admin, Content Manager | `{ items: [{ id?, title, description }] }`. Max 200 items; `title` required, max 255; `description` is rich-text HTML (max 20 000 chars), sanitized server-side and stored as `null` when empty. Responds with the saved list, so the client can re-seed its form with the new ids. |
+
+Writes are gated by `ChecklistItemPolicy::manage` — a class-level ability rather than per-row `create`/`update`/`delete`, since one request does all three.
+
+**Student-facing note.** These endpoints are admin-only. The student app's checklist endpoints (read + tick off) are not built yet and will need their own resource and a progress table — see `docs/schema.md`.
+
 ## Conventions
 
 - Every response wraps the payload in `{ data: ... }` (list endpoints add `{ data, meta }` with pagination info).
@@ -128,4 +147,4 @@ Two rules the array validation can't express are enforced in `SaveCoursePaperReq
 
 ---
 
-**Last updated:** 24 August 2026 — added the Course Module endpoints (FR-ADM-008/008a/008b/008c): course categories, course programmes (whole-tree save), lesson file uploads, signed video playback, and the per-programme Q&A paper.
+**Last updated:** 25 August 2026 — added the Arrival Checklist endpoints (`GET`/`PUT /admin/checklists/{phase}`), one document per fixed phase.

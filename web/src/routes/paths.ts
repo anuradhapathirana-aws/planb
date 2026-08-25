@@ -12,5 +12,6 @@ export const paths = {
     courseEdit: (id: number | string) => `/admin/courses/${id}/edit`,
     coursePaper: (id: number | string) => `/admin/courses/${id}/paper`,
     courseCategories: '/admin/courses/categories',
+    checklists: '/admin/checklists',
   },
 } as const;

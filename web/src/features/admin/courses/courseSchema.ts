@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { newClientKey } from '@/lib/clientKey';
 
 export const MAX_VIDEO_UPLOAD_MB = 512;
 export const ACCEPTED_VIDEO_TYPES = ['video/mp4', 'video/quicktime'];
@@ -51,11 +52,4 @@ export function emptyTopic(): CourseFormTopic {
 
 export function emptyVideo(): CourseFormVideo {
   return { client_key: newClientKey(), title: '', duration_seconds: null };
-}
-
-/** `crypto.randomUUID` needs a secure context; the fallback keeps dev-over-IP working. */
-export function newClientKey(): string {
-  return typeof crypto !== 'undefined' && 'randomUUID' in crypto
-    ? crypto.randomUUID()
-    : `v-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }

@@ -34,13 +34,13 @@ import {
   DEFAULT_PASS_MARK,
   type CoursePaperFormSchema,
 } from '@/features/admin/courses/coursePaperSchema';
-import { newClientKey } from '@/features/admin/courses/courseSchema';
 import {
   useCoursePaper,
   useDeleteCoursePaper,
   useSaveCoursePaper,
 } from '@/features/admin/courses/hooks/useCoursePaper';
 import { useCourseProgramme } from '@/features/admin/courses/hooks/useCourses';
+import { newClientKey } from '@/lib/clientKey';
 import { applyServerValidationErrors } from '@/lib/serverErrors';
 import { paths } from '@/routes/paths';
 import type { CoursePaper, CoursePaperPayload } from '@/types/course';

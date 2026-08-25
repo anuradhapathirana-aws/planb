@@ -39,6 +39,10 @@ const CourseFormPage = lazy(() =>
 const CoursePaperPage = lazy(() =>
   import('@/features/admin/courses/pages/CoursePaperPage').then((m) => ({ default: m.CoursePaperPage })),
 );
+// Its own chunk keeps the rich-text editor off every other admin page.
+const ChecklistsPage = lazy(() =>
+  import('@/features/admin/checklists/pages/ChecklistsPage').then((m) => ({ default: m.ChecklistsPage })),
+);
 const CourseCategoriesListPage = lazy(() =>
   import('@/features/admin/courseCategories/pages/CourseCategoriesListPage').then((m) => ({
     default: m.CourseCategoriesListPage,
@@ -81,6 +85,7 @@ export const router = createBrowserRouter([
       { path: 'courses/new', element: page(<CourseFormPage />) },
       { path: 'courses/:id/edit', element: page(<CourseFormPage />) },
       { path: 'courses/:id/paper', element: page(<CoursePaperPage />) },
+      { path: 'checklists', element: page(<ChecklistsPage />) },
     ],
   },
   { path: '*', element: <Navigate to={paths.admin.dashboard} replace /> },

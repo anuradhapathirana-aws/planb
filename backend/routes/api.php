@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Admin\AuthController;
+use App\Http\Controllers\Admin\ChecklistItemController;
 use App\Http\Controllers\Admin\CourseCategoryController;
 use App\Http\Controllers\Admin\CoursePaperController;
 use App\Http\Controllers\Admin\CourseProgrammeController;
@@ -69,6 +70,15 @@ Route::prefix('v1/admin')->group(function () {
         Route::post('/course-videos/{video}/thumbnail', [CourseVideoController::class, 'uploadThumbnail']);
         Route::delete('/course-videos/{video}/thumbnail', [CourseVideoController::class, 'deleteThumbnail']);
         Route::get('/course-videos/{video}/stream', [CourseVideoController::class, 'stream']);
+
+        /*
+         * Arrival checklists. Two fixed phases, each saved whole:
+         * `{phase}` resolves by implicit enum binding, so an unknown phase 404s
+         * before the controller runs. Not a paginated resource — the admin
+         * edits the entire list in one tab.
+         */
+        Route::get('/checklists/{phase}', [ChecklistItemController::class, 'index']);
+        Route::put('/checklists/{phase}', [ChecklistItemController::class, 'update']);
     });
 });
 

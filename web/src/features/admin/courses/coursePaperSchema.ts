@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { newClientKey } from '@/features/admin/courses/courseSchema';
+import { newClientKey } from '@/lib/clientKey';
 
 export const DEFAULT_PASS_MARK = 70;
 export const MAX_ANSWERS_PER_QUESTION = 6;

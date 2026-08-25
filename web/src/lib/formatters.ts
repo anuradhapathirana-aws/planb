@@ -63,3 +63,17 @@ export function formatDuration(seconds: number | null | undefined): string {
     ? `${hours}:${String(minutes).padStart(2, '0')}:${paddedSecs}`
     : `${minutes}:${paddedSecs}`;
 }
+
+/**
+ * Plain-text excerpt of admin-authored HTML, for collapsed cards and list rows.
+ * Rendering the markup there would need `dangerouslySetInnerHTML` + DOMPurify
+ * (CLAUDE.md §7.6) for no real benefit — a one-line preview wants text anyway.
+ *
+ * `DOMParser` neither executes scripts nor loads resources, so the untrusted
+ * markup is never live in the document.
+ */
+export function htmlToPlainText(html: string | null | undefined): string {
+  if (!html) return '';
+  const parsed = new DOMParser().parseFromString(html, 'text/html');
+  return (parsed.body.textContent ?? '').replace(/\s+/g, ' ').trim();
+}

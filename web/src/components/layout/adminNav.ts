@@ -50,7 +50,7 @@ export const adminNavGroups: AdminNavGroup[] = [
           { label: 'Categories', icon: FolderTree, href: paths.admin.courseCategories },
         ],
       },
-      { label: 'Checklists', icon: ListChecks, comingSoon: true },
+      { label: 'Checklists', icon: ListChecks, href: paths.admin.checklists },
       {
         label: 'Jobs',
         icon: Briefcase,

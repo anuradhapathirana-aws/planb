@@ -34,7 +34,6 @@ import {
   courseFormSchema,
   emptyTopic,
   emptyVideo,
-  newClientKey,
   type CourseFormSchema,
 } from '@/features/admin/courses/courseSchema';
 import {
@@ -45,6 +44,7 @@ import {
 } from '@/features/admin/courses/hooks/useCourses';
 import { useActiveCourseCategories } from '@/features/admin/courseCategories/hooks/useCourseCategories';
 import { uploadCourseVideoFile } from '@/api/courses.api';
+import { newClientKey } from '@/lib/clientKey';
 import { applyServerValidationErrors } from '@/lib/serverErrors';
 import { paths } from '@/routes/paths';
 import type { CourseProgramme, CourseProgrammePayload, CourseVideo } from '@/types/course';
