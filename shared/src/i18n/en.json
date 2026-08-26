@@ -36,7 +36,12 @@
     "signOutConfirm": "Sign out of Plan B on this device?"
   },
   "home": {
+    "title": "Home",
     "greeting": "Hello, {{name}}",
+    "greetingFallback": "Welcome back",
+    "keepGoing": "Keep going — you're {{percent}}% through.",
+    "allCaughtUp": "You're all caught up.",
+    "viewAll": "View all",
     "continueLearning": "Continue learning",
     "resume": "Resume",
     "noProgressTitle": "Start your first course",
@@ -48,7 +53,10 @@
     "emptyTitle": "No courses yet",
     "emptyBody": "Plan B will publish your courses here. Check back soon.",
     "progress": "{{watched}} of {{total}} lessons",
+    "notStarted": "Not started",
     "complete": "Complete",
+    "loadFailedTitle": "Couldn't load your courses",
+    "loadFailedBody": "Check your connection and try again.",
     "topics": "Topics",
     "lessons": "Lessons",
     "locked": "Finish the previous lesson to unlock this one",

@@ -47,7 +47,10 @@ export function applyServerValidationErrors<T extends FieldValues>(
     if (!message) continue;
 
     // Laravel reports nested/array members as "languages_spoken.0" — anchor to the root field.
-    const root = field.split('.')[0];
+    // `split` always yields at least one element, but the fallback keeps this
+    // honest under `noUncheckedIndexedAccess` (which mobile/ enables) instead of
+    // asserting the compiler is wrong.
+    const root = field.split('.')[0] ?? field;
 
     if (known.has(root)) {
       // Forms that actually render the nested rows (e.g. the Course form's

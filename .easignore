@@ -1,0 +1,27 @@
+# What EAS Build uploads.
+#
+# The archive root is the git repo root, not mobile/ — it has to be, because
+# mobile/ imports from shared/ via a path alias and Metro needs both. But the
+# Android build has no use for the Laravel API or the admin panel, and
+# including them costs upload time on every build.
+#
+# It is also a correctness fix, not just an optimisation: backend/public/storage
+# is a symlink created by `php artisan storage:link`, and Windows cannot
+# recreate symlinks during the archive step without elevated privileges, which
+# failed the build outright.
+
+backend/
+web/
+docs/
+
+# Reference documents, not build inputs.
+# Anchored and exact on purpose: a loose `*.PNG` glob risks matching the app's
+# own icon.png case-insensitively on Windows, which would fail prebuild on a
+# missing asset — a genuinely hard failure to diagnose from a build log.
+/*.docx
+/~$*
+/PBLogo.PNG
+
+# Local artefacts.
+.expo-export-test/
+**/node_modules/
