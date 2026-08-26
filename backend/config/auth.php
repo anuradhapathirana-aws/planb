@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Student;
 use App\Models\User;
 
 return [
@@ -37,10 +38,36 @@ return [
     |
     */
 
+    /*
+     * Two actor types that must never authenticate on each other's routes:
+     * `User` (admin panel, cookie session from web/) and `Student` (mobile app,
+     * bearer token). Read backend/CLAUDE.md §1 before changing anything here.
+     *
+     * The `provider` on each Sanctum guard is load-bearing, not decoration.
+     * SanctumServiceProvider::register() force-defines `auth.guards.sanctum` with
+     * `provider => null`, and Guard::hasValidProvider() returns true for ANY
+     * tokenable model when the provider is null — so without these lines a
+     * student's bearer token would authenticate on every admin endpoint. Naming
+     * a provider is what turns that check into a real `instanceof`.
+     *
+     * The stateful (session) half of Sanctum's guard reads one GLOBAL config key,
+     * `sanctum.guard`, so it cannot be scoped per guard. That gap is closed by the
+     * `admin.actor` / `student.actor` middleware instead.
+     */
     'guards' => [
         'web' => [
             'driver' => 'session',
             'provider' => 'users',
+        ],
+
+        'sanctum' => [
+            'driver' => 'sanctum',
+            'provider' => 'users',
+        ],
+
+        'student' => [
+            'driver' => 'sanctum',
+            'provider' => 'students',
         ],
     ],
 
@@ -67,10 +94,10 @@ return [
             'model' => env('AUTH_MODEL', User::class),
         ],
 
-        // 'users' => [
-        //     'driver' => 'database',
-        //     'table' => 'users',
-        // ],
+        'students' => [
+            'driver' => 'eloquent',
+            'model' => Student::class,
+        ],
     ],
 
     /*

@@ -3,7 +3,7 @@ import { ClipboardList, Eye, EyeOff, Layers, Pencil, Trash2, Video } from 'lucid
 import { Badge } from '@/components/ui/badge';
 import { RowActions } from '@/components/shared/RowActions';
 import { formatDate } from '@/lib/formatters';
-import type { CourseProgramme } from '@/types/course';
+import type { CourseProgramme } from '@shared/types/course';
 
 interface CourseColumnActions {
   onEdit: (programme: CourseProgramme) => void;

@@ -3,7 +3,7 @@ import { Pencil, PowerOff, Power } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { RowActions } from '@/components/shared/RowActions';
 import { formatDate } from '@/lib/formatters';
-import type { Industry } from '@/types/industry';
+import type { Industry } from '@shared/types/industry';
 
 interface IndustryColumnActions {
   onEdit: (industry: Industry) => void;

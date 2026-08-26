@@ -21,8 +21,14 @@ Route::prefix('v1/admin')->group(function () {
         ->name('admin.unlock')
         ->middleware('signed');
 
-    // Authenticated admin panel endpoints (Sanctum SPA cookie session).
-    Route::middleware('auth:sanctum')->group(function () {
+    /*
+     * Authenticated admin panel endpoints (Sanctum SPA cookie session).
+     *
+     * `admin.actor` is not redundant with `auth:sanctum`: Sanctum's stateful
+     * branch checks one global guard list, so it rejects a signed-in *student*
+     * that the guard alone would let through. See backend/CLAUDE.md §1.
+     */
+    Route::middleware(['auth:sanctum', 'admin.actor'])->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('/me', [AuthController::class, 'me']);
 

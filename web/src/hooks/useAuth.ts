@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchMe, login, logout } from '@/api/auth.api';
 import { useAuthStore } from '@/stores/authStore';
-import type { LoginPayload } from '@/types/auth';
+import type { LoginPayload } from '@shared/types/auth';
 
 export function useCurrentUser() {
   const setUser = useAuthStore((s) => s.setUser);

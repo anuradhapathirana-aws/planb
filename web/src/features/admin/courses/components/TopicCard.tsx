@@ -14,7 +14,7 @@ import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { VideoRow, type StagedVideoFile } from '@/features/admin/courses/components/VideoRow';
 import { emptyVideo, type CourseFormSchema } from '@/features/admin/courses/courseSchema';
 import { cn } from '@/lib/utils';
-import type { CourseVideo } from '@/types/course';
+import type { CourseVideo } from '@shared/types/course';
 
 interface TopicCardProps {
   index: number;

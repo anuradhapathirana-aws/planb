@@ -14,7 +14,7 @@ import {
 } from '@/features/admin/courseCategories/hooks/useCourseCategories';
 import { getCourseCategoryColumns } from '@/features/admin/courseCategories/components/courseCategoryColumns';
 import { CourseCategoryFormDialog } from '@/features/admin/courseCategories/components/CourseCategoryFormDialog';
-import type { CourseCategory, CourseCategoryListFilters } from '@/types/course';
+import type { CourseCategory, CourseCategoryListFilters } from '@shared/types/course';
 
 type StatusFilter = NonNullable<CourseCategoryListFilters['is_active']>;
 

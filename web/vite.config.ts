@@ -37,10 +37,18 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(import.meta.dirname, './src'),
+      // Source-only package shared with mobile/ — see the root CLAUDE.md §2.
+      // Vite compiles it from source, so there is nothing to install or build.
+      '@shared': path.resolve(import.meta.dirname, '../shared/src'),
     },
   },
   server: {
     port: 5183,
     strictPort: true,
+    // `shared/` sits outside this project root, and the dev server refuses to
+    // read outside it by default — without this the alias resolves but 403s.
+    fs: {
+      allow: [path.resolve(import.meta.dirname, '..')],
+    },
   },
 });

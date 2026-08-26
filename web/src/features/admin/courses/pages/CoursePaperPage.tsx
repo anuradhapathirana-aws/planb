@@ -40,10 +40,10 @@ import {
   useSaveCoursePaper,
 } from '@/features/admin/courses/hooks/useCoursePaper';
 import { useCourseProgramme } from '@/features/admin/courses/hooks/useCourses';
-import { newClientKey } from '@/lib/clientKey';
-import { applyServerValidationErrors } from '@/lib/serverErrors';
+import { newClientKey } from '@shared/lib/clientKey';
+import { applyServerValidationErrors } from '@shared/lib/serverErrors';
 import { paths } from '@/routes/paths';
-import type { CoursePaper, CoursePaperPayload } from '@/types/course';
+import type { CoursePaper, CoursePaperPayload } from '@shared/types/course';
 
 const PAPER_FIELD_NAMES = Object.keys(coursePaperFormSchema.shape);
 

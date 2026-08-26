@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { RowActions } from '@/components/shared/RowActions';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDate, initials, labelizeVisaStatus } from '@/lib/formatters';
-import type { Student } from '@/types/student';
+import type { Student } from '@shared/types/student';
 
 interface StudentColumnActions {
   onEdit: (student: Student) => void;

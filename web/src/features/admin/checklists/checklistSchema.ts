@@ -1,12 +1,12 @@
 import { PlaneLanding, PlaneTakeoff, type LucideIcon } from 'lucide-react';
 import { z } from 'zod';
-import { newClientKey } from '@/lib/clientKey';
-import type { ChecklistPhase } from '@/types/checklist';
+import { newClientKey } from '@shared/lib/clientKey';
+import type { ChecklistPhase } from '@shared/types/checklist';
 
 export const MAX_CHECKLIST_ITEMS = 200;
 
 const checklistItemSchema = z.object({
-  /** Stable row key kept through reorders — see `@/lib/clientKey`. */
+  /** Stable row key kept through reorders — see `@shared/lib/clientKey`. */
   client_key: z.string(),
   /** Server-side row id; `id` is reserved by `useFieldArray` for its React key. */
   saved_id: z.number().optional(),

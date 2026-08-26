@@ -11,7 +11,7 @@ import { FilterCard, FilterField } from '@/components/shared/FilterCard';
 import { useIndustries, useToggleIndustryActive } from '@/features/admin/industries/hooks/useIndustries';
 import { getIndustryColumns } from '@/features/admin/industries/components/industryColumns';
 import { IndustryFormDialog } from '@/features/admin/industries/components/IndustryFormDialog';
-import type { Industry, IndustryListFilters } from '@/types/industry';
+import type { Industry, IndustryListFilters } from '@shared/types/industry';
 
 type StatusFilter = NonNullable<IndustryListFilters['is_active']>;
 

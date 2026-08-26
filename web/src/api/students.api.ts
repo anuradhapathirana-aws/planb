@@ -1,12 +1,12 @@
 import { apiClient } from '@/api/client';
-import type { ApiResource, PaginatedResponse } from '@/types/api';
+import type { ApiResource, PaginatedResponse } from '@shared/types/api';
 import type {
   ImportResult,
   Student,
   StudentFormValues,
   StudentListFilters,
   StudentStats,
-} from '@/types/student';
+} from '@shared/types/student';
 
 export async function fetchStudents(filters: StudentListFilters): Promise<PaginatedResponse<Student>> {
   const params = { ...filters };

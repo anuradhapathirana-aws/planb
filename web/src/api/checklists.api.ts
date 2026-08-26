@@ -1,6 +1,6 @@
 import { apiClient } from '@/api/client';
-import type { ApiResource } from '@/types/api';
-import type { ChecklistItem, ChecklistPhase, SaveChecklistPayload } from '@/types/checklist';
+import type { ApiResource } from '@shared/types/api';
+import type { ChecklistItem, ChecklistPhase, SaveChecklistPayload } from '@shared/types/checklist';
 
 /** Whole phase, already in `sort_order`. Not paginated — a checklist is a short list. */
 export async function fetchChecklistItems(phase: ChecklistPhase): Promise<ChecklistItem[]> {

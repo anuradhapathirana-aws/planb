@@ -1,0 +1,28 @@
+{
+  "_comment": "Sinhala translations are supplied by the client (root CLAUDE.md §8). Keys present here are translated; any key missing falls back to en.json, so an untranslated string shows in English rather than as a raw key. Do not machine-translate — send new keys to the client.",
+
+  "common": {
+    "appName": "Plan B",
+    "continue": "ඉදිරියට",
+    "cancel": "අවලංගු කරන්න",
+    "save": "සුරකින්න",
+    "retry": "නැවත උත්සාහ කරන්න",
+    "back": "ආපසු",
+    "close": "වසන්න",
+    "loading": "පූරණය වෙමින්…"
+  },
+  "auth": {
+    "signInTitle": "පිවිසෙන්න",
+    "emailLabel": "විද්‍යුත් තැපැල් ලිපිනය",
+    "verify": "තහවුරු කරන්න",
+    "signOut": "පිටවෙන්න"
+  },
+  "courses": {
+    "title": "පාඨමාලා",
+    "watched": "නරඹා ඇත"
+  },
+  "profile": {
+    "title": "පැතිකඩ",
+    "language": "යෙදුමේ භාෂාව"
+  }
+}

@@ -49,9 +49,9 @@ import {
 import { uploadStudentPhoto as uploadStudentPhotoApi } from '@/api/students.api';
 import { useActiveIndustries } from '@/features/admin/industries/hooks/useIndustries';
 import { useActiveProfessionsByIndustry } from '@/features/admin/professions/hooks/useProfessions';
-import { applyServerValidationErrors } from '@/lib/serverErrors';
+import { applyServerValidationErrors } from '@shared/lib/serverErrors';
 import { cn } from '@/lib/utils';
-import type { Student } from '@/types/student';
+import type { Student } from '@shared/types/student';
 
 interface StudentFormDialogProps {
   open: boolean;

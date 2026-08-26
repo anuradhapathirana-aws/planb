@@ -23,8 +23,8 @@ import {
   useCreateCourseCategory,
   useUpdateCourseCategory,
 } from '@/features/admin/courseCategories/hooks/useCourseCategories';
-import { applyServerValidationErrors } from '@/lib/serverErrors';
-import type { CourseCategory } from '@/types/course';
+import { applyServerValidationErrors } from '@shared/lib/serverErrors';
+import type { CourseCategory } from '@shared/types/course';
 
 interface CourseCategoryFormDialogProps {
   open: boolean;

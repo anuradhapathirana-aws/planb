@@ -1,5 +1,5 @@
-import type { Industry } from '@/types/industry';
-import type { Profession } from '@/types/profession';
+import type { Industry } from './industry';
+import type { Profession } from './profession';
 
 export type VisaStatus = 'visit' | 'employment';
 

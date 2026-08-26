@@ -1,0 +1,25 @@
+{
+  "comments": [
+    "Not used to build anything — each consuming app compiles these sources with its own config.",
+    "This exists so an editor type-checks shared/ on its own, and so a mistake here is caught",
+    "before it breaks both apps at once. Keep the lib list platform-neutral: no DOM.",
+    "Anything needing `document`, `window`, or `DOMParser` does NOT belong in shared/."
+  ],
+  "compilerOptions": {
+    "target": "es2023",
+    "lib": ["ES2023"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "verbatimModuleSyntax": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "noEmit": true
+  },
+  "include": ["src"]
+}

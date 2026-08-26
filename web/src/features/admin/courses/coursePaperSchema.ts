@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { newClientKey } from '@/lib/clientKey';
+import { newClientKey } from '@shared/lib/clientKey';
 
 export const DEFAULT_PASS_MARK = 70;
 export const MAX_ANSWERS_PER_QUESTION = 6;

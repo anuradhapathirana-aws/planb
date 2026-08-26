@@ -17,7 +17,7 @@ import {
 import { getStudentColumns } from '@/features/admin/students/components/studentColumns';
 import { StudentFormDialog } from '@/features/admin/students/components/StudentFormDialog';
 import { ImportStudentsDialog } from '@/features/admin/students/components/ImportStudentsDialog';
-import type { Student, StudentListFilters } from '@/types/student';
+import type { Student, StudentListFilters } from '@shared/types/student';
 import { paths } from '@/routes/paths';
 
 type StatusFilter = NonNullable<StudentListFilters['status']>;

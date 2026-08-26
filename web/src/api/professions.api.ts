@@ -1,6 +1,6 @@
 import { apiClient } from '@/api/client';
-import type { ApiResource, PaginatedResponse } from '@/types/api';
-import type { Profession, ProfessionFormValues, ProfessionListFilters } from '@/types/profession';
+import type { ApiResource, PaginatedResponse } from '@shared/types/api';
+import type { Profession, ProfessionFormValues, ProfessionListFilters } from '@shared/types/profession';
 
 export async function fetchProfessions(filters: ProfessionListFilters): Promise<PaginatedResponse<Profession>> {
   const params = { ...filters };

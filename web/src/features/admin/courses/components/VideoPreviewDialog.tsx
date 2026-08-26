@@ -2,7 +2,7 @@ import { AlertTriangle, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useVideoPlayback } from '@/features/admin/courses/hooks/useCourses';
 import { formatBytes, formatDuration } from '@/lib/formatters';
-import type { CourseVideo } from '@/types/course';
+import type { CourseVideo } from '@shared/types/course';
 
 interface VideoPreviewDialogProps {
   video: CourseVideo | null;

@@ -11,8 +11,8 @@ import {
   unpublishCourseProgramme,
   updateCourseProgramme,
 } from '@/api/courses.api';
-import { getValidationErrors } from '@/lib/serverErrors';
-import type { CourseProgrammeListFilters, CourseProgrammePayload } from '@/types/course';
+import { getValidationErrors } from '@shared/lib/serverErrors';
+import type { CourseProgrammeListFilters, CourseProgrammePayload } from '@shared/types/course';
 
 export function useCourseProgrammes(filters: CourseProgrammeListFilters) {
   return useQuery({

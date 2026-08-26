@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { industryFormSchema, type IndustryFormSchema } from '@/features/admin/industries/industrySchema';
 import { useCreateIndustry, useUpdateIndustry } from '@/features/admin/industries/hooks/useIndustries';
-import type { Industry } from '@/types/industry';
+import type { Industry } from '@shared/types/industry';
 
 interface IndustryFormDialogProps {
   open: boolean;

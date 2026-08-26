@@ -6,6 +6,7 @@ namespace App\Services\Course;
 
 use App\Enums\VideoProvider;
 use App\Models\CourseVideo;
+use App\Models\Student;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
@@ -17,6 +18,14 @@ class CourseVideoService
 {
     /** Playback links stay well inside the 2-hour ceiling in CLAUDE.md §7.11. */
     private const SIGNED_URL_MINUTES = 90;
+
+    /**
+     * Student links are shorter-lived than the admin preview's. A shared link is
+     * still playable for its lifetime — that is inherent to handing a URL to a
+     * platform video player — so the window is kept small. The real fix is Bunny
+     * Stream token auth, which would change only this method.
+     */
+    private const STUDENT_URL_MINUTES = 30;
 
     public function attachFile(CourseVideo $video, UploadedFile $file, ?int $durationSeconds = null): CourseVideo
     {
@@ -77,18 +86,28 @@ class CourseVideoService
      * file URL so a copied link stops working, and so swapping storage for Bunny
      * Stream later changes only what this method returns.
      *
+     * Passing a `$student` shortens the window and stamps their id into the
+     * signature, so the byte route can re-check the block flag at play time.
+     *
      * @return array{url: string, expires_at: string}
      */
-    public function playbackUrl(CourseVideo $video): array
+    public function playbackUrl(CourseVideo $video, ?Student $student = null): array
     {
-        $expiresAt = now()->addMinutes(self::SIGNED_URL_MINUTES);
+        $minutes = $student !== null ? self::STUDENT_URL_MINUTES : self::SIGNED_URL_MINUTES;
+        $expiresAt = now()->addMinutes($minutes);
 
         if ($video->provider === VideoProvider::External && $video->external_url !== null) {
             return ['url' => $video->external_url, 'expires_at' => $expiresAt->toIso8601String()];
         }
 
+        $parameters = ['video' => $video->id];
+
+        if ($student !== null) {
+            $parameters['student'] = $student->id;
+        }
+
         return [
-            'url' => URL::temporarySignedRoute('course-videos.playback', $expiresAt, ['video' => $video->id]),
+            'url' => URL::temporarySignedRoute('course-videos.playback', $expiresAt, $parameters),
             'expires_at' => $expiresAt->toIso8601String(),
         ];
     }

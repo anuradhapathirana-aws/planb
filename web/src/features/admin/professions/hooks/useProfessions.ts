@@ -7,7 +7,7 @@ import {
   fetchProfessions,
   updateProfession,
 } from '@/api/professions.api';
-import type { ProfessionFormValues, ProfessionListFilters } from '@/types/profession';
+import type { ProfessionFormValues, ProfessionListFilters } from '@shared/types/profession';
 
 const professionsKey = (filters: ProfessionListFilters) => ['professions', filters] as const;
 

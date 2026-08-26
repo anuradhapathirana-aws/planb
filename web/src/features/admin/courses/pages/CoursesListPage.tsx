@@ -17,7 +17,7 @@ import {
 } from '@/features/admin/courses/hooks/useCourses';
 import { useCourseCategories } from '@/features/admin/courseCategories/hooks/useCourseCategories';
 import { paths } from '@/routes/paths';
-import type { CourseProgramme, CourseProgrammeListFilters } from '@/types/course';
+import type { CourseProgramme, CourseProgrammeListFilters } from '@shared/types/course';
 
 type StatusFilter = NonNullable<CourseProgrammeListFilters['status']>;
 type CategoryFilter = NonNullable<CourseProgrammeListFilters['course_category_id']>;

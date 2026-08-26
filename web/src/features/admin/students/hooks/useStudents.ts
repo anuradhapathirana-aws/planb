@@ -14,8 +14,8 @@ import {
   updateStudent,
   uploadStudentPhoto,
 } from '@/api/students.api';
-import { getValidationErrors } from '@/lib/serverErrors';
-import type { StudentFormValues, StudentListFilters } from '@/types/student';
+import { getValidationErrors } from '@shared/lib/serverErrors';
+import type { StudentFormValues, StudentListFilters } from '@shared/types/student';
 
 const studentsKey = (filters: StudentListFilters) => ['students', filters] as const;
 

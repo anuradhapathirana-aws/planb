@@ -1,6 +1,6 @@
 import { apiClient } from '@/api/client';
-import type { ApiResource, PaginatedResponse } from '@/types/api';
-import type { CourseCategory, CourseCategoryFormValues, CourseCategoryListFilters } from '@/types/course';
+import type { ApiResource, PaginatedResponse } from '@shared/types/api';
+import type { CourseCategory, CourseCategoryFormValues, CourseCategoryListFilters } from '@shared/types/course';
 
 export async function fetchCourseCategories(
   filters: CourseCategoryListFilters,

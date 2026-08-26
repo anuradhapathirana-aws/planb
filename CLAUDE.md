@@ -8,7 +8,12 @@
 
 **Client:** Plan B International (contact: Anuradha).
 
-**Platform decision:** Web app only (PWA — Progressive Web App). No native mobile app in Phase 1. A native mobile app may follow in Phase 2 once the web platform proves out.
+**Platform decision:** Two clients over one Laravel API.
+
+- **`web/`** — React PWA. Ships the **admin panel** today; the student web area follows later, reusing the same student API.
+- **`mobile/`** — React Native + Expo. The **student** app, one codebase for Android and iOS. This is the primary student experience.
+
+Students authenticate by **email OTP or Sign in with Google** — there is no SMS and no phone verification. Admins authenticate by email + password on web only.
 
 **Reference documents (in `docs/`):**
 
@@ -24,13 +29,19 @@
 
 ```
 planb/
-├── backend/         Laravel 11 API
-├── web/             React 18 + TypeScript + Vite (all UIs: student + admin + marketing)
+├── backend/         Laravel 11 API          — see backend/CLAUDE.md
+├── web/             React 18 + Vite PWA (admin panel; student web area later)
+├── mobile/          React Native + Expo (student app) — see mobile/CLAUDE.md
+├── shared/          Source-only TS shared by web/ and mobile/ (types, Zod schemas, tokens, i18n)
 ├── docs/            Specs, schema, deployment
 └── CLAUDE.md        This file
 ```
 
-Each folder has its own `package.json` / `composer.json`. Do not create shared root-level dependencies.
+Each app folder has its own `package.json` / `composer.json`. Do not create shared root-level dependencies.
+
+**`shared/` is the one carve-out**, and it is deliberately not a dependency: it ships **TypeScript source only, with no dependencies of its own** (`zod`, `axios` etc. are `peerDependencies`). Both apps reach it through a `@shared/*` tsconfig path alias — Vite resolves it via an alias, Metro via `watchFolders`. There is nothing to install and nothing to hoist, so no root `package.json` and no workspace tooling exist. A published app bundle is fully standalone; `shared/` is compile-time only.
+
+Anything describing the API contract — types mirroring an API Resource, a Zod schema, brand tokens, i18n strings — belongs in `shared/`, never copy-pasted into an app.
 
 ## 3. Tech Stack (Do Not Change Without Asking)
 
@@ -38,7 +49,11 @@ Each folder has its own `package.json` / `composer.json`. Do not create shared r
 
 **Web (`web/`):** React 18, TypeScript, Vite, `vite-plugin-pwa` (PWA), shadcn/ui, Tailwind CSS, TanStack Query (server state), TanStack Table (data grids), React Hook Form + Zod (forms), Zustand (client state), React Router v6, Axios, Lucide React (icons), Recharts (charts), Sonner (toasts), Framer Motion (animations), react-i18next (Sinhala/English), TipTap (rich-text editing for admin-authored content — headless, so the toolbar is our own shadcn buttons).
 
-**Video player:** `video.js` or `plyr` with custom no-skip logic (see Section 4).
+**Mobile (`mobile/`):** React Native + Expo, TypeScript, `expo-router` (file-based routing), NativeWind (Tailwind for RN — the RN renderer for the framework already chosen, **not** a second design vocabulary), TanStack Query, Zustand, React Hook Form + Zod, Axios, `expo-secure-store` (auth tokens), `expo-video` (no-skip player), `expo-auth-session` (Google Sign-In), `lucide-react-native` + `react-native-svg` (same icon set as web), `sonner-native` (toasts), react-i18next + `expo-localization`, EAS Build (APK for internal testing, AAB for Google Play).
+
+**Shared (`shared/`):** TypeScript source only — API types, Zod schemas, `serverErrors.ts`, brand tokens, i18n strings. No dependencies of its own.
+
+**Video player:** `expo-video` on mobile; `video.js` or `plyr` on web. Both with custom no-skip logic (see Section 4), and the rule is enforced **server-side** in `CourseProgressService` regardless of client.
 
 **Infrastructure:** Contabo Cloud VPS 20 (Mumbai), Bunny Stream (video hosting with signed URLs), Firebase Cloud Messaging (Web Push, where supported), SendGrid (email), PayHere (payment gateway), Backblaze B2 (backups).
 
@@ -57,7 +72,7 @@ Each folder has its own `package.json` / `composer.json`. Do not create shared r
 9. **All queries scoped by authenticated user where relevant.** Use Policies + `authorize()` in every non-public endpoint.
 10. **Files uploaded by users go through Spatie Media Library**, stored on Bunny Storage (production) or local disk (dev).
 11. **Money is stored in the smallest unit (cents/paisa) as an integer.** Never float for currency.
-12. **Auth is cookie-based via Sanctum SPA authentication.** No manual JWT handling.
+12. **Auth is Sanctum, in two modes, over two separate guards.** Admins (`User`) use SPA cookie sessions from `web/`; students (`Student`) use Bearer tokens from `mobile/`. No manual JWT handling. The two actor types must never authenticate on each other's routes — read `backend/CLAUDE.md` before touching `config/auth.php`, any guard, or any policy signature.
 
 ### Web (Single App, Multiple Roles)
 
@@ -324,6 +339,20 @@ npm run type-check
 npx shadcn-ui@latest add button      # Add a shadcn component
 ```
 
+### Mobile
+
+```bash
+npm install
+npx expo start                       # Metro bundler; press a for Android, i for iOS
+npx expo install <pkg>               # ALWAYS use this, not npm install — it pins the SDK-compatible version
+npx expo install --fix               # Realign every package with the current SDK
+npx tsc --noEmit                     # Type-check
+
+eas build --profile preview    --platform android   # APK, internal testing / direct install
+eas build --profile production --platform android   # AAB, required by Google Play
+eas build --profile production --platform ios       # Builds on EAS macOS workers; no Mac needed
+```
+
 ## 12. Things Claude Code Must ALWAYS Do
 
 1. **Read the relevant SRS section before writing code for a new feature.**
@@ -343,14 +372,14 @@ npx shadcn-ui@latest add button      # Add a shadcn component
 2. **Never commit secrets, API keys, or `.env` files.**
 3. **Never bypass validation or authorization "temporarily."** Use test fixtures.
 4. **Never introduce a new state management library** (Zustand only).
-5. **Never introduce a new CSS framework** (Tailwind only).
-6. **Never introduce a new UI library** (shadcn/ui only). Custom components extend shadcn.
+5. **Never introduce a new CSS framework** (Tailwind only — NativeWind on `mobile/` is Tailwind's React Native renderer, the same vocabulary, and is approved).
+6. **Never introduce a new UI library.** Web: shadcn/ui only, custom components extend shadcn. Mobile: there is no shadcn for RN, so `mobile/src/components/ui/` is our own primitive set mirroring web's — extend it, never add an RN component kit.
 7. **Never use `any` in TypeScript** without an explicit justifying comment.
 8. **Never call third-party APIs from a controller** — always queue.
 9. **Never store money as float.** Integer smallest units.
 10. **Never store user PII in logs.**
 11. **Never assume the client wants a feature not in the SRS.** Ask.
-12. **Never store auth tokens in `localStorage`.** Cookies only (via Sanctum).
+12. **Never store auth tokens in `localStorage`.** On web, httpOnly cookies only (via Sanctum). On mobile, Sanctum Bearer tokens live in **`expo-secure-store`** (iOS Keychain / Android Keystore) — never `AsyncStorage`, which is React Native's `localStorage`: unencrypted JSON on disk, readable on a rooted device. Never in Zustand `persist`, never in a module-level global.
 13. **Never expose raw video URLs.** Always through signed-URL endpoint.
 14. **Never build a desktop-only layout for the student area.** Mobile-first, always.
 
@@ -367,20 +396,23 @@ npx shadcn-ui@latest add button      # Add a shadcn component
 - Never expose technical errors ("Something went wrong. Please try again." not "500 Internal Server Error").
 - Every user-facing string wrapped in `t('key')` for Sinhala translation.
 
-## 16. Future-Proofing Notes
+## 16. One API, Two Clients
 
-Even though this is web-only for Phase 1:
+The API is UI-agnostic and serves `web/` and `mobile/` equally.
 
-1. **The Laravel API must be built as a clean REST API** — a future React Native mobile app will consume the same endpoints without changes.
-2. **API responses are JSON, never HTML fragments.** No Inertia.js. Pure API + separate React SPA.
-3. **Auth uses Sanctum SPA cookies for web now**, but the same Sanctum can issue API tokens for a mobile app later without backend changes.
-4. **No web-specific logic in the API.** All UI concerns stay in the React app.
+1. **API responses are JSON, never HTML fragments.** No Inertia.js. Pure API + separate clients.
+2. **No client-specific logic in the API.** All UI concerns stay in the React / React Native app. If an endpoint needs to know which client called it, the design is wrong.
+3. **Two actor types, two guards.** `/api/v1/admin/*` authenticates a `User` (SPA cookie session); `/api/v1/student/*` authenticates a `Student` (Bearer token, and later a student SPA session). Neither may authenticate on the other's routes — `backend/CLAUDE.md` explains the exact mechanism and why it is not automatic.
+4. **The student API is written once and consumed twice.** The student web area, when it is built, adds no endpoints — it is UI only.
+5. **A student-facing endpoint always gets its own API Resource**, never a reused admin one. See "Answer Keys & Student-Facing Payloads" in §8.
 
 ## 17. Deeply follow these for development
 
 - set appropriate placeholders for each input fields.
 - Always Properly read existing code before start development to avoid making an messy code
 - Properly optimized Page Layout withing the screen to reduce scroll, That will user friendly.
+- Working in `backend/`? Read `backend/CLAUDE.md` first — the guard split is not obvious and is easy to break.
+- Working in `mobile/`? Read `mobile/CLAUDE.md` first.
 - Read and Follow `C:\laragon\www\planb\.agents\skills\laravel-specialist\SKILL.md` file for backend Guidelines
 - Read and Follow `C:\laragon\www\planb\.agents\skills\ui-ux-pro-max\SKILL.md` file for frontend development
 - Always Follow last changed & existing UI and styles withing the whole app to keep the same UI consistency of Admin.

@@ -16,9 +16,9 @@ import {
   type ChecklistFormSchema,
 } from '@/features/admin/checklists/checklistSchema';
 import { useChecklistItems, useSaveChecklistItems } from '@/features/admin/checklists/hooks/useChecklist';
-import { applyServerValidationErrors } from '@/lib/serverErrors';
-import { newClientKey } from '@/lib/clientKey';
-import type { ChecklistItem, ChecklistPhase } from '@/types/checklist';
+import { applyServerValidationErrors } from '@shared/lib/serverErrors';
+import { newClientKey } from '@shared/lib/clientKey';
+import type { ChecklistItem, ChecklistPhase } from '@shared/types/checklist';
 
 const CHECKLIST_FIELD_NAMES = Object.keys(checklistFormSchema.shape);
 

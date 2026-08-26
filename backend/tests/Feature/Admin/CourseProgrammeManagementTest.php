@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Admin;
 
+use App\Enums\CourseStatus;
 use App\Enums\RoleName;
 use App\Models\CourseCategory;
 use App\Models\CourseProgramme;
@@ -234,7 +235,7 @@ class CourseProgrammeManagementTest extends TestCase
 
     public function test_admin_can_publish_and_unpublish_a_programme(): void
     {
-        $programme = CourseProgramme::factory()->create(['course_category_id' => $this->category->id]);
+        $programme = $this->publishableProgramme();
 
         $this->actingAs($this->contentManager)
             ->postJson("/api/v1/admin/course-programmes/{$programme->id}/publish")
@@ -245,6 +246,66 @@ class CourseProgrammeManagementTest extends TestCase
             ->postJson("/api/v1/admin/course-programmes/{$programme->id}/unpublish")
             ->assertOk()
             ->assertJsonPath('data.status', 'draft');
+    }
+
+    /**
+     * A programme with nothing in it would appear in the student app as an empty
+     * course, so publishing one is refused.
+     */
+    public function test_an_empty_programme_cannot_be_published(): void
+    {
+        $programme = CourseProgramme::factory()->create(['course_category_id' => $this->category->id]);
+
+        $this->actingAs($this->contentManager)
+            ->postJson("/api/v1/admin/course-programmes/{$programme->id}/publish")
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('status');
+
+        $this->assertSame(CourseStatus::Draft, $programme->fresh()->status);
+    }
+
+    /**
+     * A lesson with no file cannot be played, and one with no duration can never
+     * be completed — `CourseProgressService` has nothing to measure 95% against,
+     * so a student could never unlock the assessment. Both are caught at publish
+     * rather than being discovered by a student.
+     */
+    public function test_a_programme_with_an_incomplete_lesson_cannot_be_published(): void
+    {
+        $programme = CourseProgramme::factory()->create(['course_category_id' => $this->category->id]);
+        CourseVideo::factory()->for(
+            CourseTopic::factory()->create(['course_programme_id' => $programme->id]),
+            'topic',
+        )->create(['title' => 'Intro', 'duration_seconds' => null]);
+
+        $this->actingAs($this->contentManager)
+            ->postJson("/api/v1/admin/course-programmes/{$programme->id}/publish")
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('status');
+    }
+
+    /** A programme whose single lesson has a real file and a known duration. */
+    private function publishableProgramme(): CourseProgramme
+    {
+        $programme = CourseProgramme::factory()->create(['course_category_id' => $this->category->id]);
+
+        $video = CourseVideo::factory()->for(
+            CourseTopic::factory()->create(['course_programme_id' => $programme->id]),
+            'topic',
+        )->create(['duration_seconds' => 600]);
+
+        // A minimal but genuine MP4 header — Media Library validates the mime type.
+        $path = tempnam(sys_get_temp_dir(), 'planb_test_mp4_').'.mp4';
+        file_put_contents(
+            $path,
+            pack('N', 32).'ftypisom'.pack('N', 512).'isomiso2avc1mp41'.str_repeat("\0", 4096),
+        );
+
+        $video->addMedia($path)
+            ->usingFileName('lesson.mp4')
+            ->toMediaCollection(CourseVideo::VIDEO_COLLECTION);
+
+        return $programme;
     }
 
     public function test_deleting_a_programme_is_recoverable(): void

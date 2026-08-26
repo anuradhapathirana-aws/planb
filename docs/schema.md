@@ -208,15 +208,108 @@ There is **no `is_active` flag and no soft delete**: a phase is saved as one doc
 | sort_order | unsignedInteger, default 0 | Position within the phase. Set from the submitted array's index — the admin never types an order. |
 | created_at / updated_at | timestamps | |
 
+## `student_login_codes`
+
+One-time codes emailed to a student to sign in to the mobile app. There is no password column on `students` and no SMS anywhere — possession of the mailbox (or a verified Google account) is the credential.
+
+A row is only ever created for a **real, eligible** student. A request for an unknown address writes nothing and sends nothing, so this table cannot be used to work out which addresses belong to Plan B students. See `backend/CLAUDE.md` §4.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | bigIncrements | |
+| student_id | FK → students.id, cascadeOnDelete | |
+| email | string | Snapshot of where the code was sent, in case the record changes afterwards. |
+| code_hash | string | `Hash::make($code)`. **Never the plaintext** — a database dump must not hand over live codes. |
+| attempts | unsignedTinyInteger, default 0 | Wrong guesses. At `students.login_code.max_attempts` (5) the row is voided; the client is never told how many remain. |
+| expires_at | timestamp, indexed | `now()->addMinutes(config('students.login_code.ttl_minutes'))`, default 10. |
+| consumed_at | timestamp, nullable | Set on successful verification. |
+| voided_at | timestamp, nullable | Set when superseded by a resend, burned by too many attempts, or when an admin blocks/deletes the student. |
+| request_ip | string(45), nullable | Abuse forensics only. Never written to logs (CLAUDE.md §13.10). |
+| created_at / updated_at | timestamps | |
+
+Indexes: `(student_id, consumed_at, voided_at)` to find the one live code; `expires_at` for pruning.
+
+There is at most one live code per student — requesting a new one voids the previous.
+
+## `student_video_progress`
+
+How far a student has got through each lesson — and where the no-skip rule (FR-MOB-020) actually lives. One row per (student, lesson). Written only by `App\Services\Course\CourseProgressService`, which clamps every value before it lands.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | bigIncrements | |
+| student_id | FK → students, cascadeOnDelete | |
+| course_video_id | FK → course_videos, cascadeOnDelete | |
+| max_position_seconds | unsignedInteger, default 0 | **Monotonic high-water mark.** Never decreases, so rewinding loses no ground; may advance by at most `elapsed_wall_clock × 2 + 5s`, so skipping gains none. |
+| watched_seconds | unsignedInteger, default 0 | Accumulated plausible playback. The second completion gate — position alone is beatable by a client that lies slowly. |
+| duration_seconds | unsignedInteger, nullable | Snapshot at completion, so replacing the lesson file with a longer one can't retroactively un-complete a student. |
+| is_watched | boolean, default false | Set when position ≥ 95% **and** `watched_seconds` ≥ 90% of duration. |
+| watched_at | timestamp, nullable | |
+| last_seen_at | timestamp, nullable | Feeds the rate-plausibility check on the next write. |
+| created_at / updated_at | timestamps | |
+
+`unique(student_id, course_video_id)`, `index(student_id, is_watched)`.
+
+## `student_programme_progress`
+
+One row per (student, programme).
+
+| Column | Type | Notes |
+|---|---|---|
+| id | bigIncrements | |
+| student_id | FK → students, cascadeOnDelete | |
+| course_programme_id | FK → course_programmes, cascadeOnDelete | |
+| started_at | timestamp, nullable | |
+| last_course_video_id | FK → course_videos, nullable, nullOnDelete | Powers "Continue learning" on the app's home screen. |
+| completed_at | timestamp, nullable | Every lesson watched. Cleared again if an admin adds a lesson — the student genuinely has more to watch. |
+| created_at / updated_at | timestamps | |
+
+`unique(student_id, course_programme_id)`.
+
+**There is deliberately no `student_topic_progress`**, despite the SRS naming `TopicProgress`. Topic completion is `COUNT(watched) = COUNT(videos)` in one grouped query; a denormalised table introduces an invalidation bug the moment an admin adds a video to a topic students have already completed.
+
+## `course_paper_attempts`
+
+One student's run at one Q&A paper (FR-MOB-024/025). Full of snapshots on purpose: an admin editing a paper afterwards must not change a stored result.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | bigIncrements | |
+| student_id | FK → students, cascadeOnDelete | |
+| course_paper_id | FK → course_papers, cascadeOnDelete | |
+| attempt_number | unsignedSmallInteger | 1-based per (student, paper). How `max_attempts` is enforced. |
+| status | string(16) | PHP enum `App\Enums\AttemptStatus`: `in_progress`, `submitted`, `abandoned`. Only `submitted` counts against `max_attempts`. |
+| pass_mark_snapshot | unsignedTinyInteger | **The pass mark when this attempt started.** Raising a paper's `pass_mark` from 70 to 80 must not retroactively fail last month's cohort. |
+| total_questions | unsignedSmallInteger | Snapshot — questions can be added or removed later. |
+| correct_answers | unsignedSmallInteger, nullable | |
+| score_percent | unsignedTinyInteger, nullable | Rounded; `correct/total` is kept so it stays recomputable. |
+| is_passed | boolean, nullable | |
+| started_at / submitted_at | timestamp | |
+| created_at / updated_at | timestamps | |
+
+`unique(student_id, course_paper_id, attempt_number)` and `index(student_id, course_paper_id, status)` — both **named explicitly** (`paper_attempts_*`), because the generated names exceed MySQL's 64-character identifier limit.
+
+## `course_paper_answers`
+
+| Column | Type | Notes |
+|---|---|---|
+| id | bigIncrements | |
+| course_paper_attempt_id | FK → course_paper_attempts, cascadeOnDelete | |
+| course_question_id | FK → course_questions, cascadeOnDelete | |
+| course_question_option_id | FK → course_question_options, nullable, nullOnDelete | The student's choice. |
+| question_text_snapshot | text | The admin paper `update` deletes any question missing from its payload; without these a past attempt is a list of dangling ids. |
+| option_text_snapshot | string, nullable | |
+| is_correct | boolean | Graded server-side at submit. Never sent by, or trusted from, the client. |
+| created_at / updated_at | timestamps | |
+
+`unique(course_paper_attempt_id, course_question_id)`, named `paper_answers_attempt_question_unique` for the same length reason.
+
 ### Deferred (not built yet, referenced by future features)
 
-These are named in the SRS but belong to other, not-yet-built modules. `students` does not reference them yet; the Student Detail page shows placeholder tabs instead:
-
-- Student paper attempts and scoring (`CoursePaperAttempt`, `CoursePaperAnswer`) — FR-MOB-024/025, needs the student-facing area.
-- Student course progress (`VideoWatch`, `TopicProgress`) — FR-MOB-020/025/027, needs the student-facing area.
-- Student checklist progress (`student_checklist_items`: which items a student has ticked, and when) — needs the student-facing area. `checklist_items` is authoring-only for now.
+- Student checklist progress (`student_checklist_items`: which items a student has ticked, and when) — needs the student-facing checklist feature. `checklist_items` is authoring-only for now.
 - Payments (`Order`, `Payment`, `BankTransfer`) — Payment Gateway feature.
 - Premium service orders (`PremiumService`, `ServiceOrder`) — Premium Services feature.
+- Job posts — the admin sidebar reserves the section; only `industries` / `professions` exist.
 
 ---
 
@@ -231,3 +324,5 @@ These are named in the SRS but belong to other, not-yet-built modules. `students
 | 2026-08-24 | Added the Course Module content tables (FR-ADM-008/008a/008b): `course_categories`, `course_programmes`, `course_topics`, `course_videos`. Hierarchy is Category → Programme → Topic → Video, with the SRS's 8 phases (Appendix A) modelled as 8 programmes under one category. Video files and thumbnails are Media Library collections, not columns. Assessments (FR-ADM-008c) and student progress are still deferred. |
 | 2026-08-15 | `full_name`, `contact_number`, `address`, `date_of_birth`, `visa_status`, `industry_id`, `profession_id` are now required on the admin Add/Edit student form (client-requested; columns stay DB-nullable for CSV import / not-yet-self-registered students). |
 | 2026-08-25 | Added `checklist_items` — the Before Arrival / After Arrival checklists. Phase is a fixed PHP enum rather than an admin-managed table; each phase is saved whole, so `sort_order` comes from the submitted array's position. Student tick-off progress is still deferred. |
+| 2026-08-25 | Added the student learning tables: `student_video_progress` and `student_programme_progress` (FR-MOB-020/025/027), `course_paper_attempts` and `course_paper_answers` (FR-MOB-024/025). `student_topic_progress` deliberately omitted — see above. Several index names are set explicitly because the generated ones exceed MySQL's 64-character limit. |
+| 2026-08-25 | **Students became authenticatable** for the mobile app. Added `students.email_verified_at` and `students.google_sub` (nullable, unique — Google's stable subject id, so changing the address on a Google account doesn't orphan the record), and the new `student_login_codes` table. No password column and no phone/SMS column: sign-in is an emailed one-time code or Google. `App\Models\Student` now extends `Foundation\Auth\User` with `HasApiTokens`; `config/auth.php` gained a `students` provider plus `sanctum` (provider `users`) and `student` (provider `students`) guards. |

@@ -11,6 +11,7 @@ use App\Models\CourseVideo;
 use App\Support\HtmlSanitizer;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class CourseProgrammeService
 {
@@ -98,9 +99,46 @@ class CourseProgrammeService
 
     public function publish(CourseProgramme $programme): CourseProgramme
     {
+        $this->assertReadyToPublish($programme);
+
         $programme->update(['status' => CourseStatus::Published]);
 
         return $this->loadTree($programme);
+    }
+
+    /**
+     * A lesson with no file cannot be played, and one with no duration cannot be
+     * completion-gated — `CourseProgressService` has nothing to measure 95%
+     * against, so the student could never unlock the assessment. Both are
+     * caught here rather than being discovered by a student.
+     *
+     * @throws ValidationException
+     */
+    private function assertReadyToPublish(CourseProgramme $programme): void
+    {
+        $videos = CourseVideo::query()
+            ->whereHas('topic', fn ($query) => $query->where('course_programme_id', $programme->id))
+            ->with('media')
+            ->get();
+
+        if ($videos->isEmpty()) {
+            throw ValidationException::withMessages([
+                'status' => 'Add at least one lesson before publishing this course.',
+            ]);
+        }
+
+        $incomplete = $videos->filter(
+            fn (CourseVideo $video) => ! $video->hasVideoFile() || $video->duration_seconds === null,
+        );
+
+        if ($incomplete->isNotEmpty()) {
+            $titles = $incomplete->take(3)->pluck('title')->implode(', ');
+            $more = $incomplete->count() > 3 ? ' and '.($incomplete->count() - 3).' more' : '';
+
+            throw ValidationException::withMessages([
+                'status' => "Every lesson needs a video file before publishing. Missing: {$titles}{$more}.",
+            ]);
+        }
     }
 
     public function unpublish(CourseProgramme $programme): CourseProgramme

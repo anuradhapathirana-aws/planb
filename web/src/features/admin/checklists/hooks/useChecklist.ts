@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { fetchChecklistItems, saveChecklistItems } from '@/api/checklists.api';
-import { getValidationErrors } from '@/lib/serverErrors';
-import type { ChecklistPhase, SaveChecklistPayload } from '@/types/checklist';
+import { getValidationErrors } from '@shared/lib/serverErrors';
+import type { ChecklistPhase, SaveChecklistPayload } from '@shared/types/checklist';
 
 export const checklistKey = (phase: ChecklistPhase) => ['checklists', phase] as const;
 

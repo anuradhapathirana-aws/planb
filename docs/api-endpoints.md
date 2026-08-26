@@ -1,8 +1,19 @@
 # API Reference — Plan B International
 
-All endpoints are versioned under `/api/v1/`. Admin panel endpoints are additionally prefixed `/admin/` and live in `App\Http\Controllers\Admin\*`. Base URL in local dev: `http://localhost:8001/api/v1`.
+All endpoints are versioned under `/api/v1/`. Base URL in local dev: `http://localhost:8001/api/v1`.
 
-Auth: Sanctum SPA cookie session. Call `GET {APP_URL}/sanctum/csrf-cookie` once before the first mutating request (sets the `XSRF-TOKEN` cookie; send its value back as the `X-XSRF-TOKEN` header — axios does this automatically with `withXSRFToken: true`).
+## Two areas, two actor types, two auth modes
+
+| Prefix | Actor | Guard | Credential | Controllers | Routes |
+|---|---|---|---|---|---|
+| `/api/v1/admin/*` | `App\Models\User` (staff) | `sanctum` (provider `users`) | SPA cookie session from `web/` | `App\Http\Controllers\Admin\*` | `routes/api.php` |
+| `/api/v1/student/*` | `App\Models\Student` | `student` (provider `students`) | `Authorization: Bearer <token>` from `mobile/` | `App\Http\Controllers\Student\*` | `routes/api_student.php` |
+
+The two are kept strictly apart. Sanctum does **not** do this on its own — see `backend/CLAUDE.md` §1 for the mechanism and `tests/Feature/GuardIsolationTest.php` for the proof. A student's token gets 401 on every admin endpoint and vice versa.
+
+**Admin auth (cookie).** Call `GET {APP_URL}/sanctum/csrf-cookie` once before the first mutating request (sets the `XSRF-TOKEN` cookie; send its value back as the `X-XSRF-TOKEN` header — axios does this automatically with `withXSRFToken: true`).
+
+**Student auth (bearer).** No CSRF cookie, no session. Sign in, store the returned token securely (`expo-secure-store` on mobile — never `AsyncStorage`), and send it as `Authorization: Bearer <token>` on every request. Tokens expire after `STUDENT_TOKEN_TTL_DAYS` (default 30) and are rotated via `POST /student/auth/refresh`.
 
 ## Admin Auth
 
@@ -138,6 +149,101 @@ Writes are gated by `ChecklistItemPolicy::manage` — a class-level ability rath
 
 **Student-facing note.** These endpoints are admin-only. The student app's checklist endpoints (read + tick off) are not built yet and will need their own resource and a progress table — see `docs/schema.md`.
 
+---
+
+# Student API
+
+Everything under `/api/v1/student/`. Consumed by `mobile/` now, and by the web student area later without change.
+
+## Student Auth
+
+Students never register. An admin creates or CSV-imports the record first, and the student **claims** it by proving they control the email address on it. First successful sign-in sets `registered_at`.
+
+| Method | Path | Auth | Notes |
+|---|---|---|---|
+| POST | `/student/auth/request-code` | guest, throttled | `{ email }` → **always** `200 { data: { expires_in_seconds, resend_after_seconds } }` |
+| POST | `/student/auth/verify-code` | guest, throttled | `{ email, code, device_name? }` → `{ data: { token, expires_at, student } }` |
+| POST | `/student/auth/google` | guest, throttled | `{ id_token, device_name? }` → same shape |
+| POST | `/student/auth/refresh` | bearer | → `{ data: { token, expires_at } }` |
+| POST | `/student/auth/logout` | bearer | Revokes the **current** token only; other devices stay signed in. |
+| GET | `/student/me` | bearer | `{ data: StudentProfile }` |
+
+**`request-code` returns an identical body in every case** — email sent, no such student, student blocked, student deleted. This is deliberate and must not be "improved": student IDs are sequential and a distinguishable response turns the endpoint into an account-enumeration oracle. The UI copy carries the explanation ("If that email matches our records, we've sent you a code"). Resending is the same endpoint again; there is no separate resend route.
+
+Failure modes:
+
+- **Wrong / expired / consumed / superseded code** → 422 `{ errors: { code: [...] } }`, all with the same message. The number of attempts remaining is never revealed. After 5 wrong guesses the code is burned and even the correct value stops working.
+- **Blocked student** → 403 with a real message on `verify-code` / `google`. This is the one explained failure, and it is safe: the caller has already proved the account is theirs. It also covers a block landing between requesting a code and using it.
+- **Google account not matching any student** → 422 naming the problem, for the same reason.
+- **Google `email_verified: false`** → 422. An unverified address proves nothing.
+
+Notes:
+
+- Codes are 6 digits, valid 10 minutes, stored hashed, one live code per student.
+- Google ID tokens are verified locally against Google's JWKS (cached 1h), so sign-in does not depend on a live call to Google. Configure `GOOGLE_CLIENT_IDS` (comma-separated, one OAuth client per platform). **Blank disables Google sign-in** — an empty list rejects every token rather than accepting any.
+- Rate limits: `request-code` 3 per 10 min per email + 8/hour per IP; `verify-code` and `google` 6/min per email+IP; plus a hard daily cap per student (`STUDENT_LOGIN_CODE_DAILY_CAP`, default 10).
+- **The sign-in email is queued.** If no `queue:work` is running, nobody can sign in and nothing errors — the job just sits in the `jobs` table.
+- Blocking or deleting a student revokes all their tokens and voids any live code immediately.
+
+`StudentProfile` is `App\Http\Resources\Student\StudentProfileResource` — deliberately *not* the admin `StudentResource`, which carries `is_blocked` and `imported_by`.
+
+## Student Profile
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/student/profile` | Same payload as `/student/me`. |
+| PUT | `/student/profile` | Editable: `contact_number`, `address`, `date_of_birth`, `highest_qualification`, `industry_id`, `profession_id`, `languages_spoken`. |
+| POST | `/student/profile/photo` | Multipart `photo` (jpeg/png, ≤2MB). Re-encoded 600×600 before storage. |
+| DELETE | `/student/profile/photo` | |
+
+**Not editable, and silently ignored if sent:** `email` (it is the credential — changing it needs a verify-old-then-verify-new flow, so it goes through support for now), `student_id` and `full_name` (admin-owned identity), `visa_status` (admin-verified), `is_blocked`, `registered_at`. `profession_id` must belong to `industry_id`. Minimum age 18, matching the admin form.
+
+## Student Courses
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/student/courses` | Published programmes only, with a progress summary. Query: `search`, `per_page` (max 50), `page`. Paginated. |
+| GET | `/student/courses/{course}` | Full tree: `topics[].videos[]`, each with the student's own `progress` and `is_locked`, plus `paper` (or null). |
+| GET | `/student/lessons/{lesson}/stream` | `{ url, expires_at, progress }` — a signed link valid 30 minutes. |
+| POST | `/student/lessons/{lesson}/progress` | `{ position_seconds, watched_delta_seconds }` → the **server's** clamped view. Throttled 60/min. |
+
+**Note the parameter names `{course}` and `{lesson}`, not `{programme}` and `{video}`.** `Route::bind()` registers a binder *globally* on the router, not per route file — reusing the admin names would apply this published-only filter to `/api/v1/admin/*` too and hide every draft course from the people writing them.
+
+**Authorization is the route binding.** A draft or soft-deleted programme (and any lesson inside one) 404s before the controller runs. "Published" is not a per-student rule, so no policy is involved and the existing `User`-typed policies are untouched.
+
+**`is_locked`** is true until the previous lesson in the programme is watched — ordering runs across topics, so finishing topic 1 opens topic 2's first lesson. The app greys the row out rather than hiding it.
+
+### Progress and the no-skip rule
+
+Client-side clamping in the player is UX only. The server treats both numbers as *claims*:
+
+- `max_position_seconds` is **monotonic** — rewinding never loses ground — and may advance by at most `elapsed_wall_clock × 2 + 5s`. A first flush with no prior `last_seen_at` is capped at the grace window, so claiming the end of the lesson immediately buys ~5 seconds, not the whole thing.
+- "Watched" needs **two** gates: position ≥ 95% of duration **and** accumulated `watched_seconds` ≥ 90%. Position alone is beatable by a client that lies slowly; the second gate makes the lie cost as long as watching.
+- The response is the server's numbers. **The player must re-seed its clamp from them** rather than from its own state, and must seed `maxReached` from `max_position_seconds` on load — never from 0, or a returning student is locked back to the start.
+- A lesson with `duration_seconds = null` can never be completed, which is why `POST /admin/course-programmes/{programme}/publish` now **refuses to publish** a programme with no lessons, or any lesson missing a file or duration (422 on `status`). This is a behaviour change to a previously permissive endpoint.
+
+Playback bytes are still served by the existing `GET /api/v1/course-videos/{video}/playback` (`signed` middleware only). A student link carries their id inside the signature, so the byte route re-checks the block flag at play time and a student blocked after their link was issued stops playing immediately. **Residual risk, stated plainly:** anyone holding that URL can play it for its 30-minute lifetime. That is inherent to handing a URL to a platform video player; the real fix is Bunny Stream token auth.
+
+## Student Assessments
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/student/courses/{course}/paper` | Paper + questions + options, plus attempt state. `{ data: null }` when the course has no paper. |
+| POST | `/student/courses/{course}/paper/attempts` | Starts an attempt, or returns the one already in progress. |
+| POST | `/student/paper-attempts/{attempt}/submit` | `{ answers: [{ question_id, option_id }] }` → the graded result. |
+| GET | `/student/paper-attempts/{attempt}` | Result detail. |
+
+**`is_correct` never appears in a student payload.** `StudentQuestionOptionResource` omits it, and a test asserts the string is absent from the response body entirely. A client that merely doesn't render the field still ships the answer key in the network tab.
+
+**Grading is server-side.** `submit` checks that every question is answered and that each `option_id` belongs to its `question_id` *and* to this paper — that last check is the tamper guard, and it is why the Form Request has no `exists:` rule (which would accept any option id in the database).
+
+Attempt state on the paper summary: `attempts_used`, `attempts_remaining` (null = unlimited), `has_passed`, `can_attempt`, `blocked_reason` — one of `videos_incomplete`, `attempts_exhausted`, `already_passed`, `no_questions`, so the app can explain a disabled button rather than just greying it out.
+
+- `pass_mark_snapshot` and `total_questions` are frozen at attempt start; an admin raising the pass mark afterwards cannot retroactively fail a past cohort. Question and option text are snapshotted at submit, so a later paper edit cannot make an old attempt unreadable.
+- Starting again while an attempt is in progress **resumes** it rather than burning a retry.
+- Only submitted attempts count against `max_attempts`.
+- **The correct answers are revealed only when they can no longer help** — the student passed, or has no attempts left. Revealing them after a failed attempt would make unlimited retries meaningless.
+
 ## Conventions
 
 - Every response wraps the payload in `{ data: ... }` (list endpoints add `{ data, meta }` with pagination info).
@@ -147,4 +253,4 @@ Writes are gated by `ChecklistItemPolicy::manage` — a class-level ability rath
 
 ---
 
-**Last updated:** 25 August 2026 — added the Arrival Checklist endpoints (`GET`/`PUT /admin/checklists/{phase}`), one document per fixed phase.
+**Last updated:** 25 August 2026 — added the Student API (auth by emailed code or Google) and documented the two-actor / two-guard split.

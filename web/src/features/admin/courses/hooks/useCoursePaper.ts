@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { deleteCoursePaper, fetchCoursePaper, saveCoursePaper } from '@/api/coursePapers.api';
-import { getValidationErrors } from '@/lib/serverErrors';
-import type { CoursePaperPayload } from '@/types/course';
+import { getValidationErrors } from '@shared/lib/serverErrors';
+import type { CoursePaperPayload } from '@shared/types/course';
 
 export function useCoursePaper(programmeId: number | undefined) {
   return useQuery({

@@ -7,8 +7,8 @@ import {
   fetchCourseCategories,
   updateCourseCategory,
 } from '@/api/courseCategories.api';
-import { getValidationErrors } from '@/lib/serverErrors';
-import type { CourseCategoryFormValues, CourseCategoryListFilters } from '@/types/course';
+import { getValidationErrors } from '@shared/lib/serverErrors';
+import type { CourseCategoryFormValues, CourseCategoryListFilters } from '@shared/types/course';
 
 const courseCategoriesKey = (filters: CourseCategoryListFilters) => ['course-categories', filters] as const;
 

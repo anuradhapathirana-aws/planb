@@ -111,6 +111,14 @@ class StudentManagementService
     {
         $student->update(['is_blocked' => true]);
 
+        // Blocking must take effect now, not whenever the student's mobile token
+        // happens to expire. `EnsureStudentIsActive` covers a token minted in the
+        // same instant; this covers every token already out there.
+        $student->tokens()->delete();
+
+        // Any code already emailed would otherwise still mint a fresh token.
+        $student->loginCodes()->live()->update(['voided_at' => now()]);
+
         return $student;
     }
 
@@ -123,6 +131,9 @@ class StudentManagementService
 
     public function delete(Student $student): void
     {
+        $student->tokens()->delete();
+        $student->loginCodes()->live()->update(['voided_at' => now()]);
+
         $student->delete();
     }
 

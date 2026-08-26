@@ -19,7 +19,19 @@
 
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@shared/*": ["../shared/src/*"],
+
+      /*
+       * shared/ has no node_modules of its own — by design, it installs nothing.
+       * Node resolution from shared/src/** walks up past planb/ and never reaches
+       * web/node_modules, so its peerDependencies are pointed here explicitly.
+       * Bundlers don't need this (Vite and Metro resolve bare imports from the app
+       * root), only tsc does. Add an entry whenever shared/ gains a peer dep.
+       */
+      "axios": ["./node_modules/axios"],
+      "react-hook-form": ["./node_modules/react-hook-form"],
+      "zod": ["./node_modules/zod"]
     },
 
     /* Linting */
@@ -28,5 +40,5 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src"]
+  "include": ["src", "../shared/src"]
 }

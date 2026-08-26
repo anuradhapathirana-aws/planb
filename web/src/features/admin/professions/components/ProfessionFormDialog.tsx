@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { professionFormSchema, type ProfessionFormSchema } from '@/features/admin/professions/professionSchema';
 import { useCreateProfession, useUpdateProfession } from '@/features/admin/professions/hooks/useProfessions';
 import { useActiveIndustries } from '@/features/admin/industries/hooks/useIndustries';
-import type { Profession } from '@/types/profession';
+import type { Profession } from '@shared/types/profession';
 
 interface ProfessionFormDialogProps {
   open: boolean;

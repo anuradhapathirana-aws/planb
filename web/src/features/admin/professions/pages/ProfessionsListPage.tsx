@@ -12,7 +12,7 @@ import { useProfessions, useToggleProfessionActive } from '@/features/admin/prof
 import { getProfessionColumns } from '@/features/admin/professions/components/professionColumns';
 import { ProfessionFormDialog } from '@/features/admin/professions/components/ProfessionFormDialog';
 import { useIndustries } from '@/features/admin/industries/hooks/useIndustries';
-import type { Profession, ProfessionListFilters } from '@/types/profession';
+import type { Profession, ProfessionListFilters } from '@shared/types/profession';
 
 type StatusFilter = NonNullable<ProfessionListFilters['is_active']>;
 type IndustryFilter = NonNullable<ProfessionListFilters['industry_id']>;

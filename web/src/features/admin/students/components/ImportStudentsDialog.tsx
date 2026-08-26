@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useImportStudents } from '@/features/admin/students/hooks/useStudents';
-import type { ImportResult } from '@/types/student';
+import type { ImportResult } from '@shared/types/student';
 import { cn } from '@/lib/utils';
 
 interface ImportStudentsDialogProps {

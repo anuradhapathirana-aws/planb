@@ -1,6 +1,6 @@
 import { apiClient, ensureCsrfCookie } from '@/api/client';
-import type { ApiResource } from '@/types/api';
-import type { AdminUser, LoginPayload } from '@/types/auth';
+import type { ApiResource } from '@shared/types/api';
+import type { AdminUser, LoginPayload } from '@shared/types/auth';
 
 export async function login(payload: LoginPayload): Promise<AdminUser> {
   await ensureCsrfCookie();

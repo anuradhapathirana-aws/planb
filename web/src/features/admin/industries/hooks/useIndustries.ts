@@ -7,7 +7,7 @@ import {
   fetchIndustries,
   updateIndustry,
 } from '@/api/industries.api';
-import type { IndustryFormValues, IndustryListFilters } from '@/types/industry';
+import type { IndustryFormValues, IndustryListFilters } from '@shared/types/industry';
 
 const industriesKey = (filters: IndustryListFilters) => ['industries', filters] as const;
 

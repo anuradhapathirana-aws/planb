@@ -22,7 +22,7 @@ import {
   type CoursePaperFormSchema,
 } from '@/features/admin/courses/coursePaperSchema';
 import { cn } from '@/lib/utils';
-import type { QuestionType } from '@/types/course';
+import type { QuestionType } from '@shared/types/course';
 
 const TYPE_OPTIONS = [
   { value: 'multiple_choice', label: 'Multiple choice' },

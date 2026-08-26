@@ -8,7 +8,7 @@ import { ACCEPTED_VIDEO_EXTENSIONS, MAX_VIDEO_UPLOAD_MB } from '@/features/admin
 import { readVideoDuration, validateVideoFile } from '@/features/admin/courses/videoFile';
 import { formatBytes, formatDuration } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
-import type { CourseVideo } from '@/types/course';
+import type { CourseVideo } from '@shared/types/course';
 
 export interface StagedVideoFile {
   file: File;

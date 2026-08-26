@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { AdminUser } from '@/types/auth';
+import type { AdminUser } from '@shared/types/auth';
 
 interface AuthState {
   user: AdminUser | null;

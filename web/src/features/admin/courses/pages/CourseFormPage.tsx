@@ -44,10 +44,10 @@ import {
 } from '@/features/admin/courses/hooks/useCourses';
 import { useActiveCourseCategories } from '@/features/admin/courseCategories/hooks/useCourseCategories';
 import { uploadCourseVideoFile } from '@/api/courses.api';
-import { newClientKey } from '@/lib/clientKey';
-import { applyServerValidationErrors } from '@/lib/serverErrors';
+import { newClientKey } from '@shared/lib/clientKey';
+import { applyServerValidationErrors } from '@shared/lib/serverErrors';
 import { paths } from '@/routes/paths';
-import type { CourseProgramme, CourseProgrammePayload, CourseVideo } from '@/types/course';
+import type { CourseProgramme, CourseProgrammePayload, CourseVideo } from '@shared/types/course';
 
 const COURSE_FIELD_NAMES = Object.keys(courseFormSchema.shape);
 

@@ -1,6 +1,6 @@
 import { apiClient } from '@/api/client';
-import type { ApiResource } from '@/types/api';
-import type { CoursePaper, CoursePaperPayload } from '@/types/course';
+import type { ApiResource } from '@shared/types/api';
+import type { CoursePaper, CoursePaperPayload } from '@shared/types/course';
 
 /** Resolves to null when the programme has no paper — a normal state, not an error. */
 export async function fetchCoursePaper(programmeId: number): Promise<CoursePaper | null> {

@@ -1,4 +1,4 @@
-import type { Industry } from '@/types/industry';
+import type { Industry } from './industry';
 
 export interface Profession {
   id: number;

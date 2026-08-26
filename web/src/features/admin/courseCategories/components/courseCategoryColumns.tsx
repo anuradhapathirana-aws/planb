@@ -3,7 +3,7 @@ import { Pencil, Power, PowerOff } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { RowActions } from '@/components/shared/RowActions';
 import { formatDate } from '@/lib/formatters';
-import type { CourseCategory } from '@/types/course';
+import type { CourseCategory } from '@shared/types/course';
 
 interface CourseCategoryColumnActions {
   onEdit: (category: CourseCategory) => void;

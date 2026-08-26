@@ -1,0 +1,105 @@
+{
+  "common": {
+    "appName": "Plan B",
+    "continue": "Continue",
+    "cancel": "Cancel",
+    "save": "Save",
+    "retry": "Try again",
+    "back": "Back",
+    "close": "Close",
+    "loading": "Loading…",
+    "offline": "You're offline. Some things won't update until you reconnect.",
+    "genericError": "Something went wrong. Please try again.",
+    "notSet": "Not set"
+  },
+  "auth": {
+    "signInTitle": "Sign in",
+    "signInSubtitle": "Use the email address Plan B has on file for you.",
+    "google": "Continue with Google",
+    "or": "or",
+    "emailLabel": "Email address",
+    "emailPlaceholder": "you@example.com",
+    "sendCode": "Email me a sign-in code",
+    "codeTitle": "Enter your code",
+    "codeSubtitle": "We sent a {{length}}-digit code to {{email}}. It expires in {{minutes}} minutes.",
+    "codePlaceholder": "000000",
+    "verify": "Verify",
+    "resend": "Send a new code",
+    "resendIn": "You can request a new code in {{seconds}}s",
+
+    "codeSent": "If that email matches our records, we've sent you a code.",
+    "codeInvalid": "That code isn't right. Check it and try again.",
+    "codeExpired": "That code has expired. Request a new one.",
+    "blocked": "Your account has been suspended. Please contact Plan B support.",
+    "noAccount": "We couldn't sign you in. If you're a Plan B student, contact support to check the email address on your record.",
+    "signOut": "Sign out",
+    "signOutConfirm": "Sign out of Plan B on this device?"
+  },
+  "home": {
+    "greeting": "Hello, {{name}}",
+    "continueLearning": "Continue learning",
+    "resume": "Resume",
+    "noProgressTitle": "Start your first course",
+    "noProgressBody": "Your courses are ready when you are.",
+    "browseCourses": "Browse courses"
+  },
+  "courses": {
+    "title": "Courses",
+    "emptyTitle": "No courses yet",
+    "emptyBody": "Plan B will publish your courses here. Check back soon.",
+    "progress": "{{watched}} of {{total}} lessons",
+    "complete": "Complete",
+    "topics": "Topics",
+    "lessons": "Lessons",
+    "locked": "Finish the previous lesson to unlock this one",
+    "watched": "Watched"
+  },
+  "player": {
+    "noSkip": "You can't skip ahead — watch the lesson to unlock the next one.",
+    "expired": "Reconnecting to the lesson…",
+    "loadFailed": "This lesson couldn't be loaded. Check your connection and try again.",
+    "needsConnection": "Lessons need an internet connection."
+  },
+  "paper": {
+    "title": "Assessment",
+    "start": "Start assessment",
+    "resume": "Resume assessment",
+    "question": "Question {{current}} of {{total}}",
+    "review": "Review answers",
+    "submit": "Submit",
+    "submitConfirm": "Submit your answers? You can't change them afterwards.",
+    "unanswered": "Answer every question before submitting.",
+    "passMark": "Pass mark: {{mark}}%",
+    "attemptsLeft": "{{count}} attempt left",
+    "attemptsLeft_other": "{{count}} attempts left",
+    "attemptsUnlimited": "Unlimited attempts",
+    "passed": "You passed",
+    "failed": "Not quite",
+    "score": "You scored {{score}}%",
+    "blocked": {
+      "videos_incomplete": "Watch every lesson in this course to unlock the assessment.",
+      "attempts_exhausted": "You've used all your attempts. Contact Plan B support.",
+      "already_passed": "You've already passed this assessment.",
+      "no_questions": "This assessment isn't ready yet."
+    }
+  },
+  "profile": {
+    "title": "Profile",
+    "edit": "Edit profile",
+    "photo": "Photo",
+    "changePhoto": "Change photo",
+    "removePhoto": "Remove photo",
+    "studentId": "Student ID",
+    "contactNumber": "Contact number",
+    "address": "Address",
+    "dateOfBirth": "Date of birth",
+    "qualification": "Highest qualification",
+    "industry": "Industry",
+    "profession": "Profession",
+    "languages": "Languages spoken",
+    "language": "App language",
+    "emailLocked": "Contact Plan B support to change the email on your account.",
+    "nameLocked": "Contact Plan B support to change your name.",
+    "saved": "Profile updated"
+  }
+}

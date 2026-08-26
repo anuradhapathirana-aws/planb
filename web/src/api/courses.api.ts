@@ -1,12 +1,12 @@
 import { apiClient } from '@/api/client';
-import type { ApiResource, PaginatedResponse } from '@/types/api';
+import type { ApiResource, PaginatedResponse } from '@shared/types/api';
 import type {
   CourseProgramme,
   CourseProgrammeListFilters,
   CourseProgrammePayload,
   CourseVideo,
   VideoPlayback,
-} from '@/types/course';
+} from '@shared/types/course';
 
 export async function fetchCourseProgrammes(
   filters: CourseProgrammeListFilters,
