@@ -129,9 +129,7 @@ class DemoStudentAppSeeder extends Seeder
             'instructions' => '<p>Answer every question. You need 70% to pass.</p>',
             'pass_mark' => 70,
             'max_attempts' => 3,
-            // Off for the demo, so the assessment is reachable without a
-            // playable video file.
-            'requires_all_videos_watched' => false,
+            'requires_all_videos_watched' => true,
         ]);
 
         $questions = [

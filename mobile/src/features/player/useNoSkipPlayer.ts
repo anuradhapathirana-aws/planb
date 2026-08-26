@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
+import axios from 'axios';
 import { useEventListener } from 'expo';
 import { useVideoPlayer, type VideoPlayer } from 'expo-video';
 import { useMutation, useQuery } from '@tanstack/react-query';
 
 import type { VideoProgress } from '@shared/types/progress';
 import { fetchLessonStream, recordLessonProgress } from '@/api/courses.api';
+import { queryClient } from '@/lib/queryClient';
 
 /**
  * The no-skip player.
@@ -34,10 +36,20 @@ const FLUSH_INTERVAL_MS = 15_000;
 /** Re-fetch the signed URL this long before it expires. */
 const URL_REFRESH_MARGIN_MS = 5 * 60_000;
 
+/**
+ * Why a lesson could not be opened. The distinction matters: "no video yet" is
+ * a content problem the student cannot fix by moving nearer the router, and
+ * telling them to check their connection sends them chasing the wrong thing.
+ */
+export type StreamErrorKind = 'none' | 'not-ready' | 'blocked' | 'offline' | 'unknown';
+
 export interface NoSkipPlayerState {
   player: VideoPlayer;
   isLoading: boolean;
   isError: boolean;
+  errorKind: StreamErrorKind;
+  /** Re-request the signed URL after a recoverable failure. */
+  retry: () => void;
   /** Server-confirmed progress; the UI renders this, not the local guess. */
   progress: VideoProgress | null;
   /** Furthest point the student may seek to, in seconds. */
@@ -62,6 +74,28 @@ export function useNoSkipPlayer(lessonId: number): NoSkipPlayerState {
     gcTime: 0,
   });
 
+  const errorKind: StreamErrorKind = (() => {
+    if (!stream.isError) return 'none';
+
+    const error = stream.error;
+
+    if (!axios.isAxiosError(error)) return 'unknown';
+
+    // No response at all: the request never completed.
+    if (error.response === undefined) return 'offline';
+
+    switch (error.response.status) {
+      // The lesson exists but no file has been uploaded for it yet.
+      case 404:
+        return 'not-ready';
+      // Suspended student, or a lesson in a course they may not open.
+      case 403:
+        return 'blocked';
+      default:
+        return 'unknown';
+    }
+  })();
+
   const player = useVideoPlayer(null, (instance) => {
     instance.timeUpdateEventInterval = 0.5;
   });
@@ -77,6 +111,8 @@ export function useNoSkipPlayer(lessonId: number): NoSkipPlayerState {
   const pendingWatched = useRef(0);
   const lastTick = useRef<number | null>(null);
   const seeded = useRef(false);
+  /** Whether the lesson was already complete when this screen opened. */
+  const wasWatched = useRef(false);
 
   const report = useMutation({
     mutationFn: (payload: { position: number; delta: number }) =>
@@ -93,6 +129,20 @@ export function useNoSkipPlayer(lessonId: number): NoSkipPlayerState {
        * client it is simply a no-op, because the server agreed.
        */
       maxReached.current = Math.max(maxReached.current, serverProgress.max_position_seconds);
+
+      /*
+       * Completing a lesson changes data this screen does not own: the NEXT
+       * lesson's `is_locked`, the topic's completion badge, the course progress
+       * ring, and whether the assessment has unlocked. Without this the student
+       * finishes a lesson, goes back, and finds the next one still locked —
+       * because the course query is still serving its cached pre-watch copy.
+       */
+      if (serverProgress.is_watched && !wasWatched.current) {
+        wasWatched.current = true;
+
+        void queryClient.invalidateQueries({ queryKey: ['course'] });
+        void queryClient.invalidateQueries({ queryKey: ['courses'] });
+      }
     },
   });
 
@@ -114,6 +164,7 @@ export function useNoSkipPlayer(lessonId: number): NoSkipPlayerState {
 
     seeded.current = true;
     maxReached.current = stream.data.progress.max_position_seconds;
+    wasWatched.current = stream.data.progress.is_watched;
     setProgress(stream.data.progress);
 
     void player.replaceAsync({ uri: stream.data.url });
@@ -215,8 +266,18 @@ export function useNoSkipPlayer(lessonId: number): NoSkipPlayerState {
     return () => subscription.remove();
   }, [flush]);
 
-  /* And neither must leaving the screen. */
-  useEffect(() => () => flush(), [flush]);
+  /*
+   * And neither must leaving the screen. The invalidation also covers partial
+   * progress: the course ring should move even when no lesson completed.
+   */
+  useEffect(
+    () => () => {
+      flush();
+      void queryClient.invalidateQueries({ queryKey: ['course'] });
+      void queryClient.invalidateQueries({ queryKey: ['courses'] });
+    },
+    [flush],
+  );
 
   const togglePlay = useCallback(() => {
     if (player.playing) {
@@ -247,6 +308,12 @@ export function useNoSkipPlayer(lessonId: number): NoSkipPlayerState {
     player,
     isLoading: stream.isLoading,
     isError: stream.isError,
+    errorKind,
+    retry: () => {
+      // Allow the source to be seeded again on the next successful fetch.
+      seeded.current = false;
+      void stream.refetch();
+    },
     progress,
     maxReachedSeconds: maxReached.current,
     durationSeconds,

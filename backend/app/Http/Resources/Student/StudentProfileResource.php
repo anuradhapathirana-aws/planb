@@ -7,6 +7,7 @@ namespace App\Http\Resources\Student;
 use App\Http\Resources\IndustryResource;
 use App\Http\Resources\ProfessionResource;
 use App\Models\Student;
+use App\Support\PublicUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -37,7 +38,7 @@ class StudentProfileResource extends JsonResource
             'profession' => $this->profession ? new ProfessionResource($this->profession) : null,
             'visa_status' => $this->visa_status?->value,
             'languages_spoken' => $this->languages_spoken ?? [],
-            'profile_photo_url' => $this->profile_photo_url,
+            'profile_photo_url' => PublicUrl::forRequest($this->profile_photo_url, $request),
             'registered_at' => $this->registered_at?->toIso8601String(),
             'email_verified_at' => $this->email_verified_at?->toIso8601String(),
         ];

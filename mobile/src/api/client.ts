@@ -151,9 +151,29 @@ export function errorMessage(error: unknown, fallback: string): string {
 
   if (status === 403 || status === 422) {
     const data = error.response?.data as { message?: string } | undefined;
+    const message = data?.message;
 
-    if (typeof data?.message === 'string' && data.message.length <= 300) {
-      return data.message;
+    /*
+     * Laravel's own authorization failure text. It is accurate and completely
+     * unhelpful to a student — "This action is unauthorized" tells them nothing
+     * about what to do. Anything a Form Request or a Service wrote is written
+     * for humans and passes through; framework defaults do not (root
+     * CLAUDE.md §15: never expose technical errors).
+     */
+    const FRAMEWORK_DEFAULTS = [
+      'This action is unauthorized.',
+      'Unauthenticated.',
+      'Server Error',
+      'Forbidden',
+    ];
+
+    if (
+      typeof message === 'string'
+      && message.length > 0
+      && message.length <= 300
+      && !FRAMEWORK_DEFAULTS.includes(message)
+    ) {
+      return message;
     }
   }
 

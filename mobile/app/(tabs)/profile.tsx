@@ -1,11 +1,13 @@
-import { View } from 'react-native';
-import { useMutation } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { RefreshControl, View } from 'react-native';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { LogOut, Mail, Phone, ShieldCheck } from 'lucide-react-native';
+import { LogOut, Mail, Pencil, Phone, ShieldCheck } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 
 import { colors } from '@shared/theme/tokens';
-import { signOut as signOutRequest } from '@/api/auth.api';
+import { fetchMe, signOut as signOutRequest } from '@/api/auth.api';
+import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Screen } from '@/components/ui/Screen';
@@ -15,8 +17,31 @@ import { useAuthStore } from '@/stores/authStore';
 
 export default function ProfileScreen() {
   const { t } = useTranslation();
-  const student = useAuthStore((state) => state.student);
   const signOutLocal = useAuthStore((state) => state.signOut);
+  const setStudent = useAuthStore((state) => state.setStudent);
+  const cached = useAuthStore((state) => state.student);
+
+  /*
+   * Read the profile from the server rather than from the auth store.
+   *
+   * The store is populated once at sign-in, so anything an admin changes
+   * afterwards — a photo upload, a corrected name, a new profession — would
+   * never appear until the student signed out and back in. Server state belongs
+   * in a query (mobile/CLAUDE.md §2); the store is kept in sync for the screens
+   * that only need a cheap read.
+   */
+  const { data, isFetching, refetch } = useQuery({
+    queryKey: ['auth', 'me'],
+    queryFn: fetchMe,
+    // Shows the cached student instantly, then updates when the fetch lands.
+    initialData: cached ?? undefined,
+  });
+
+  const student = data ?? cached;
+
+  useEffect(() => {
+    if (data) setStudent(data);
+  }, [data, setStudent]);
 
   const signOut = useMutation({
     mutationFn: signOutRequest,
@@ -32,25 +57,23 @@ export default function ProfileScreen() {
     },
   });
 
-  const initials = student?.full_name
-    ?.trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? '')
-    .join('');
-
   return (
-    <Screen scroll>
+    <Screen
+      scroll
+      refreshControl={
+        <RefreshControl
+          refreshing={isFetching}
+          onRefresh={() => void refetch()}
+          tintColor={colors.primary}
+        />
+      }
+    >
       <View className="pb-6 pt-4">
         <Text variant="display">{t('profile.title')}</Text>
       </View>
 
       <Card className="items-center p-6">
-        <View className="h-20 w-20 items-center justify-center rounded-full bg-primary">
-          <Text className="text-[26px] font-bold leading-8 text-primary-foreground">
-            {initials || '—'}
-          </Text>
-        </View>
+        <Avatar uri={student?.profile_photo_url} name={student?.full_name} size={88} />
 
         <Text variant="title" className="mt-4 text-center">
           {student?.full_name ?? '—'}
@@ -83,12 +106,21 @@ export default function ProfileScreen() {
       </View>
 
       <Button
+        label={t('profile.edit')}
+        icon={Pencil}
+        size="lg"
+        fullWidth
+        className="mt-6"
+        onPress={() => router.push('/profile/edit')}
+      />
+
+      <Button
         label={t('auth.signOut')}
         variant="outline"
         icon={LogOut}
         size="lg"
         fullWidth
-        className="mt-8"
+        className="mt-3"
         loading={signOut.isPending}
         onPress={() => signOut.mutate()}
       />

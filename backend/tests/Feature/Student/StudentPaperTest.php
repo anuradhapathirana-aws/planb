@@ -285,13 +285,38 @@ class StudentPaperTest extends TestCase
         $this->assertDatabaseCount('course_paper_attempts', 1);
     }
 
-    public function test_an_attempt_cannot_be_submitted_twice(): void
+    /**
+     * Re-submitting a finished attempt must explain itself.
+     *
+     * This used to be a bare 403 "This action is unauthorized", because the
+     * policy checked attempt *state* as well as ownership. A student whose app
+     * had cached a stale attempt id saw that message and had no idea what it
+     * meant. State belongs to the service, which says so in words.
+     */
+    public function test_resubmitting_a_finished_attempt_explains_why(): void
     {
         $attemptId = $this->startAttempt();
 
         $this->postJson("/api/v1/student/paper-attempts/{$attemptId}/submit", [
             'answers' => $this->answers('correct'),
         ])->assertOk();
+
+        $response = $this->postJson("/api/v1/student/paper-attempts/{$attemptId}/submit", [
+            'answers' => $this->answers('correct'),
+        ])->assertStatus(422);
+
+        $this->assertStringNotContainsString('unauthorized', mb_strtolower($response->getContent()));
+        $response->assertJsonValidationErrors('attempt');
+    }
+
+    /** Ownership is still enforced — that half of the policy has not moved. */
+    public function test_another_student_still_cannot_submit_your_attempt(): void
+    {
+        $attemptId = $this->startAttempt();
+
+        $intruder = Student::factory()->create(['is_blocked' => false]);
+        $this->app['auth']->forgetGuards();
+        Sanctum::actingAs($intruder, ['student'], 'student');
 
         $this->postJson("/api/v1/student/paper-attempts/{$attemptId}/submit", [
             'answers' => $this->answers('correct'),

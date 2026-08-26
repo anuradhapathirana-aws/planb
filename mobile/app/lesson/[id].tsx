@@ -4,7 +4,16 @@ import { VideoView } from 'expo-video';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useKeepAwake } from 'expo-keep-awake';
-import { ChevronLeft, Pause, Play, RotateCcw, WifiOff } from 'lucide-react-native';
+import {
+  AlertTriangle,
+  ChevronLeft,
+  Lock,
+  Pause,
+  Play,
+  RotateCcw,
+  VideoOff,
+  WifiOff,
+} from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -37,6 +46,8 @@ export default function LessonScreen() {
     player,
     isLoading,
     isError,
+    errorKind,
+    retry,
     progress,
     maxReachedSeconds,
     durationSeconds,
@@ -65,15 +76,56 @@ export default function LessonScreen() {
   const unlockedPercent = duration > 0 ? Math.min((maxReachedSeconds / duration) * 100, 100) : 0;
 
   if (isError) {
+    /*
+     * Say what is actually wrong. The first version of this screen blamed the
+     * network for everything, which sent a student with perfect signal off to
+     * restart their router when the real answer was that Plan B had not
+     * uploaded the video yet.
+     */
+    const { icon, title, body, retryable } = {
+      'not-ready': {
+        icon: VideoOff,
+        title: t('player.notReadyTitle'),
+        body: t('player.notReadyBody'),
+        retryable: false,
+      },
+      offline: {
+        icon: WifiOff,
+        title: t('player.offlineTitle'),
+        body: t('player.offlineBody'),
+        retryable: true,
+      },
+      blocked: {
+        icon: Lock,
+        title: t('player.blockedTitle'),
+        body: t('player.blockedBody'),
+        retryable: false,
+      },
+      unknown: {
+        icon: AlertTriangle,
+        title: t('player.unknownTitle'),
+        body: t('player.unknownBody'),
+        retryable: true,
+      },
+      none: {
+        icon: AlertTriangle,
+        title: t('player.unknownTitle'),
+        body: t('player.unknownBody'),
+        retryable: true,
+      },
+    }[errorKind];
+
     return (
-      <View className="flex-1 justify-center bg-surface">
+      <View className="flex-1 justify-center bg-background">
         <EmptyState
-          icon={WifiOff}
-          tone="danger"
-          title={t('player.loadFailed')}
-          body={t('player.needsConnection')}
-          actionLabel={t('common.back')}
-          onAction={() => router.back()}
+          icon={icon}
+          // Only "offline" and "unknown" are worth retrying; a missing video
+          // will still be missing however many times you tap.
+          tone={errorKind === 'not-ready' ? 'neutral' : 'danger'}
+          title={title}
+          body={body}
+          actionLabel={retryable ? t('common.retry') : t('common.back')}
+          onAction={() => (retryable ? void retry() : router.back())}
         />
       </View>
     );

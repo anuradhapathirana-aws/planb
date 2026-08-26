@@ -47,7 +47,14 @@ export default function PaperScreen() {
     // student never burns a retry just by opening the screen.
     enabled: paper.data?.can_attempt === true,
     retry: false,
-    staleTime: Infinity,
+    /*
+     * NOT `staleTime: Infinity`. Caching the attempt forever meant that after
+     * submitting, reopening the paper reused the finished attempt's id — and
+     * the second submit came back as a bare 403. The backend is idempotent
+     * about starting (it returns the in-progress attempt rather than making a
+     * new one), so re-asking on mount is both cheap and correct.
+     */
+    gcTime: 0,
   });
 
   const questions = paper.data?.questions ?? [];
@@ -71,7 +78,15 @@ export default function PaperScreen() {
       return submitAttempt(attempt.data.id, { answers: payload });
     },
     onSuccess: (result) => {
-      // The course card's progress and the paper's attempt state both change.
+      /*
+       * Submitting changes more than this screen: attempts_used, can_attempt,
+       * has_passed and blocked_reason all move, and so does the course card's
+       * progress. Removing the attempt query outright (rather than merely
+       * invalidating it) guarantees the next visit starts a fresh attempt
+       * instead of reusing the one just submitted.
+       */
+      queryClient.removeQueries({ queryKey: ['paper', courseId, 'attempt'] });
+      void queryClient.invalidateQueries({ queryKey: ['paper', courseId] });
       void queryClient.invalidateQueries({ queryKey: ['course', courseId] });
       void queryClient.invalidateQueries({ queryKey: ['courses'] });
 
