@@ -62,6 +62,8 @@ export interface CourseProgramme {
   name: string;
   description: string | null;
   status: CourseStatus;
+  /** Course art, 16:9. Null when none has been uploaded — a normal state. */
+  thumbnail_url: string | null;
   sort_order: number;
   category?: CourseCategory;
   topics?: CourseTopic[];

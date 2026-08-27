@@ -19,6 +19,7 @@ class CourseProgrammeResource extends JsonResource
             'name' => $this->name,
             'description' => $this->description,
             'status' => $this->status->value,
+            'thumbnail_url' => $this->thumbnail_url,
             'sort_order' => $this->sort_order,
             'category' => $this->whenLoaded('category', fn () => new CourseCategoryResource($this->category)),
             'topics' => CourseTopicResource::collection($this->whenLoaded('topics')),

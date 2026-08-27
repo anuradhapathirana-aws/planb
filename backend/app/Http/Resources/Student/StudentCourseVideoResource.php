@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Resources\Student;
 
 use App\Models\CourseVideo;
+use App\Support\PublicUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -26,7 +27,7 @@ class StudentCourseVideoResource extends JsonResource
             'id' => $this->id,
             'title' => $this->title,
             'duration_seconds' => $this->duration_seconds,
-            'thumbnail_url' => $this->thumbnail_url,
+            'thumbnail_url' => PublicUrl::forRequest($this->thumbnail_url, $request),
             // Locked until the previous lesson is watched. The app greys the row
             // out rather than hiding it, so the student can see what is next.
             'is_locked' => (bool) $this->is_locked,

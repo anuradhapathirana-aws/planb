@@ -1,6 +1,7 @@
 import type { ColumnDef } from '@tanstack/react-table';
 import { ClipboardList, Eye, EyeOff, Layers, Pencil, Trash2, Video } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { ImagePlaceholder } from '@/components/shared/ImageDropzone';
 import { RowActions } from '@/components/shared/RowActions';
 import { formatDate } from '@/lib/formatters';
 import type { CourseProgramme } from '@shared/types/course';
@@ -24,13 +25,25 @@ export function getCourseColumns({
       header: 'Course programme',
       meta: { sortId: 'name' },
       cell: ({ row }) => (
-        <div className="min-w-0">
-          <span className="font-medium">{row.original.name}</span>
-          {row.original.description && (
-            <p className="line-clamp-1 text-xs text-muted-foreground" title={row.original.description}>
-              {row.original.description}
-            </p>
+        <div className="flex min-w-0 items-center gap-2.5">
+          {row.original.thumbnail_url ? (
+            <img
+              src={row.original.thumbnail_url}
+              alt=""
+              className="h-9 w-16 shrink-0 rounded object-cover"
+              loading="lazy"
+            />
+          ) : (
+            <ImagePlaceholder className="h-9 w-16 shrink-0" />
           )}
+          <div className="min-w-0">
+            <span className="font-medium">{row.original.name}</span>
+            {row.original.description && (
+              <p className="line-clamp-1 text-xs text-muted-foreground" title={row.original.description}>
+                {row.original.description}
+              </p>
+            )}
+          </div>
         </div>
       ),
     },

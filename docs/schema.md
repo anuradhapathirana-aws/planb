@@ -111,6 +111,8 @@ FR-ADM-008. A **Course Programme** is one learning programme inside a category �
 | sort_order | unsignedInteger, default 0 | Order within the category (FR-ADM-008 reorder). |
 | created_at / updated_at / deleted_at | timestamps + soft delete | FR-ADM-008 delete is recoverable, matching `students`. |
 
+Course art: **Spatie Media Library**, collection `thumbnail`, single-file, public disk. Optional — a programme without one is normal, and `thumbnail_url` is null. Re-encoded with Intervention Image (1280×720 cover crop, JPEG) before storage per CLAUDE.md §7.4, so it always matches the lesson-thumbnail ratio. No column: the URL is derived from the media record.
+
 ## `course_topics`
 
 FR-ADM-008a. A learning unit inside a programme, holding one or more videos (and — in a later pass — exactly one assessment, FR-ADM-008c).
@@ -320,6 +322,7 @@ One student's run at one Q&A paper (FR-MOB-024/025). Full of snapshots on purpos
 | 2026-08-13 | Initial schema: `users` (staff/admin auth) and `students` (Student Management). |
 | 2026-08-14 | `student_id` on single-record create is now server-generated, not admin-supplied. Profile photo upload (`profile_photo` media collection, already in the initial schema) is now wired up end-to-end via `POST/DELETE /admin/students/{student}/photo`. |
 | 2026-08-14 | Added `industries` and `professions` (FR-ADM-012 master data, with an Industry→Profession grouping requested beyond the original flat-list SRS wording). `students.profession_category` (free-text placeholder) removed in favor of `students.industry_id` / `students.profession_id`. |
+| 2026-08-27 | Added a `thumbnail` Media Library collection to `course_programmes` (course art, 16:9, optional). No migration — Media Library holds it. Exposed as `thumbnail_url` on both the admin and student course payloads. |
 | 2026-08-24 | Added the Q&A paper tables (FR-ADM-008c): `course_papers`, `course_questions`, `course_question_options`. One optional paper per **programme** (client's call, where the SRS had one per topic); questions are single-correct multiple choice, with Yes/No as the two-option case. Student attempt/scoring tables are still deferred. |
 | 2026-08-24 | Added the Course Module content tables (FR-ADM-008/008a/008b): `course_categories`, `course_programmes`, `course_topics`, `course_videos`. Hierarchy is Category → Programme → Topic → Video, with the SRS's 8 phases (Appendix A) modelled as 8 programmes under one category. Video files and thumbnails are Media Library collections, not columns. Assessments (FR-ADM-008c) and student progress are still deferred. |
 | 2026-08-15 | `full_name`, `contact_number`, `address`, `date_of_birth`, `visa_status`, `industry_id`, `profession_id` are now required on the admin Add/Edit student form (client-requested; columns stay DB-nullable for CSV import / not-yet-self-registered students). |

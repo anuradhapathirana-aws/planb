@@ -9,6 +9,7 @@ import {
   ChevronsUpDown,
   ClipboardList,
   FolderTree,
+  Image as ImageIcon,
   Layers,
   Loader2,
   Plus,
@@ -24,26 +25,24 @@ import { Breadcrumbs } from '@/components/shared/Breadcrumbs';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { FieldError, FieldLabel } from '@/components/shared/FormField';
 import { FormSection } from '@/components/shared/FormSection';
+import { ImageDropzone } from '@/components/shared/ImageDropzone';
 import { PageLoader } from '@/components/shared/PageLoader';
 import { SegmentedToggle } from '@/components/shared/SegmentedToggle';
 import { TopicCard } from '@/features/admin/courses/components/TopicCard';
 import { VideoPreviewDialog } from '@/features/admin/courses/components/VideoPreviewDialog';
 import { VideoUploadDialog, type VideoUploadItem } from '@/features/admin/courses/components/VideoUploadDialog';
 import type { StagedVideoFile } from '@/features/admin/courses/components/VideoRow';
-import {
-  courseFormSchema,
-  emptyTopic,
-  emptyVideo,
-  type CourseFormSchema,
-} from '@/features/admin/courses/courseSchema';
+import { courseFormSchema, emptyTopic, emptyVideo, type CourseFormSchema } from '@/features/admin/courses/courseSchema';
 import {
   useCourseProgramme,
   useCreateCourseProgramme,
+  useDeleteCourseThumbnail,
   useDeleteCourseVideoFile,
   useUpdateCourseProgramme,
+  useUploadCourseThumbnail,
 } from '@/features/admin/courses/hooks/useCourses';
 import { useActiveCourseCategories } from '@/features/admin/courseCategories/hooks/useCourseCategories';
-import { uploadCourseVideoFile } from '@/api/courses.api';
+import { uploadCourseProgrammeThumbnail, uploadCourseVideoFile } from '@/api/courses.api';
 import { newClientKey } from '@shared/lib/clientKey';
 import { applyServerValidationErrors } from '@shared/lib/serverErrors';
 import { paths } from '@/routes/paths';
@@ -111,6 +110,8 @@ export function CourseFormPage() {
   const createCourse = useCreateCourseProgramme();
   const updateCourse = useUpdateCourseProgramme(programmeId ?? 0);
   const removeVideoFile = useDeleteCourseVideoFile();
+  const uploadThumbnail = useUploadCourseThumbnail(programmeId ?? 0);
+  const removeThumbnail = useDeleteCourseThumbnail(programmeId ?? 0);
 
   /** Files chosen but not uploaded yet, keyed by each video row's `client_key`. */
   const [stagedFiles, setStagedFiles] = useState<Record<string, StagedVideoFile>>({});
@@ -121,6 +122,14 @@ export function CourseFormPage() {
   const [fileRemovalTarget, setFileRemovalTarget] = useState<CourseVideo | null>(null);
   const [uploads, setUploads] = useState<VideoUploadItem[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  /**
+   * Course art. On an existing course it uploads the moment it is picked, like
+   * the student photo. On a new one there is no id to attach it to yet, so the
+   * file is held here with a local preview and sent once the save returns an id.
+   */
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
+  const [stagedThumbnail, setStagedThumbnail] = useState<File | null>(null);
+  const [stagedThumbnailPreview, setStagedThumbnailPreview] = useState<string | null>(null);
 
   const {
     register,
@@ -151,13 +160,48 @@ export function CourseFormPage() {
     reset(toFormValues(programme));
     setVideoMeta(indexVideos(programme));
     setStagedFiles({});
+    setThumbnailUrl(programme.thumbnail_url);
     // Long courses open collapsed apart from the first topic, so the page starts
     // scannable instead of several screens tall.
     setCollapsedTopics(Object.fromEntries((programme.topics ?? []).map((_topic, index) => [index, index !== 0])));
   }, [programme, reset]);
 
+  // Object URLs are revoked on replace/unmount so a long editing session doesn't leak them.
+  useEffect(() => {
+    return () => {
+      if (stagedThumbnailPreview) URL.revokeObjectURL(stagedThumbnailPreview);
+    };
+  }, [stagedThumbnailPreview]);
+
   const saving = createCourse.isPending || updateCourse.isPending || isUploading;
   const busy = saving;
+  const thumbnailBusy = uploadThumbnail.isPending || removeThumbnail.isPending;
+
+  const pickThumbnail = (file: File) => {
+    if (isEditing) {
+      uploadThumbnail.mutate(file, { onSuccess: (updated) => setThumbnailUrl(updated.thumbnail_url) });
+      return;
+    }
+
+    setStagedThumbnail(file);
+    setStagedThumbnailPreview((previous) => {
+      if (previous) URL.revokeObjectURL(previous);
+      return URL.createObjectURL(file);
+    });
+  };
+
+  const clearThumbnail = () => {
+    if (isEditing) {
+      removeThumbnail.mutate(undefined, { onSuccess: () => setThumbnailUrl(null) });
+      return;
+    }
+
+    setStagedThumbnail(null);
+    setStagedThumbnailPreview((previous) => {
+      if (previous) URL.revokeObjectURL(previous);
+      return null;
+    });
+  };
 
   const stageFile = (key: string, staged: StagedVideoFile | null) => {
     setStagedFiles((current) => {
@@ -271,6 +315,18 @@ export function CourseFormPage() {
 
     setVideoMeta(indexVideos(saved));
 
+    // Staged only on create — there was no course id to attach it to until now.
+    // A failed thumbnail must not read as a failed save, so it reports separately.
+    if (stagedThumbnail) {
+      try {
+        const withThumbnail = await uploadCourseProgrammeThumbnail(saved.id, stagedThumbnail);
+        setThumbnailUrl(withThumbnail.thumbnail_url);
+        setStagedThumbnail(null);
+      } catch {
+        toast.error('Course saved, but the thumbnail could not be uploaded. Add it from the course page.');
+      }
+    }
+
     const queue = pendingUploads(values, saved);
     const failed = queue.length > 0 ? await runUploads(queue) : 0;
     setUploads([]);
@@ -377,6 +433,24 @@ export function CourseFormPage() {
                     {...register('name')}
                   />
                   <FieldError message={errors.name?.message} />
+                </div>
+
+                <div className="sm:col-span-2 space-y-1">
+                  <FieldLabel icon={ImageIcon}>Thumbnail</FieldLabel>
+                  <ImageDropzone
+                    label="Course thumbnail"
+                    url={isEditing ? thumbnailUrl : stagedThumbnailPreview}
+                    onSelect={pickThumbnail}
+                    onRemove={clearThumbnail}
+                    hint="PNG or JPG, up to 2MB · cropped to 16:9"
+                    busy={thumbnailBusy}
+                    disabled={busy}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {isEditing
+                      ? 'Shown on the course card in the student app.'
+                      : 'Uploads automatically once the course is created.'}
+                  </p>
                 </div>
 
                 <div className="sm:col-span-2 space-y-1">

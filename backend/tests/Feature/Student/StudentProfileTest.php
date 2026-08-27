@@ -47,7 +47,6 @@ class StudentProfileTest extends TestCase
         $this->putJson('/api/v1/student/profile', [
             'address' => '12 Galle Road, Colombo',
             'highest_qualification' => 'Diploma',
-            'contact_number' => '0771234567',
             'industry_id' => $profession->industry_id,
             'profession_id' => $profession->id,
             'languages_spoken' => ['Sinhala', 'English'],
@@ -57,17 +56,43 @@ class StudentProfileTest extends TestCase
             ->assertJsonPath('data.profession.id', $profession->id);
     }
 
+    /** Name and visa status are student-editable, at the client's request. */
+    public function test_a_student_can_update_their_name_and_visa_status(): void
+    {
+        $this->putJson('/api/v1/student/profile', [
+            'full_name' => 'Nimal Bandara Perera',
+            'visa_status' => 'employment',
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.full_name', 'Nimal Bandara Perera')
+            ->assertJsonPath('data.visa_status', 'employment');
+    }
+
+    public function test_visa_status_must_be_a_known_value(): void
+    {
+        $this->putJson('/api/v1/student/profile', ['visa_status' => 'permanent-residency'])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('visa_status');
+    }
+
+    public function test_full_name_cannot_be_blanked(): void
+    {
+        $this->putJson('/api/v1/student/profile', ['full_name' => ''])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('full_name');
+    }
+
     /**
-     * Email is the credential. Letting it be changed here would let anyone with a
-     * live token move the account to an address they control.
+     * Email is the sign-in credential, and the phone number is changed only by
+     * proving control of the new one over SMS. Neither may be written here —
+     * silently ignored rather than rejected, since the client never sends them.
      */
-    public function test_email_and_identity_fields_cannot_be_changed(): void
+    public function test_credential_fields_cannot_be_changed_through_the_profile(): void
     {
         $this->putJson('/api/v1/student/profile', [
             'email' => 'attacker@example.com',
-            'full_name' => 'Someone Else',
-            'student_id' => 'PB-00001',
-            'visa_status' => 'employment',
+            'contact_number' => '0770000000',
+            'student_id' => 'PB-99999',
             'is_blocked' => true,
             'registered_at' => now()->toIso8601String(),
         ])->assertOk();
@@ -75,7 +100,8 @@ class StudentProfileTest extends TestCase
         $this->student->refresh();
 
         $this->assertSame('nimal@example.com', $this->student->email);
-        $this->assertSame('Nimal Perera', $this->student->full_name);
+        $this->assertNotSame('0770000000', $this->student->contact_number);
+        $this->assertNotSame('PB-99999', $this->student->student_id);
         $this->assertFalse($this->student->is_blocked);
     }
 
@@ -119,6 +145,26 @@ class StudentProfileTest extends TestCase
         $this->postJson('/api/v1/student/profile/photo', [
             'photo' => UploadedFile::fake()->create('payload.pdf', 100, 'application/pdf'),
         ])->assertStatus(422)->assertJsonValidationErrors('photo');
+    }
+
+    public function test_reference_lists_are_available_and_active_only(): void
+    {
+        $active = Profession::factory()->create();
+        $inactive = Profession::factory()->create(['is_active' => false]);
+
+        $this->getJson('/api/v1/student/industries')
+            ->assertOk()
+            ->assertJsonStructure(['data' => [['id', 'name']]]);
+
+        $response = $this->getJson('/api/v1/student/professions')->assertOk();
+
+        $ids = array_column($response->json('data'), 'id');
+
+        $this->assertContains($active->id, $ids);
+        $this->assertNotContains($inactive->id, $ids, 'A retired profession must not be offered.');
+
+        // Internal bookkeeping the student has no use for.
+        $this->assertStringNotContainsString('is_active', $response->getContent());
     }
 
     public function test_the_profile_endpoints_require_authentication(): void

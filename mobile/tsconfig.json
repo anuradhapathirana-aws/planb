@@ -1,0 +1,36 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    // Catches `arr[0]` being possibly undefined — the single most common source
+    // of runtime crashes in list-heavy screens.
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "resolveJsonModule": true,
+
+    "paths": {
+      "@/*": ["./src/*"],
+      "@shared/*": ["../shared/src/*"],
+
+      /*
+       * shared/ deliberately has no node_modules of its own (root CLAUDE.md §2),
+       * so Node resolution from its files walks up past the repo root and never
+       * finds these. Metro resolves bare imports from the app root already —
+       * this is only for tsc. Mirrors web/tsconfig.app.json.
+       */
+      "axios": ["./node_modules/axios"],
+      "react-hook-form": ["./node_modules/react-hook-form"],
+      "zod": ["./node_modules/zod"]
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts",
+    "nativewind-env.d.ts",
+    "../shared/src/**/*.ts"
+  ]
+}

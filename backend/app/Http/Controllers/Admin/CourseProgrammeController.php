@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Course\StoreCourseProgrammeRequest;
 use App\Http\Requests\Course\UpdateCourseProgrammeRequest;
+use App\Http\Requests\Course\UploadCourseProgrammeThumbnailRequest;
 use App\Http\Resources\CourseProgrammeResource;
 use App\Models\CourseProgramme;
 use App\Services\Course\CourseProgrammeService;
@@ -64,6 +65,26 @@ class CourseProgrammeController extends Controller
         $this->programmes->delete($programme);
 
         return response()->json(null, 204);
+    }
+
+    /**
+     * Course art. Uploaded against a saved programme rather than inside the
+     * course form's own submit, so the (already large) tree save stays JSON.
+     */
+    public function uploadThumbnail(
+        UploadCourseProgrammeThumbnailRequest $request,
+        CourseProgramme $programme,
+    ): JsonResponse {
+        $updated = $this->programmes->updateThumbnail($programme, $request->file('thumbnail'));
+
+        return response()->json(['data' => new CourseProgrammeResource($updated)]);
+    }
+
+    public function deleteThumbnail(CourseProgramme $programme): JsonResponse
+    {
+        $this->authorize('update', $programme);
+
+        return response()->json(['data' => new CourseProgrammeResource($this->programmes->removeThumbnail($programme))]);
     }
 
     public function publish(CourseProgramme $programme): JsonResponse

@@ -36,6 +36,8 @@ export interface StudentCourseSummary {
   name: string;
   description: string | null;
   category_name: string | null;
+  /** Course art, 16:9. Null when the admin hasn't uploaded one. */
+  thumbnail_url: string | null;
   topics_count: number;
   videos_count: number;
   has_paper: boolean;

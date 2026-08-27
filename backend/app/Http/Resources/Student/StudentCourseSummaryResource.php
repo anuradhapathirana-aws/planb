@@ -23,6 +23,7 @@ class StudentCourseSummaryResource extends JsonResource
             'name' => $this->name,
             'description' => $this->description,
             'category_name' => $this->category?->name,
+            'thumbnail_url' => $this->thumbnail_url,
             'topics_count' => (int) ($this->topics_count ?? 0),
             'videos_count' => (int) ($this->videos_count ?? 0),
             'has_paper' => $this->paper !== null,

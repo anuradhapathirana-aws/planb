@@ -27,9 +27,18 @@ export interface StudentProfile {
   email_verified_at: string | null;
 }
 
-/** What a student may change about themselves. See `backend/CLAUDE.md`. */
+/**
+ * What a student may change about themselves.
+ *
+ * `email` is absent because it is the sign-in credential, and
+ * `contact_number` because changing it requires proving control of the new
+ * number over SMS — a silent write here would defeat that. Both are enforced
+ * server-side in `UpdateStudentProfileRequest`; this type just stops the app
+ * sending something that would be ignored.
+ */
 export interface StudentProfilePayload {
-  contact_number?: string | null;
+  full_name?: string;
+  visa_status?: VisaStatus;
   address?: string | null;
   date_of_birth?: string | null;
   highest_qualification?: string | null;

@@ -7,6 +7,7 @@ use App\Http\Controllers\Student\AuthController;
 use App\Http\Controllers\Student\CourseController;
 use App\Http\Controllers\Student\PaperController;
 use App\Http\Controllers\Student\ProfileController;
+use App\Http\Controllers\Student\ReferenceDataController;
 use App\Models\CourseProgramme;
 use App\Models\CourseVideo;
 use Illuminate\Support\Facades\Route;
@@ -65,6 +66,10 @@ Route::middleware(['auth:student', 'student.actor', 'student.active'])->group(fu
     Route::post('auth/refresh', [AuthController::class, 'refresh']);
     Route::post('auth/logout', [AuthController::class, 'logout']);
     Route::get('me', [AuthController::class, 'me']);
+
+    // Reference data for the profile form. Active rows only.
+    Route::get('industries', [ReferenceDataController::class, 'industries']);
+    Route::get('professions', [ReferenceDataController::class, 'professions']);
 
     // Profile
     Route::get('profile', [ProfileController::class, 'show']);

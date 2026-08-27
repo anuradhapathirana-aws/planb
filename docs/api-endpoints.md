@@ -93,6 +93,17 @@ On `update`, a topic/video carrying an `id` is updated in place, one without an 
 | POST | `/admin/course-programmes/{programme}/publish` | Super Admin, Content Manager | |
 | POST | `/admin/course-programmes/{programme}/unpublish` | Super Admin, Content Manager | Back to `draft`. |
 
+### Course thumbnail
+
+Course art, uploaded against a saved programme rather than inside the course form's own submit (which stays JSON). Optional — a programme without one returns `thumbnail_url: null`.
+
+| Method | Path | Auth / role | Notes |
+|---|---|---|---|
+| POST | `/admin/course-programmes/{programme}/thumbnail` | Super Admin, Content Manager | Multipart `thumbnail` (jpeg/png, max 2MB, validated by both `mimetypes` and extension). Re-encoded via Intervention Image (1280×720 cover crop) before storage; replaces any existing image (single-file collection). |
+| DELETE | `/admin/course-programmes/{programme}/thumbnail` | Super Admin, Content Manager | Removes the image. |
+
+`thumbnail_url` appears on `CourseProgrammeResource` (admin) and `StudentCourseSummaryResource` (student list + detail), so the mobile course cards can render it. Both list queries eager-load `media` to keep it one query rather than one per row.
+
 ### Lesson files
 
 Uploaded one at a time against an already-saved video row — a course can hold hundreds of megabytes of video, which no single form post survives. The admin UI saves the course first, then uploads each staged file against the returned video ids.
