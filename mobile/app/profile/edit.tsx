@@ -2,8 +2,16 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import * as ImagePicker from 'expo-image-picker';
-import { Camera, Check, ChevronLeft, GraduationCap, MapPin, Trash2, User } from 'lucide-react-native';
+import {
+  Camera,
+  Check,
+  ChevronLeft,
+  GraduationCap,
+  Info,
+  MapPin,
+  Trash2,
+  User,
+} from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -29,6 +37,11 @@ import { SegmentedToggle } from '@/components/ui/SegmentedToggle';
 import { SelectField } from '@/components/ui/SelectField';
 import { Text } from '@/components/ui/Text';
 import { useToast } from '@/components/ui/Toast';
+import {
+  getImagePicker,
+  isImagePickerAvailable,
+  type ImagePickerOptions,
+} from '@/lib/imagePicker';
 import { queryClient } from '@/lib/queryClient';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -42,6 +55,14 @@ export default function EditProfileScreen() {
   const setStudent = useAuthStore((state) => state.setStudent);
 
   const profile = useQuery({ queryKey: ['auth', 'me'], queryFn: fetchMe });
+
+  /*
+   * A dev client built before `expo-image-picker` was added carries no native
+   * module for it (see src/lib/imagePicker.ts). Every other field on this form
+   * still saves, so the photo control explains itself rather than pretending to
+   * work — or taking the screen down on import, which is what used to happen.
+   */
+  const canPickPhoto = isImagePickerAvailable();
 
   // Reference lists change rarely, so they are worth holding for a while —
   // students pay for the data that refetches them.
@@ -156,16 +177,23 @@ export default function EditProfileScreen() {
   });
 
   async function pickPhoto(fromCamera: boolean) {
+    const imagePicker = getImagePicker();
+
+    if (!imagePicker) {
+      toast.error(t('profile.photoUnavailable'));
+      return;
+    }
+
     const permission = fromCamera
-      ? await ImagePicker.requestCameraPermissionsAsync()
-      : await ImagePicker.requestMediaLibraryPermissionsAsync();
+      ? await imagePicker.requestCameraPermissionsAsync()
+      : await imagePicker.requestMediaLibraryPermissionsAsync();
 
     if (!permission.granted) {
       toast.error(t('profile.photoPermission'));
       return;
     }
 
-    const options: ImagePicker.ImagePickerOptions = {
+    const options: ImagePickerOptions = {
       mediaTypes: ['images'],
       allowsEditing: true,
       // Square, because the avatar is a circle everywhere it appears.
@@ -179,8 +207,8 @@ export default function EditProfileScreen() {
     };
 
     const result = fromCamera
-      ? await ImagePicker.launchCameraAsync(options)
-      : await ImagePicker.launchImageLibraryAsync(options);
+      ? await imagePicker.launchCameraAsync(options)
+      : await imagePicker.launchImageLibraryAsync(options);
 
     const asset = result.canceled ? null : result.assets[0];
 
@@ -252,24 +280,38 @@ export default function EditProfileScreen() {
             accessibilityRole="button"
             accessibilityLabel={t('profile.changePhotoAction')}
             onPress={choosePhotoSource}
-            disabled={photo.isPending}
+            disabled={photo.isPending || !canPickPhoto}
             className="items-center active:opacity-80"
           >
             <View>
               <Avatar uri={student?.profile_photo_url} name={student?.full_name} size={96} />
 
               {/* The badge is what makes the avatar read as tappable. */}
-              <View className="absolute -bottom-1 -right-1 h-9 w-9 items-center justify-center rounded-full border-2 border-card bg-accent">
-                <Camera size={16} color={colors['accent-foreground']} />
-              </View>
+              {canPickPhoto && (
+                <View className="absolute -bottom-1 -right-1 h-9 w-9 items-center justify-center rounded-full border-2 border-card bg-accent">
+                  <Camera size={16} color={colors['accent-foreground']} />
+                </View>
+              )}
             </View>
 
-            <Text className="mt-3 font-semibold text-primary">
-              {photo.isPending ? t('common.loading') : t('profile.changePhotoAction')}
-            </Text>
+            {canPickPhoto && (
+              <Text className="mt-3 font-semibold text-primary">
+                {photo.isPending ? t('common.loading') : t('profile.changePhotoAction')}
+              </Text>
+            )}
           </Pressable>
 
-          {student?.profile_photo_url && !photo.isPending && (
+          {!canPickPhoto && (
+            <View className="mt-3 flex-row items-start gap-2">
+              <Info size={14} color={colors['muted-foreground']} />
+
+              <Text variant="caption" className="flex-1 leading-5">
+                {t('profile.photoUnavailable')}
+              </Text>
+            </View>
+          )}
+
+          {canPickPhoto && student?.profile_photo_url && !photo.isPending && (
             <Button
               label={t('profile.removePhoto')}
               variant="ghost"

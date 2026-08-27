@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import {
   createCourseProgramme,
   deleteCourseProgramme,
+  deleteCourseProgrammeThumbnail,
   deleteCourseVideoFile,
   fetchCourseProgramme,
   fetchCourseProgrammes,
@@ -10,6 +11,7 @@ import {
   publishCourseProgramme,
   unpublishCourseProgramme,
   updateCourseProgramme,
+  uploadCourseProgrammeThumbnail,
 } from '@/api/courses.api';
 import { getValidationErrors } from '@shared/lib/serverErrors';
 import type { CourseProgrammeListFilters, CourseProgrammePayload } from '@shared/types/course';
@@ -88,6 +90,36 @@ export function useToggleCoursePublished() {
       toast.success(variables.publish ? 'Course published.' : 'Course moved back to draft.');
     },
     onError: () => toast.error('Could not change the course status.'),
+  });
+}
+
+/** Course art. Only usable once the course exists — a new one has no id yet. */
+export function useUploadCourseThumbnail(programmeId: number) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (file: File) => uploadCourseProgrammeThumbnail(programmeId, file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['course-programmes'] });
+      toast.success('Thumbnail updated.');
+    },
+    onError: (error) => {
+      const validation = getValidationErrors(error);
+      toast.error(validation?.thumbnail?.[0] ?? 'Could not upload the thumbnail.');
+    },
+  });
+}
+
+export function useDeleteCourseThumbnail(programmeId: number) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => deleteCourseProgrammeThumbnail(programmeId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['course-programmes'] });
+      toast.success('Thumbnail removed.');
+    },
+    onError: () => toast.error('Could not remove the thumbnail.'),
   });
 }
 

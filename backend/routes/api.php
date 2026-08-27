@@ -61,6 +61,8 @@ Route::prefix('v1/admin')->group(function () {
         // Topics and videos have no endpoints of their own: the Course form saves
         // the whole tree through the programme, which keeps a partly-saved course
         // impossible. Only the lesson *files* are handled per video.
+        Route::post('/course-programmes/{programme}/thumbnail', [CourseProgrammeController::class, 'uploadThumbnail']);
+        Route::delete('/course-programmes/{programme}/thumbnail', [CourseProgrammeController::class, 'deleteThumbnail']);
         Route::post('/course-programmes/{programme}/publish', [CourseProgrammeController::class, 'publish']);
         Route::post('/course-programmes/{programme}/unpublish', [CourseProgrammeController::class, 'unpublish']);
         Route::apiResource('course-programmes', CourseProgrammeController::class)

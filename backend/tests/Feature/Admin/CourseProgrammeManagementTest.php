@@ -12,6 +12,8 @@ use App\Models\CourseTopic;
 use App\Models\CourseVideo;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -361,5 +363,86 @@ class CourseProgrammeManagementTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.0.topics_count', 2)
             ->assertJsonPath('data.0.videos_count', 3);
+    }
+
+    public function test_admin_can_upload_and_replace_a_course_thumbnail(): void
+    {
+        Storage::fake('public');
+
+        $programme = CourseProgramme::factory()->create(['course_category_id' => $this->category->id]);
+
+        $url = $this->actingAs($this->contentManager)
+            ->postJson("/api/v1/admin/course-programmes/{$programme->id}/thumbnail", [
+                'thumbnail' => UploadedFile::fake()->image('cover.jpg', 1600, 900),
+            ])
+            ->assertOk()
+            ->json('data.thumbnail_url');
+
+        $this->assertNotNull($url);
+
+        // Single-file collection: uploading again replaces rather than accumulates.
+        $this->actingAs($this->contentManager)
+            ->postJson("/api/v1/admin/course-programmes/{$programme->id}/thumbnail", [
+                'thumbnail' => UploadedFile::fake()->image('new-cover.png', 1200, 800),
+            ])
+            ->assertOk();
+
+        $this->assertCount(1, $programme->fresh()->getMedia(CourseProgramme::THUMBNAIL_COLLECTION));
+    }
+
+    public function test_a_non_image_is_rejected_as_a_thumbnail(): void
+    {
+        Storage::fake('public');
+
+        $programme = CourseProgramme::factory()->create(['course_category_id' => $this->category->id]);
+
+        $this->actingAs($this->contentManager)
+            ->postJson("/api/v1/admin/course-programmes/{$programme->id}/thumbnail", [
+                'thumbnail' => UploadedFile::fake()->create('notes.pdf', 20, 'application/pdf'),
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('thumbnail');
+    }
+
+    public function test_a_role_without_content_rights_cannot_upload_a_thumbnail(): void
+    {
+        Storage::fake('public');
+
+        $programme = CourseProgramme::factory()->create(['course_category_id' => $this->category->id]);
+
+        $this->actingAs($this->accountant)
+            ->postJson("/api/v1/admin/course-programmes/{$programme->id}/thumbnail", [
+                'thumbnail' => UploadedFile::fake()->image('cover.jpg'),
+            ])
+            ->assertForbidden();
+    }
+
+    public function test_admin_can_remove_a_course_thumbnail(): void
+    {
+        Storage::fake('public');
+
+        $programme = CourseProgramme::factory()->create(['course_category_id' => $this->category->id]);
+
+        $this->actingAs($this->contentManager)
+            ->postJson("/api/v1/admin/course-programmes/{$programme->id}/thumbnail", [
+                'thumbnail' => UploadedFile::fake()->image('cover.jpg'),
+            ])
+            ->assertOk();
+
+        $this->actingAs($this->contentManager)
+            ->deleteJson("/api/v1/admin/course-programmes/{$programme->id}/thumbnail")
+            ->assertOk()
+            ->assertJsonPath('data.thumbnail_url', null);
+    }
+
+    /** A course without art is normal, so the key is present and null, never missing. */
+    public function test_a_programme_without_a_thumbnail_reports_null(): void
+    {
+        CourseProgramme::factory()->create(['course_category_id' => $this->category->id]);
+
+        $this->actingAs($this->superAdmin)
+            ->getJson('/api/v1/admin/course-programmes')
+            ->assertOk()
+            ->assertJsonPath('data.0.thumbnail_url', null);
     }
 }

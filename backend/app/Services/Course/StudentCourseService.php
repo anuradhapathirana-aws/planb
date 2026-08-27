@@ -33,7 +33,8 @@ class StudentCourseService
         $programmes = CourseProgramme::query()
             ->where('status', CourseStatus::Published)
             ->withCount(['topics', 'videos'])
-            ->with(['category', 'paper:id,course_programme_id'])
+            // `media` avoids an N+1 when each row renders its thumbnail URL.
+            ->with(['category', 'media', 'paper:id,course_programme_id'])
             ->when(
                 filled($filters['search'] ?? null),
                 fn ($query) => $query->where('name', 'like', '%'.$filters['search'].'%'),
@@ -52,6 +53,7 @@ class StudentCourseService
     {
         $programme->load([
             'category',
+            'media',
             'topics.videos',
             'paper.questions:id,course_paper_id',
         ]);

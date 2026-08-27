@@ -10,8 +10,10 @@ use App\Models\CourseTopic;
 use App\Models\CourseVideo;
 use App\Support\HtmlSanitizer;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Intervention\Image\ImageManager;
 
 class CourseProgrammeService
 {
@@ -21,7 +23,7 @@ class CourseProgrammeService
     public function list(array $filters): LengthAwarePaginator
     {
         $query = CourseProgramme::query()
-            ->with(['category', 'paper' => fn ($paper) => $paper->withCount('questions')])
+            ->with(['category', 'media', 'paper' => fn ($paper) => $paper->withCount('questions')])
             ->withCount(['topics', 'videos']);
 
         if (! empty($filters['search'])) {
@@ -89,6 +91,38 @@ class CourseProgrammeService
     }
 
     /**
+     * Re-encodes the thumbnail before storage (CLAUDE.md §7.4) — the same
+     * treatment student photos and lesson thumbnails get, so no admin-supplied
+     * bytes are ever served back as received.
+     *
+     * 1280×720 matches the lesson thumbnails, so course art and lesson art share
+     * one aspect ratio wherever they appear together.
+     */
+    public function updateThumbnail(CourseProgramme $programme, UploadedFile $file): CourseProgramme
+    {
+        $encoded = ImageManager::gd()
+            ->read($file->getRealPath())
+            ->cover(1280, 720)
+            ->toJpeg(82);
+
+        $tempPath = tempnam(sys_get_temp_dir(), 'planb_course_thumb_').'.jpg';
+        file_put_contents($tempPath, (string) $encoded);
+
+        $programme->addMedia($tempPath)
+            ->usingFileName('course-'.$programme->id.'-thumb.jpg')
+            ->toMediaCollection(CourseProgramme::THUMBNAIL_COLLECTION);
+
+        return $this->loadTree($programme->fresh());
+    }
+
+    public function removeThumbnail(CourseProgramme $programme): CourseProgramme
+    {
+        $programme->clearMediaCollection(CourseProgramme::THUMBNAIL_COLLECTION);
+
+        return $this->loadTree($programme->fresh());
+    }
+
+    /**
      * Soft delete: topics, videos and uploaded files are left intact so a
      * mistaken delete stays recoverable, matching how students are deleted.
      */
@@ -152,6 +186,7 @@ class CourseProgrammeService
     {
         return $programme->load([
             'category',
+            'media',
             'topics.videos.media',
             // Count only: the Course form shows "N questions", the builder loads the rest.
             'paper' => fn ($paper) => $paper->withCount('questions'),

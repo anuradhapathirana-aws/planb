@@ -37,10 +37,21 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   /** Restores a token from SecureStore into memory. Called once, at launch. */
   bootstrap: async () => {
-    const stored = await loadSession();
+    /*
+     * `isInitialized` gates the entire UI, so it must be set on every path.
+     * A throw here — a Keystore entry the OS can no longer decrypt after a
+     * restore or a security-patch change is the realistic one — would otherwise
+     * leave the app rendering nothing at all, with no error and no way out.
+     * Failing to a signed-out state is recoverable; a white screen is not.
+     */
+    try {
+      const stored = await loadSession();
 
-    if (stored) {
-      setAccessToken(stored.token);
+      if (stored) {
+        setAccessToken(stored.token);
+      }
+    } catch {
+      setAccessToken(null);
     }
 
     // The profile is fetched separately by a query, so a revoked token is

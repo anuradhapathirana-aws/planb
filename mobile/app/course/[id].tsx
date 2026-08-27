@@ -1,4 +1,5 @@
 import { Pressable, View } from 'react-native';
+import { Image } from 'expo-image';
 import { useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
 import {
@@ -82,6 +83,25 @@ export default function CourseDetailScreen() {
 
       {data && (
         <View className="px-5">
+          {/* Only when there is art. An empty placeholder banner would take a
+              third of the screen to say nothing. */}
+          {data.thumbnail_url && (
+            // Layout classes go on the wrapper, never on the expo-image element:
+            // it is not registered with NativeWind (no cssInterop in this app), so
+            // a `className` there is silently dropped. Same reason Avatar styles
+            // its Image with `style`.
+            <View className="mt-3 aspect-video w-full overflow-hidden rounded-xl bg-muted">
+              <Image
+                source={{ uri: data.thumbnail_url }}
+                style={{ width: '100%', height: '100%' }}
+                contentFit="cover"
+                transition={150}
+                cachePolicy="disk"
+                accessibilityIgnoresInvertColors
+              />
+            </View>
+          )}
+
           <View className="flex-row items-start gap-4 pt-3">
             <View className="flex-1">
               {data.category_name && <Text variant="label">{data.category_name}</Text>}

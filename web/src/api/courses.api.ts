@@ -53,6 +53,23 @@ export async function unpublishCourseProgramme(id: number): Promise<CourseProgra
  * can hold hundreds of megabytes of video, which no single form post survives.
  * `onProgress` drives the per-video progress bar.
  */
+/** Course art. Replaces any existing image — the collection holds a single file. */
+export async function uploadCourseProgrammeThumbnail(id: number, file: File): Promise<CourseProgramme> {
+  const formData = new FormData();
+  formData.append('thumbnail', file);
+
+  const { data } = await apiClient.post<ApiResource<CourseProgramme>>(
+    `/admin/course-programmes/${id}/thumbnail`,
+    formData,
+  );
+  return data.data;
+}
+
+export async function deleteCourseProgrammeThumbnail(id: number): Promise<CourseProgramme> {
+  const { data } = await apiClient.delete<ApiResource<CourseProgramme>>(`/admin/course-programmes/${id}/thumbnail`);
+  return data.data;
+}
+
 export async function uploadCourseVideoFile(
   videoId: number,
   file: File,

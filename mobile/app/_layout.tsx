@@ -32,7 +32,7 @@ export default function RootLayout() {
   const bootstrap = useAuthStore((state) => state.bootstrap);
   const isInitialized = useAuthStore((state) => state.isInitialized);
 
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
     Inter_600SemiBold,
@@ -75,7 +75,17 @@ export default function RootLayout() {
     return () => registerUnauthenticatedHandler(null);
   }, []);
 
-  const ready = fontsLoaded && isInitialized;
+  /*
+   * A failed font load must not gate the app.
+   *
+   * `useFonts` leaves `fontsLoaded` false forever when a face fails to fetch —
+   * which happens on every cold start in development if Metro isn't serving the
+   * assets. Ignoring the error meant the app rendered `null` indefinitely: a
+   * white screen, no message, nothing in the logs to point at. Inter and Noto
+   * Sans Sinhala are worth waiting for, not worth blocking on; the system font
+   * is a fine fallback for the seconds before a reload.
+   */
+  const ready = (fontsLoaded || fontError !== null) && isInitialized;
 
   useEffect(() => {
     if (ready) void SplashScreen.hideAsync();

@@ -11,6 +11,11 @@ export interface SheetProps {
   title: string;
   onClose: () => void;
   children: ReactNode;
+  /**
+   * Scroll the body. Turn this off when the content scrolls itself — a vertical
+   * list nested in a vertical list fights for the same gesture on Android.
+   */
+  scroll?: boolean;
 }
 
 /**
@@ -20,7 +25,7 @@ export interface SheetProps {
  * centred-dialog variant. It rises from the thumb end of the screen rather than
  * the middle, which is where a one-handed user can actually reach it.
  */
-export function Sheet({ visible, title, onClose, children }: SheetProps) {
+export function Sheet({ visible, title, onClose, children, scroll = true }: SheetProps) {
   const insets = useSafeAreaInsets();
 
   return (
@@ -66,13 +71,17 @@ export function Sheet({ visible, title, onClose, children }: SheetProps) {
             </Pressable>
           </View>
 
-          <ScrollView
-            className="px-5"
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            {children}
-          </ScrollView>
+          {scroll ? (
+            <ScrollView
+              className="px-5"
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              {children}
+            </ScrollView>
+          ) : (
+            <View className="px-5">{children}</View>
+          )}
         </View>
       </View>
     </Modal>

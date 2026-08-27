@@ -54,10 +54,15 @@ export function Skeleton({ className }: SkeletonProps) {
 /** The course-list placeholder, so every list shows the same shape while loading. */
 export function CourseCardSkeleton() {
   return (
-    <View className="gap-3 rounded-xl border border-border bg-card p-4">
-      <Skeleton className="h-4 w-1/3" />
-      <Skeleton className="h-5 w-3/4" />
-      <Skeleton className="h-1.5 w-full" />
+    // Mirrors CourseCard's real shape, thumbnail banner included, so the list
+    // doesn't jump when the data lands.
+    <View className="overflow-hidden rounded-xl border border-border bg-card">
+      <Skeleton className="aspect-video w-full rounded-none" />
+      <View className="gap-3 p-4">
+        <Skeleton className="h-4 w-1/3" />
+        <Skeleton className="h-5 w-3/4" />
+        <Skeleton className="h-1.5 w-full" />
+      </View>
     </View>
   );
 }

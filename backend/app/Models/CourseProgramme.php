@@ -13,11 +13,15 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
 
-class CourseProgramme extends Model
+class CourseProgramme extends Model implements HasMedia
 {
     /** @use HasFactory<CourseProgrammeFactory> */
-    use HasFactory, SoftDeletes;
+    use HasFactory, InteractsWithMedia, SoftDeletes;
+
+    public const THUMBNAIL_COLLECTION = 'thumbnail';
 
     protected $fillable = [
         'course_category_id',
@@ -32,6 +36,20 @@ class CourseProgramme extends Model
         return [
             'status' => CourseStatus::class,
         ];
+    }
+
+    public function registerMediaCollections(): void
+    {
+        // Course art, shown on the admin list and the student course cards.
+        // Public disk on purpose: unlike a lesson file there is nothing to protect.
+        $this->addMediaCollection(self::THUMBNAIL_COLLECTION)
+            ->singleFile()
+            ->acceptsMimeTypes(['image/jpeg', 'image/png']);
+    }
+
+    public function getThumbnailUrlAttribute(): ?string
+    {
+        return $this->getFirstMedia(self::THUMBNAIL_COLLECTION)?->getUrl();
     }
 
     public function category(): BelongsTo

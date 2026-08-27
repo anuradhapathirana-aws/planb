@@ -85,6 +85,18 @@ const config: ExpoConfig = {
     'expo-video',
     'expo-localization',
     'expo-font',
+    /*
+     * Declared so the permission prompts carry Plan B's own wording. Apple
+     * rejects a build whose usage strings are the library defaults, and Android
+     * needs CAMERA declared in the manifest for "take a photo" to work at all.
+     */
+    [
+      'expo-image-picker',
+      {
+        photosPermission: 'Plan B uses your photos so you can set a profile picture.',
+        cameraPermission: 'Plan B uses your camera so you can take a profile picture.',
+      },
+    ],
     [
       'expo-splash-screen',
       {
