@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Student;
 
 use App\Enums\CourseStatus;
+use App\Enums\EnrolmentSource;
 use App\Http\Resources\Student\StudentQuestionOptionResource;
 use App\Models\CoursePaper;
 use App\Models\CourseProgramme;
@@ -12,6 +13,7 @@ use App\Models\CourseQuestion;
 use App\Models\CourseQuestionOption;
 use App\Models\CourseTopic;
 use App\Models\CourseVideo;
+use App\Models\Enrolment;
 use App\Models\Student;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -43,6 +45,8 @@ class StudentPaperTest extends TestCase
         $topic = CourseTopic::factory()->for($this->programme, 'programme')->create();
         $this->video = CourseVideo::factory()->for($topic, 'topic')->create(['duration_seconds' => 100]);
 
+        $this->enrol($this->programme);
+
         $this->paper = CoursePaper::factory()->for($this->programme, 'programme')->create([
             'pass_mark' => 50,
             'max_attempts' => null,
@@ -61,6 +65,20 @@ class StudentPaperTest extends TestCase
                     ->create(['text' => 'Wrong', 'sort_order' => 1]),
             ];
         }
+    }
+
+    /**
+     * Course content now sits behind enrolment, so a test that exercises lessons
+     * or papers has to own the course first. Free access is no longer the default.
+     */
+    private function enrol(CourseProgramme $programme): void
+    {
+        Enrolment::create([
+            'student_id' => $this->student->id,
+            'course_programme_id' => $programme->id,
+            'source' => EnrolmentSource::AdminGrant,
+            'enrolled_at' => now(),
+        ]);
     }
 
     private function markVideoWatched(): void
@@ -359,6 +377,7 @@ class StudentPaperTest extends TestCase
     public function test_a_programme_without_a_paper_returns_null(): void
     {
         $other = CourseProgramme::factory()->create(['status' => CourseStatus::Published]);
+        $this->enrol($other);
 
         $this->getJson("/api/v1/student/courses/{$other->id}/paper")
             ->assertOk()

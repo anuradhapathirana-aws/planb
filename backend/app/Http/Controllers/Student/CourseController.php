@@ -16,6 +16,7 @@ use App\Services\Course\CoursePaperAttemptService;
 use App\Services\Course\CourseProgressService;
 use App\Services\Course\CourseVideoService;
 use App\Services\Course\StudentCourseService;
+use App\Services\Enrolment\EnrolmentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -26,6 +27,7 @@ class CourseController extends Controller
         private readonly StudentCourseService $courses,
         private readonly CourseProgressService $progress,
         private readonly CoursePaperAttemptService $attempts,
+        private readonly EnrolmentService $enrolments,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -76,6 +78,10 @@ class CourseController extends Controller
     {
         $student = $this->student($request);
 
+        // Paywall first: whether a lesson even has a file is not something a
+        // student who has not paid for the course is entitled to learn.
+        $this->assertEnrolledInLessonCourse($student, $lesson);
+
         abort_unless($lesson->hasVideoFile(), Response::HTTP_NOT_FOUND);
 
         $playback = $this->courses->playback($student, $lesson, $videos);
@@ -97,14 +103,37 @@ class CourseController extends Controller
         RecordVideoProgressRequest $request,
         CourseVideo $lesson,
     ): JsonResponse {
+        $student = $this->student($request);
+        $this->assertEnrolledInLessonCourse($student, $lesson);
+
         $progress = $this->progress->recordVideoProgress(
-            $this->student($request),
+            $student,
             $lesson,
             (int) $request->validated('position_seconds'),
             (int) $request->validated('watched_delta_seconds'),
         );
 
         return response()->json(['data' => new StudentVideoProgressResource($progress)]);
+    }
+
+    /**
+     * The actual paywall.
+     *
+     * Hiding a locked lesson in the UI is presentation; this is enforcement. A
+     * 403 here is what stops someone with a token from calling the stream
+     * endpoint directly for a course they never paid for (root CLAUDE.md §7.12).
+     */
+    private function assertEnrolledInLessonCourse(Student $student, CourseVideo $lesson): void
+    {
+        $programme = $lesson->topic?->programme;
+
+        abort_if($programme === null, Response::HTTP_NOT_FOUND);
+
+        abort_unless(
+            $this->enrolments->isEnrolled($student, $programme),
+            Response::HTTP_FORBIDDEN,
+            'Enrol in this course to open its lessons.',
+        );
     }
 
     private function student(Request $request): Student

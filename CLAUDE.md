@@ -265,6 +265,21 @@ Established on the Q&A paper (`course_question_options.is_correct`).
 - **Grading happens on the backend.** Never send the correct answers to a student client and compare there.
 - **Rules the array syntax can't express go in a Form Request `after()` hook**, not the Service — e.g. "exactly one correct answer per question". Mirror them in the Zod schema too, so the admin sees the problem before saving, but the backend stays the enforcement point (§7.3).
 
+### Payments & Purchasables (non-negotiable)
+
+Established on course pricing and enrolment. Read before touching anything that takes money.
+
+- **Anything sellable implements `App\Contracts\Purchasable`** and orders reference it polymorphically. The order/payment/webhook code must never learn what it is selling — that is what lets premium services reuse the whole layer instead of growing a second one.
+- **Card gateways sit behind `App\Contracts\PaymentGateway`.** Never call a provider SDK from a service, controller or job. Adding a provider is a driver plus a line in `PaymentGatewayManager`.
+- **Never accept a card number.** Every driver hands the student to the provider's hosted checkout; that is what keeps us at PCI-DSS SAQ-A. A driver that took card details would put every server in audit scope.
+- **The price comes from the product, on the server.** An amount in a request body is never trusted, ever.
+- **Only a signature-verified webhook may mark an order paid.** A client callback, a browser redirect, or a "success" query parameter may not. Verify signatures with `hash_equals`.
+- **Assume every webhook is delivered more than once.** Record the event against a unique key first, settle inside a row lock, and make the fulfilment itself idempotent. Reply 200 to duplicates — a non-2xx makes gateways retry forever.
+- **Reject a callback whose amount or currency differs from the order** and fail the payment. Do not settle "close enough".
+- **Bank transfers never auto-approve** (§7.10), and a rejection must leave the order payable so the student can resubmit.
+- **Paywalls are enforced on the endpoint, not in the UI.** Hiding a locked lesson is presentation; the 403 on the stream/paper endpoint is the control. Check entitlement *before* any check that would leak whether content exists.
+- **Money is integer smallest-units everywhere** (§4.11). It becomes decimal only in `formatMoney`/`fromCents` at the edge.
+
 ### Video Handling (non-negotiable)
 
 - **A video file URL is never returned by an API Resource.** Resources expose `has_file`, `file_name`, `file_size_bytes`, `duration_seconds`, `thumbnail_url` — nothing that locates the file.
@@ -420,4 +435,23 @@ The API is UI-agnostic and serves `web/` and `mobile/` equally.
 
 ---
 
-**Last updated:** 24 August 2026. **Update this file whenever conventions change.**
+**Last updated:** 28 August 2026. **Update this file whenever conventions change.**
+
+## 6. Paying, from the app
+
+The app's only job in a payment is to hand the student off and then ask the server what happened.
+
+- **The app never decides an order is paid.** Coming back from the browser proves nothing: the
+  student may have paid and swiped the tab away, or forged the redirect without paying. Success,
+  cancel and dismiss all take the same path — poll `GET /student/orders/{id}` and believe only that.
+  The deep-link landing route reads nothing out of the URL for the same reason.
+- **Card checkout is `WebBrowser.openAuthSessionAsync`, never a WebView.** The card form has to be
+  the gateway's own page, on its own origin, with the address bar visible — that is what keeps Plan B
+  out of PCI scope and gives the student something to verify. A WebView would undo both.
+- **Open `checkout.redirect_url` and nothing else.** It is always a plain URL. `checkout.fields`
+  carries a signed payment hash for web clients that can post a form; a gateway needing a POST is
+  bridged by a signed page on our own server, so this app never assembles one.
+- **An amount is never sent to the server.** The price comes from the product. `formatMoney` at the
+  edge is the only place cents become decimal (root CLAUDE.md §4.11).
+- **`is_enrolled` and `is_locked` are presentation.** The stream, progress and paper endpoints all
+  403 without an enrolment. Never gate on them as if they were the control.

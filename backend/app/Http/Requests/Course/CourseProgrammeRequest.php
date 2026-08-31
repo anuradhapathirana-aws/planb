@@ -22,6 +22,14 @@ abstract class CourseProgrammeRequest extends FormRequest
     {
         return array_merge($this->programmeRules(), [
             'description' => ['nullable', 'string', 'max:2000'],
+
+            /*
+             * Smallest currency unit, integer (CLAUDE.md §4.11). 0 means free -
+             * the student is enrolled on first open with no order. Capped well
+             * above any realistic course fee to catch a stray extra zero.
+             */
+            'price_cents' => ['nullable', 'integer', 'min:0', 'max:100000000'],
+            'currency' => ['nullable', 'string', 'size:3'],
             'status' => ['nullable', Rule::in(CourseStatus::values())],
 
             // FR-MOB-017: a programme has to contain at least one topic.
@@ -54,6 +62,8 @@ abstract class CourseProgrammeRequest extends FormRequest
     {
         return [
             'course_category_id.required' => 'Select a course category.',
+            'price_cents.min' => 'A price cannot be negative.',
+            'price_cents.integer' => 'Enter the price as a number.',
             'name.required' => 'Enter a course programme name.',
             'name.unique' => 'This category already has a programme with that name.',
             'topics.required' => 'Add at least one topic.',
@@ -67,6 +77,7 @@ abstract class CourseProgrammeRequest extends FormRequest
     {
         return [
             'course_category_id' => 'course category',
+            'price_cents' => 'price',
             'topics.*.title' => 'topic name',
             'topics.*.description' => 'topic description',
             'topics.*.videos.*.title' => 'video title',

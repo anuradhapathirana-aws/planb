@@ -31,6 +31,8 @@ const courseTopicSchema = z.object({
   videos: z.array(courseVideoSchema),
 });
 
+export const DEFAULT_CURRENCY = 'LKR';
+
 export const courseFormSchema = z.object({
   course_category_id: z.coerce
     .number({ message: 'Select a course category.' })
@@ -38,6 +40,16 @@ export const courseFormSchema = z.object({
     .positive('Select a course category.'),
   name: z.string().min(1, 'Enter a course programme name.').max(255),
   description: z.string().max(2000, 'Keep the summary under 2000 characters.').optional().or(z.literal('')),
+  /*
+   * Held as the decimal string the admin types ("5000.00") and converted to
+   * integer cents on submit — a price is never carried as a float.
+   * Empty or "0" means the course is free.
+   */
+  price: z
+    .string()
+    .refine((value) => value === '' || /^\d+(\.\d{1,2})?$/.test(value), 'Enter a price like 5000 or 5000.00')
+    .refine((value) => value === '' || Number.parseFloat(value) <= 1000000, 'That price looks too high.'),
+  currency: z.string().length(3),
   status: z.enum(['draft', 'published']),
   topics: z.array(courseTopicSchema).min(1, 'Add at least one topic.'),
 });

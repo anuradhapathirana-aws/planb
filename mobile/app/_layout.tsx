@@ -8,17 +8,19 @@ import * as ScreenCapture from 'expo-screen-capture';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import {
-  Inter_400Regular,
-  Inter_500Medium,
-  Inter_600SemiBold,
-  Inter_700Bold,
-  useFonts,
-} from '@expo-google-fonts/inter';
-import {
-  NotoSansSinhala_400Regular,
-  NotoSansSinhala_600SemiBold,
-} from '@expo-google-fonts/noto-sans-sinhala';
+/*
+ * Per-weight subpaths, never the package root. Each family's root index
+ * `require()`s every face it ships - 18 for Inter, 9 for Noto Sans Sinhala - and
+ * Metro then bundles all of them into the APK. Importing only the six we load
+ * keeps about 6 MB out of the student's download.
+ */
+import { useFonts } from 'expo-font';
+import { Inter_400Regular } from '@expo-google-fonts/inter/400Regular';
+import { Inter_500Medium } from '@expo-google-fonts/inter/500Medium';
+import { Inter_600SemiBold } from '@expo-google-fonts/inter/600SemiBold';
+import { Inter_700Bold } from '@expo-google-fonts/inter/700Bold';
+import { NotoSansSinhala_400Regular } from '@expo-google-fonts/noto-sans-sinhala/400Regular';
+import { NotoSansSinhala_600SemiBold } from '@expo-google-fonts/noto-sans-sinhala/600SemiBold';
 
 import '@/lib/i18n';
 import { registerUnauthenticatedHandler } from '@/api/client';
@@ -27,6 +29,11 @@ import { queryClient } from '@/lib/queryClient';
 import { useAuthStore } from '@/stores/authStore';
 
 void SplashScreen.preventAutoHideAsync();
+
+// Earliest signal that our own code ran at all. Silence here means the crash
+// was native and happened before the bundle executed. `warn`, not `log`:
+// only warnings and errors are forwarded to the Metro terminal.
+if (__DEV__) console.warn('[startup] root layout evaluated');
 
 export default function RootLayout() {
   const bootstrap = useAuthStore((state) => state.bootstrap);
@@ -86,6 +93,27 @@ export default function RootLayout() {
    * is a fine fallback for the seconds before a reload.
    */
   const ready = (fontsLoaded || fontError !== null) && isInitialized;
+
+  /*
+   * A splash that never lifts is the hardest failure in this app to diagnose:
+   * the screen is blank and nothing reaches the logs. Expo Go cannot apply the
+   * splash plugin either, so there it is plain white with nothing to suggest
+   * the app even started. Name whichever gate is still closed.
+   */
+  useEffect(() => {
+    if (!__DEV__ || ready) return;
+
+    const timer = setTimeout(() => {
+      const fonts = fontsLoaded ? 'loaded' : fontError ? 'failed' : 'pending';
+
+      console.warn(
+        `[startup] Still on the splash after 8s — fonts: ${fonts}, ` +
+          `session: ${isInitialized ? 'restored' : 'pending'}.`,
+      );
+    }, 8_000);
+
+    return () => clearTimeout(timer);
+  }, [ready, fontsLoaded, fontError, isInitialized]);
 
   useEffect(() => {
     if (ready) void SplashScreen.hideAsync();

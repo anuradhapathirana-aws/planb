@@ -62,6 +62,11 @@ export interface CourseProgramme {
   name: string;
   description: string | null;
   status: CourseStatus;
+  /** Smallest currency unit, integer. 0 means free (CLAUDE.md §4.11). */
+  price_cents: number;
+  currency: string;
+  is_free: boolean;
+  enrolments_count?: number;
   /** Course art, 16:9. Null when none has been uploaded — a normal state. */
   thumbnail_url: string | null;
   sort_order: number;
@@ -80,6 +85,8 @@ export interface CourseProgrammePayload {
   course_category_id: number;
   name: string;
   description?: string | null;
+  price_cents: number;
+  currency: string;
   status?: CourseStatus;
   topics: {
     id?: number;

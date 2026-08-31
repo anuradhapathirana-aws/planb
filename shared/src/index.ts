@@ -13,6 +13,7 @@ export * from './types/auth';
 export * from './types/checklist';
 export * from './types/course';
 export * from './types/industry';
+export * from './types/order';
 export * from './types/profession';
 export * from './types/student';
 
@@ -21,8 +22,10 @@ export * from './types/paper';
 export * from './types/progress';
 export * from './types/studentAuth';
 export * from './types/studentCourse';
+export * from './types/studentOrder';
 
 // Zod schemas — UX validation only; the backend is the enforcement point.
+export * from './schemas/bankTransfer';
 export * from './schemas/studentAuth';
 export * from './schemas/studentProfile';
 

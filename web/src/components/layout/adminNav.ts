@@ -3,7 +3,6 @@ import {
   Users,
   BookOpen,
   ShoppingCart,
-  CreditCard,
   ListChecks,
   Briefcase,
   Factory,
@@ -66,8 +65,7 @@ export const adminNavGroups: AdminNavGroup[] = [
   {
     label: 'Operations',
     items: [
-      { label: 'Orders', icon: ShoppingCart, comingSoon: true },
-      { label: 'Payments', icon: CreditCard, comingSoon: true },
+      { label: 'Orders & Payments', icon: ShoppingCart, href: paths.admin.orders },
       { label: 'Notifications', icon: Bell, comingSoon: true },
     ],
   },

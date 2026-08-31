@@ -9,9 +9,12 @@ use App\Http\Controllers\Admin\CoursePaperController;
 use App\Http\Controllers\Admin\CourseProgrammeController;
 use App\Http\Controllers\Admin\CourseVideoController;
 use App\Http\Controllers\Admin\IndustryController;
+use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\ProfessionController;
 use App\Http\Controllers\Admin\StudentManagementController;
+use App\Http\Controllers\CheckoutRedirectController;
 use App\Http\Controllers\CourseVideoPlaybackController;
+use App\Http\Controllers\PaymentWebhookController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1/admin')->group(function () {
@@ -79,6 +82,13 @@ Route::prefix('v1/admin')->group(function () {
         Route::delete('/course-videos/{video}/thumbnail', [CourseVideoController::class, 'deleteThumbnail']);
         Route::get('/course-videos/{video}/stream', [CourseVideoController::class, 'stream']);
 
+        // Orders, payments and the bank-transfer verification queue (FR-ADM-018-021).
+        Route::get('/orders/stats', [OrderController::class, 'stats']);
+        Route::get('/orders', [OrderController::class, 'index']);
+        Route::get('/orders/{order}', [OrderController::class, 'show']);
+        Route::post('/payments/{payment}/approve', [OrderController::class, 'approve']);
+        Route::post('/payments/{payment}/reject', [OrderController::class, 'reject']);
+
         /*
          * Arrival checklists. Two fixed phases, each saved whole:
          * `{phase}` resolves by implicit enum binding, so an unknown phase 404s
@@ -97,6 +107,30 @@ Route::prefix('v1/admin')->group(function () {
  * the student player.
  */
 Route::prefix('v1')->group(function () {
+    /*
+     * Gateway callbacks. Unauthenticated by necessity - the caller is the
+     * gateway's server. The signature inside the payload is the authentication,
+     * checked by the driver before anything is written (CLAUDE.md §7.9).
+     */
+    Route::post('/payments/webhook/{gateway}', PaymentWebhookController::class)
+        ->name('payments.webhook')
+        ->middleware('throttle:60,1');
+
+    /*
+     * Hands a student's in-app browser to the gateway's hosted checkout. Not
+     * authenticated: a browser tab carries no bearer token, so the signature on
+     * the URL is the authorization - the same reasoning as video playback. It
+     * writes nothing and cannot settle a payment.
+     */
+    Route::get('/payments/checkout/{payment}', CheckoutRedirectController::class)
+        ->name('payments.checkout.redirect')
+        ->middleware(['signed', 'throttle:30,1']);
+
+    // Local stand-in for a hosted checkout page; 404s in production.
+    Route::get('/payments/sandbox/{payment}/confirm', [PaymentWebhookController::class, 'sandboxConfirm'])
+        ->name('payments.sandbox.confirm')
+        ->middleware('signed');
+
     Route::get('/course-videos/{video}/playback', CourseVideoPlaybackController::class)
         ->name('course-videos.playback')
         ->middleware('signed');

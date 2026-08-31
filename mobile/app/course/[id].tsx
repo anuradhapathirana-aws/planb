@@ -8,13 +8,14 @@ import {
   ClipboardCheck,
   Lock,
   Play,
+  ShieldCheck,
   WifiOff,
 } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 
 import type { StudentCourseVideo } from '@shared/types/studentCourse';
 import { colors } from '@shared/theme/tokens';
-import { formatDuration } from '@shared/lib/formatters';
+import { formatDuration, formatMoney } from '@shared/lib/formatters';
 import { fetchCourse } from '@/api/courses.api';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -25,6 +26,7 @@ import { Screen } from '@/components/ui/Screen';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Text } from '@/components/ui/Text';
 import { useToast } from '@/components/ui/Toast';
+import { useEnrol } from '@/features/enrolment/useEnrol';
 
 export default function CourseDetailScreen() {
   const { t } = useTranslation();
@@ -32,16 +34,25 @@ export default function CourseDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const courseId = Number(id);
 
+  // Already on the course screen, so a free enrolment must not push a second copy.
+  const { enrol, pendingCourseId } = useEnrol({ navigateToCourse: false });
+
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['course', courseId],
     queryFn: () => fetchCourse(courseId),
     enabled: Number.isFinite(courseId),
   });
 
+  const isEnrolled = data?.is_enrolled ?? false;
+
   function openLesson(lesson: StudentCourseVideo) {
     if (lesson.is_locked) {
-      // Explain rather than silently ignoring the tap.
-      toast.info(t('courses.locked'));
+      /*
+       * Two different locks, and telling them apart is the whole point: one is
+       * "watch the previous lesson", the other is "buy the course". A single
+       * message would send paying students hunting for a lesson to finish.
+       */
+      toast.info(isEnrolled ? t('courses.locked') : t('enrol.lockedLesson'));
       return;
     }
 
@@ -108,21 +119,74 @@ export default function CourseDetailScreen() {
               <Text variant="display" className="mt-1">
                 {data.name}
               </Text>
+              {/* Progress is meaningless before enrolling — a 0% ring on a
+                  course nobody has bought reads as "you are failing this". */}
               <Text variant="caption" className="mt-2">
-                {t('courses.progress', {
-                  watched: data.progress.videos_watched,
-                  total: data.progress.videos_total,
-                })}
+                {data.is_enrolled
+                  ? t('courses.progress', {
+                      watched: data.progress.videos_watched,
+                      total: data.progress.videos_total,
+                    })
+                  : t('courses.content', {
+                      topics: data.topics_count,
+                      lessons: data.videos_count,
+                    })}
               </Text>
             </View>
 
-            <ProgressRing percent={data.progress.percent_complete} size={64} />
+            {data.is_enrolled && <ProgressRing percent={data.progress.percent_complete} size={64} />}
           </View>
 
           {data.description && (
             <Text variant="body" className="mt-4 text-muted-foreground">
               {data.description}
             </Text>
+          )}
+
+          {/*
+            The paywall. Presentation only — the syllabus below stays readable
+            because that is how a student decides to buy, and every lesson,
+            stream and paper endpoint refuses on the server regardless of what
+            this screen renders.
+          */}
+          {!data.is_enrolled && (
+            <Card className="mt-5 border-primary/25 bg-primary-soft p-5">
+              <View className="flex-row items-center gap-3">
+                <View className="h-10 w-10 items-center justify-center rounded-full bg-card">
+                  <Lock size={18} color={colors.primary} />
+                </View>
+
+                <View className="flex-1">
+                  <Text variant="heading">{t('enrol.paywallTitle')}</Text>
+                  <Text variant="caption" className="mt-0.5 leading-5">
+                    {t('enrol.paywallBody')}
+                  </Text>
+                </View>
+              </View>
+
+              <View className="mt-4 flex-row items-center justify-between gap-3">
+                <Text className="text-[22px] font-bold leading-8 text-foreground">
+                  {data.is_free ? t('courses.free') : formatMoney(data.price_cents, data.currency)}
+                </Text>
+
+                <Text variant="caption" className="flex-1 text-right leading-5">
+                  {t('courses.content', {
+                    topics: data.topics_count,
+                    lessons: data.videos_count,
+                  })}
+                </Text>
+              </View>
+
+              <Button
+                label={data.is_free ? t('enrol.actionFree') : t('enrol.action')}
+                icon={ShieldCheck}
+                size="lg"
+                fullWidth
+                className="mt-4"
+                loading={pendingCourseId === data.id}
+                onPress={() => enrol(data.id)}
+              />
+            </Card>
           )}
 
           {/* Assessment */}

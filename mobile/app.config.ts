@@ -68,10 +68,10 @@ const config: ExpoConfig = {
     /*
      * No `usesCleartextTraffic` key here, and none is needed: Android has
      * defaulted it to false since API 28, so a release build already refuses
-     * plaintext. Development works because Expo Go permits cleartext for the
-     * dev server. If we later build a standalone preview APK that must reach an
-     * HTTP LAN backend, that needs the `expo-build-properties` plugin — added
-     * then, and only for the non-production variants.
+     * plaintext. Development works because the dev client permits cleartext
+     * for the dev server. A standalone preview APK that must reach an HTTP LAN
+     * backend would need `usesCleartextTraffic` set through the
+     * `expo-build-properties` plugin below - non-production variants only.
      *
      * `src/lib/env.ts` also refuses to start a production build configured with
      * a non-HTTPS API URL, so this is belt and braces.
@@ -86,6 +86,12 @@ const config: ExpoConfig = {
     'expo-localization',
     'expo-font',
     /*
+     * Card checkout opens the gateway's own hosted page in a Custom Tab
+     * (Android) / SFSafariViewController (iOS). That is what keeps card details
+     * out of this app entirely — see the PaymentGateway contract.
+     */
+    'expo-web-browser',
+    /*
      * Declared so the permission prompts carry Plan B's own wording. Apple
      * rejects a build whose usage strings are the library defaults, and Android
      * needs CAMERA declared in the manifest for "take a photo" to work at all.
@@ -93,8 +99,10 @@ const config: ExpoConfig = {
     [
       'expo-image-picker',
       {
-        photosPermission: 'Plan B uses your photos so you can set a profile picture.',
-        cameraPermission: 'Plan B uses your camera so you can take a profile picture.',
+        photosPermission:
+          'Plan B uses your photos so you can set a profile picture and attach a bank transfer slip.',
+        cameraPermission:
+          'Plan B uses your camera so you can take a profile picture or photograph a bank transfer slip.',
       },
     ],
     [
@@ -103,6 +111,26 @@ const config: ExpoConfig = {
         image: './assets/splash-icon.png',
         resizeMode: 'contain',
         backgroundColor: '#14224b',
+      },
+    ],
+    /*
+     * Release-only size work. R8 strips unreachable classes and the resource
+     * shrinker drops drawables and strings nothing references; together they
+     * take roughly a fifth off the download. Debug builds are untouched, so
+     * development is not slowed down by it.
+     *
+     * R8 works from reachability, and anything reached only by reflection can
+     * look unused to it. React Native and Expo ship their own keep rules, but
+     * a release build still has to be smoke-tested rather than assumed - a
+     * class stripped in error fails at runtime, not at build time.
+     */
+    [
+      'expo-build-properties',
+      {
+        android: {
+          enableProguardInReleaseBuilds: true,
+          enableShrinkResourcesInReleaseBuilds: true,
+        },
       },
     ],
   ],

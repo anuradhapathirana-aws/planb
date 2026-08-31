@@ -10,6 +10,7 @@ use App\Models\CourseVideo;
 use App\Models\Student;
 use App\Models\StudentProgrammeProgress;
 use App\Models\StudentVideoProgress;
+use App\Services\Enrolment\EnrolmentService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 
@@ -23,7 +24,10 @@ use Illuminate\Support\Collection;
  */
 class StudentCourseService
 {
-    public function __construct(private readonly CourseProgressService $progress) {}
+    public function __construct(
+        private readonly CourseProgressService $progress,
+        private readonly EnrolmentService $enrolments,
+    ) {}
 
     /** Published programmes, each with a progress summary. */
     public function list(Student $student, array $filters): LengthAwarePaginator
@@ -44,6 +48,7 @@ class StudentCourseService
             ->paginate($perPage);
 
         $this->attachProgressSummaries($student, $programmes->getCollection());
+        $this->attachAccess($student, $programmes->getCollection());
 
         return $programmes;
     }
@@ -85,6 +90,20 @@ class StudentCourseService
         }
 
         $this->attachProgressSummaries($student, collect([$programme]));
+        $this->attachAccess($student, collect([$programme]));
+
+        /*
+         * A student browsing a course they have not bought still sees the syllabus
+         * — that is how they decide to buy it — but every lesson is locked
+         * regardless of watch order. The catalogue is public; the content is not.
+         */
+        if (! $programme->getAttribute('is_enrolled')) {
+            foreach ($programme->topics as $topic) {
+                foreach ($topic->videos as $video) {
+                    $video->setAttribute('is_locked', true);
+                }
+            }
+        }
 
         return $programme;
     }
@@ -105,6 +124,24 @@ class StudentCourseService
         ]);
 
         return $link + ['progress' => $progress];
+    }
+
+    /**
+     * Marks each programme with what this student may do with it.
+     *
+     * One query for the whole page, not one per row. A free course reports
+     * `is_enrolled` true only once the enrolment row exists — the student still
+     * has to open it, which is what creates that row.
+     *
+     * @param  Collection<int, CourseProgramme>  $programmes
+     */
+    private function attachAccess(Student $student, Collection $programmes): void
+    {
+        $enrolledIds = $this->enrolments->enrolledProgrammeIds($student);
+
+        foreach ($programmes as $programme) {
+            $programme->setAttribute('is_enrolled', in_array($programme->id, $enrolledIds, true));
+        }
     }
 
     /**

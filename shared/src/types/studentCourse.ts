@@ -38,6 +38,17 @@ export interface StudentCourseSummary {
   category_name: string | null;
   /** Course art, 16:9. Null when the admin hasn't uploaded one. */
   thumbnail_url: string | null;
+  /** Integer smallest units (root CLAUDE.md §4.11). 0 when the course is free. */
+  price_cents: number;
+  currency: string;
+  is_free: boolean;
+  /**
+   * Whether this student may open the content — NOT whether it exists. The
+   * catalogue is browsable to everyone; `false` means every lesson is locked and
+   * the stream/paper endpoints will refuse. Presentation only: the paywall is
+   * enforced on the endpoint (root CLAUDE.md, Payments & Purchasables).
+   */
+  is_enrolled: boolean;
   topics_count: number;
   videos_count: number;
   has_paper: boolean;

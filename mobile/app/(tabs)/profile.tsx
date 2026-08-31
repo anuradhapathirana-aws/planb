@@ -2,14 +2,14 @@ import { useEffect } from 'react';
 import { RefreshControl, View } from 'react-native';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { LogOut, Mail, Pencil, Phone, ShieldCheck } from 'lucide-react-native';
+import { ChevronRight, LogOut, Mail, Pencil, Phone, Receipt, ShieldCheck } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 
 import { colors } from '@shared/theme/tokens';
 import { fetchMe, signOut as signOutRequest } from '@/api/auth.api';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
+import { Card, PressableCard } from '@/components/ui/Card';
 import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
 import { queryClient } from '@/lib/queryClient';
@@ -104,6 +104,22 @@ export default function ProfileScreen() {
           {t('profile.emailLocked')}
         </Text>
       </View>
+
+      {/*
+        Payment history lives behind a row rather than a fourth tab: students
+        check it rarely, and a tab bar earns its space on what people open daily.
+      */}
+      <PressableCard
+        accessibilityLabel={t('payment.historyTitle')}
+        onPress={() => router.push('/profile/payments')}
+        className="mt-4 flex-row items-center gap-3 p-4"
+      >
+        <Receipt size={18} color={colors['muted-foreground']} />
+
+        <Text className="flex-1 font-medium">{t('payment.historyLink')}</Text>
+
+        <ChevronRight size={20} color={colors['muted-foreground']} />
+      </PressableCard>
 
       <Button
         label={t('profile.edit')}

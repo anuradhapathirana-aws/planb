@@ -15,6 +15,7 @@ import {
   Plus,
   Save,
   Tag,
+  Wallet,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,7 +33,13 @@ import { TopicCard } from '@/features/admin/courses/components/TopicCard';
 import { VideoPreviewDialog } from '@/features/admin/courses/components/VideoPreviewDialog';
 import { VideoUploadDialog, type VideoUploadItem } from '@/features/admin/courses/components/VideoUploadDialog';
 import type { StagedVideoFile } from '@/features/admin/courses/components/VideoRow';
-import { courseFormSchema, emptyTopic, emptyVideo, type CourseFormSchema } from '@/features/admin/courses/courseSchema';
+import {
+  courseFormSchema,
+  emptyTopic,
+  emptyVideo,
+  DEFAULT_CURRENCY,
+  type CourseFormSchema,
+} from '@/features/admin/courses/courseSchema';
 import {
   useCourseProgramme,
   useCreateCourseProgramme,
@@ -43,6 +50,7 @@ import {
 } from '@/features/admin/courses/hooks/useCourses';
 import { useActiveCourseCategories } from '@/features/admin/courseCategories/hooks/useCourseCategories';
 import { uploadCourseProgrammeThumbnail, uploadCourseVideoFile } from '@/api/courses.api';
+import { fromCents, toCents } from '@shared/lib/formatters';
 import { newClientKey } from '@shared/lib/clientKey';
 import { applyServerValidationErrors } from '@shared/lib/serverErrors';
 import { paths } from '@/routes/paths';
@@ -61,6 +69,8 @@ function blankCourse(): CourseFormSchema {
     course_category_id: undefined as unknown as number,
     name: '',
     description: '',
+    price: '',
+    currency: DEFAULT_CURRENCY,
     status: 'draft',
     topics: [emptyTopic()],
   };
@@ -83,6 +93,8 @@ function toFormValues(programme: CourseProgramme): CourseFormSchema {
     course_category_id: programme.course_category_id,
     name: programme.name,
     description: programme.description ?? '',
+    price: programme.price_cents > 0 ? fromCents(programme.price_cents) : '',
+    currency: programme.currency || DEFAULT_CURRENCY,
     status: programme.status,
     // The form always needs somewhere to type; a course saved without topics
     // can't happen through this form, but old data shouldn't render an empty page.
@@ -229,6 +241,9 @@ export function CourseFormPage() {
     course_category_id: values.course_category_id,
     name: values.name,
     description: values.description || null,
+    // Empty means free. Converted here, once, from the decimal the admin typed.
+    price_cents: toCents(values.price),
+    currency: values.currency,
     status: values.status,
     topics: values.topics.map((topic) => ({
       id: topic.saved_id,
@@ -500,6 +515,30 @@ export function CourseFormPage() {
                     </div>
                   </div>
                 )}
+
+                <div className="sm:col-span-2 space-y-1">
+                  <FieldLabel htmlFor="course-price" icon={Wallet}>
+                    Price
+                  </FieldLabel>
+                  <div className="relative">
+                    <span className="pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-xs font-medium text-muted-foreground">
+                      {DEFAULT_CURRENCY}
+                    </span>
+                    <Input
+                      id="course-price"
+                      inputMode="decimal"
+                      placeholder="0.00"
+                      aria-invalid={!!errors.price}
+                      disabled={busy}
+                      className="pl-11"
+                      {...register('price')}
+                    />
+                  </div>
+                  <FieldError message={errors.price?.message} />
+                  <p className="text-xs text-muted-foreground">
+                    Leave blank for a free course — students get access as soon as they open it.
+                  </p>
+                </div>
 
                 <div className="sm:col-span-2 space-y-1">
                   <FieldLabel icon={Tag} required>

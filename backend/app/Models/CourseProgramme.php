@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Contracts\Purchasable;
 use App\Enums\CourseStatus;
 use Database\Factories\CourseProgrammeFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -16,7 +17,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 
-class CourseProgramme extends Model implements HasMedia
+class CourseProgramme extends Model implements HasMedia, Purchasable
 {
     /** @use HasFactory<CourseProgrammeFactory> */
     use HasFactory, InteractsWithMedia, SoftDeletes;
@@ -27,6 +28,8 @@ class CourseProgramme extends Model implements HasMedia
         'course_category_id',
         'name',
         'description',
+        'price_cents',
+        'currency',
         'status',
         'sort_order',
     ];
@@ -35,7 +38,48 @@ class CourseProgramme extends Model implements HasMedia
     {
         return [
             'status' => CourseStatus::class,
+            'price_cents' => 'integer',
         ];
+    }
+
+    /*
+     |--------------------------------------------------------------------------
+     | Purchasable
+     |--------------------------------------------------------------------------
+     |
+     | Implemented so the order/payment layer can sell a course without knowing
+     | what a course is. A premium service will implement the same interface.
+     */
+
+    public function purchasableTitle(): string
+    {
+        return $this->name;
+    }
+
+    public function purchasablePriceCents(): int
+    {
+        return (int) $this->price_cents;
+    }
+
+    public function purchasableCurrency(): string
+    {
+        return $this->currency ?? (string) config('payments.currency');
+    }
+
+    /** A draft course is not on sale, whatever its price says. */
+    public function isPurchasable(): bool
+    {
+        return $this->status === CourseStatus::Published;
+    }
+
+    public function isFree(): bool
+    {
+        return $this->purchasablePriceCents() === 0;
+    }
+
+    public function enrolments(): HasMany
+    {
+        return $this->hasMany(Enrolment::class);
     }
 
     public function registerMediaCollections(): void

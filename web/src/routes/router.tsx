@@ -43,6 +43,9 @@ const CoursePaperPage = lazy(() =>
 const ChecklistsPage = lazy(() =>
   import('@/features/admin/checklists/pages/ChecklistsPage').then((m) => ({ default: m.ChecklistsPage })),
 );
+const OrdersListPage = lazy(() =>
+  import('@/features/admin/orders/pages/OrdersListPage').then((m) => ({ default: m.OrdersListPage })),
+);
 const CourseCategoriesListPage = lazy(() =>
   import('@/features/admin/courseCategories/pages/CourseCategoriesListPage').then((m) => ({
     default: m.CourseCategoriesListPage,
@@ -85,6 +88,7 @@ export const router = createBrowserRouter([
       { path: 'courses/new', element: page(<CourseFormPage />) },
       { path: 'courses/:id/edit', element: page(<CourseFormPage />) },
       { path: 'courses/:id/paper', element: page(<CoursePaperPage />) },
+      { path: 'orders', element: page(<OrdersListPage />) },
       { path: 'checklists', element: page(<ChecklistsPage />) },
     ],
   },

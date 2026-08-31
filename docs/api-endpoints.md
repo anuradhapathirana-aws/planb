@@ -255,6 +255,56 @@ Attempt state on the paper summary: `attempts_used`, `attempts_remaining` (null 
 - Only submitted attempts count against `max_attempts`.
 - **The correct answers are revealed only when they can no longer help** — the student passed, or has no attempts left. Revealing them after a failed attempt would make unlimited retries meaningless.
 
+## Payments & enrolment (FR-MOB-031-037, FR-ADM-018-021)
+
+**Two rules govern this whole area and neither may be relaxed:**
+
+1. **The client never decides an order is paid.** A card order is settled only by a signature-verified server-to-server webhook. The browser redirect the student returns through is cosmetic — they can close it, lose signal, or forge it.
+2. **The price is read from the product on the server**, never from the request body. A client-supplied amount is the oldest way to buy a course for one rupee.
+
+Card details never reach this application: every gateway driver hands the student to the provider's own hosted checkout, which is what keeps the platform at PCI-DSS **SAQ-A** (FR-MOB-032). The mobile app opens that checkout in a Custom Tab / `SFSafariViewController`, never an in-app WebView — the card form must be the gateway's own page, on its own origin, with the address bar visible.
+
+### Student
+
+| Method | Path | Auth | Notes |
+|---|---|---|---|
+| POST | `/student/courses/{course}/enrol` | student | The single entry point. A **free** course (`price_cents = 0`) enrols immediately and returns `{ status: "enrolled", order: null }`. A **paid** one opens (or reuses) an order and returns `{ status: "payment_required", order }`. Already enrolled returns `status: "enrolled"` rather than charging again. Rate-limited 20/min. |
+| GET | `/student/orders` | student | Transaction history (FR-MOB-036). Paginated, scoped to the caller. |
+| GET | `/student/orders/{order}` | student | Another student's order 404s. Carries `item: { type, id }` — a public token for what was bought (`"course"` today), so the app can open it after payment without ever seeing the backing model's class name. |
+| POST | `/student/orders/{order}/card` | student | Returns `{ payment_id, order, checkout: { gateway, checkout_url, fields, completed_immediately, redirect_url } }`. **`redirect_url` is the only field a client should act on** — always a plain URL to open, including for gateways whose real checkout is a signed form POST (those are bridged, below). `checkout_url` + `fields` remain for a web client that can post a form itself. **The order stays `pending`** — only the webhook settles it. Refused while a bank transfer for the same order is awaiting verification, so a student cannot pay twice. |
+| POST | `/student/orders/{order}/bank-transfer` | student | Multipart `reference_number` + `receipt` (JPG/PNG/PDF, max 5MB). Moves the order to `awaiting_verification`, **not** `paid`. Only one submission may sit in the queue at a time. |
+| GET | `/student/payment-methods/bank-transfer` | student | Account details to pay into, and the receipt size cap. Not secret. |
+
+### Gateway callbacks
+
+| Method | Path | Auth | Notes |
+|---|---|---|---|
+| POST | `/payments/webhook/{gateway}` | **signature only** | Unauthenticated by necessity — the caller is the gateway's server, holding no session or token. The signature inside the payload is the authentication (`PaymentGateway::verifyWebhookSignature`, CLAUDE.md §7.9). Always answers 200 once the signature checks out, **including for duplicates**: a non-2xx makes the gateway retry forever. Rate-limited 60/min. |
+| GET | `/payments/checkout/{payment}` | **signed URL** | The bridge to a form-POST gateway. Returns an HTML page that submits the gateway's signed field set for the student. Unauthenticated by necessity — an in-app browser tab carries no bearer token, so the signature on the URL is the authorization, exactly as for video playback. It **writes nothing and cannot settle a payment**; a settled or non-card payment gets 410 / 404 rather than a fresh checkout. `noindex` + `no-referrer`, so the signed URL is never handed on to the gateway's logs. Valid 30 minutes, rate-limited 30/min. |
+| GET | `/payments/sandbox/{payment}/confirm` | signed URL | Local stand-in for a hosted checkout page; 404s in production. Posts a success back through the very same webhook path, so idempotency and settlement are genuinely exercised in development. |
+
+Outcomes reported by the webhook: `settled`, `duplicate`, `amount_mismatch`, `unknown_payment`, or the payment status for a non-success. An amount or currency that does not match the order is **refused and the payment failed** — that is either a tampered callback or a misconfigured merchant account, and silently enrolling the student would hide both.
+
+### Admin
+
+| Method | Path | Auth / role | Notes |
+|---|---|---|---|
+| GET | `/admin/orders` | Super Admin, Accountant, Support Agent | Query: `search, status, method, student_id, sort(created_at\|amount_cents\|order_number), direction, per_page, page`. |
+| GET | `/admin/orders/stats` | as above | `{ pending_bank_transfers, paid_orders, revenue_cents_this_month, currency }` — drives the verification-queue badge (FR-ADM-025). |
+| GET | `/admin/orders/{order}` | as above | Full order with every payment attempt and receipt URL. |
+| POST | `/admin/payments/{payment}/approve` | **Super Admin, Accountant** | Optional `remark`. Marks the order paid and grants the enrolment. Idempotent against a card that already settled the same order. |
+| POST | `/admin/payments/{payment}/reject` | **Super Admin, Accountant** | Optional `remark`, shown to the student. Returns the order to `pending` — *not* cancelled — so a new receipt can be submitted (FR-MOB-035). |
+
+Support Agent can read the queue but not decide on it: approving releases access and books revenue, so it is held to the two roles accountable for money (`OrderPolicy::review`).
+
+### Course access
+
+Adding a price changes what the existing student course endpoints do:
+
+- `GET /student/courses` and `/student/courses/{course}` stay **browsable to everyone** — students cannot buy what they cannot see — and now carry `price_cents`, `currency`, `is_free` and `is_enrolled`.
+- Every lesson reports `is_locked: true` for a course the student has not enrolled in, whatever their watch order.
+- `GET /student/lessons/{lesson}/stream`, `POST /student/lessons/{lesson}/progress`, `GET /student/courses/{course}/paper` and `POST .../paper/attempts` return **403** without an enrolment. This is the actual paywall; the lock flags above are presentation.
+
 ## Conventions
 
 - Every response wraps the payload in `{ data: ... }` (list endpoints add `{ data, meta }` with pagination info).

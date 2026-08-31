@@ -306,6 +306,85 @@ One student's run at one Q&A paper (FR-MOB-024/025). Full of snapshots on purpos
 
 `unique(course_paper_attempt_id, course_question_id)`, named `paper_answers_attempt_question_unique` for the same length reason.
 
+## `orders`
+
+FR-MOB-031-037. One purchase of one **purchasable**.
+
+**Deliberately polymorphic.** `purchasable_type` / `purchasable_id` point at anything implementing `App\Contracts\Purchasable` — a `CourseProgramme` today, a `PremiumService` later. The order, payment, webhook and fulfilment code never learns what it is selling, which is what makes the payment layer reusable without a rewrite.
+
+**Deliberately single-item.** A student enrols in one course at a time and a premium service is bought on its own. If bundles ever arrive the extension point is an `order_items` table, not extra columns here.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | bigIncrements | |
+| order_number | string, unique | `PB-ORD-000001`, sequential under a row lock. Human-quotable in support. |
+| student_id | unsignedBigInteger, FK -> `students.id`, cascade delete | |
+| purchasable_type / purchasable_id | morphs | The product. See above. |
+| title_snapshot | string | What was bought, frozen at purchase time. Renaming a course later must not rewrite what a student was charged for. |
+| amount_cents | unsignedBigInteger | Smallest currency unit, integer (CLAUDE.md §4.11). **Read from the product on the server, never from the request.** |
+| currency | char(3) | |
+| status | enum: `pending`, `awaiting_verification`, `paid`, `cancelled`, `failed`, `refunded` | PHP enum `App\Enums\OrderStatus`. |
+| paid_at / cancelled_at | timestamp, nullable | |
+| created_at / updated_at | timestamps | |
+
+## `payments`
+
+One **attempt** to pay an order. An order can carry several: a declined card retried, or a bank transfer rejected by an admin and resubmitted (FR-MOB-035). Only one may succeed — enforced in `PaymentService` inside a row lock.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | bigIncrements | |
+| order_id | unsignedBigInteger, FK -> `orders.id`, cascade delete | |
+| method | enum: `card`, `bank_transfer` | PHP enum `App\Enums\PaymentMethod`. |
+| gateway | string, nullable | `payhere` / `sandbox`. Null for a bank transfer. |
+| gateway_reference | string, nullable | The provider's own payment id, for reconciliation. |
+| amount_cents / currency | unsignedBigInteger / char(3) | Checked against the gateway's reported amount before settling. |
+| status | enum: `pending`, `processing`, `succeeded`, `failed`, `cancelled` | PHP enum `App\Enums\PaymentStatus`. For a bank transfer, `pending` = in the admin queue, `succeeded` = approved, `failed` = rejected. |
+| reference_number | string, nullable | Student-entered bank reference (FR-MOB-033). |
+| gateway_payload | json, nullable | Provider response, **scrubbed of anything card-shaped** before storage. Never sent to a client. |
+| reviewed_by | unsignedBigInteger, nullable, FK -> `users.id` | FR-ADM-017/020 audit trail. |
+| reviewed_at | timestamp, nullable | |
+| review_remark | string(500), nullable | Optional note; the student sees it on a rejection (FR-ADM-021). |
+| paid_at | timestamp, nullable | |
+| created_at / updated_at | timestamps | |
+
+Receipt: **Spatie Media Library**, collection `receipt`, single-file, JPG/PNG/PDF up to `config('payments.bank_transfer.max_receipt_mb')` (FR-MOB-033).
+
+## `enrolments`
+
+A student's access to one course programme. **Access does not expire.**
+
+Concrete rather than polymorphic on purpose: enrolment is a course concept. A premium service produces a deliverable, not an enrolment, so it will get its own fulfilment model rather than overloading this one.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | bigIncrements | |
+| student_id | unsignedBigInteger, FK -> `students.id`, cascade delete | |
+| course_programme_id | unsignedBigInteger, FK -> `course_programmes.id`, cascade delete | |
+| order_id | unsignedBigInteger, nullable, FK -> `orders.id`, ON DELETE SET NULL | Null for a free course or an admin grant. |
+| source | enum: `purchase`, `free`, `admin_grant` | PHP enum `App\Enums\EnrolmentSource`. |
+| granted_by | unsignedBigInteger, nullable, FK -> `users.id` | Who granted it, when granted manually. |
+| enrolled_at | timestamp | |
+| created_at / updated_at | timestamps | |
+
+**`unique(student_id, course_programme_id)`** is load-bearing: it is what makes a replayed webhook or a double-tapped button incapable of enrolling — or charging — twice.
+
+## `payment_webhook_events`
+
+Idempotency and audit for gateway callbacks.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | bigIncrements | |
+| gateway | string | |
+| event_id | string | |
+| payload | json | Sanitized. |
+| processed_at | timestamp, nullable | |
+| outcome | string, nullable | `settled`, `duplicate`, `amount_mismatch`, … |
+| created_at / updated_at | timestamps | |
+
+**`unique(gateway, event_id)`** is the whole point. Gateways retry until they get a 200, so the same event *will* arrive more than once; the unique index turns a replay into a duplicate-key error that `PaymentService` catches and reports as "already handled" instead of settling twice.
+
 ### Deferred (not built yet, referenced by future features)
 
 - Student checklist progress (`student_checklist_items`: which items a student has ticked, and when) — needs the student-facing checklist feature. `checklist_items` is authoring-only for now.
@@ -322,6 +401,7 @@ One student's run at one Q&A paper (FR-MOB-024/025). Full of snapshots on purpos
 | 2026-08-13 | Initial schema: `users` (staff/admin auth) and `students` (Student Management). |
 | 2026-08-14 | `student_id` on single-record create is now server-generated, not admin-supplied. Profile photo upload (`profile_photo` media collection, already in the initial schema) is now wired up end-to-end via `POST/DELETE /admin/students/{student}/photo`. |
 | 2026-08-14 | Added `industries` and `professions` (FR-ADM-012 master data, with an Industry→Profession grouping requested beyond the original flat-list SRS wording). `students.profession_category` (free-text placeholder) removed in favor of `students.industry_id` / `students.profession_id`. |
+| 2026-08-28 | Course pricing and paid enrolment: `course_programmes.price_cents` / `.currency`, plus `orders` (polymorphic purchasable), `payments`, `enrolments` and `payment_webhook_events`. Course content is now gated on an enrolment row. |
 | 2026-08-27 | Added a `thumbnail` Media Library collection to `course_programmes` (course art, 16:9, optional). No migration — Media Library holds it. Exposed as `thumbnail_url` on both the admin and student course payloads. |
 | 2026-08-24 | Added the Q&A paper tables (FR-ADM-008c): `course_papers`, `course_questions`, `course_question_options`. One optional paper per **programme** (client's call, where the SRS had one per topic); questions are single-correct multiple choice, with Yes/No as the two-option case. Student attempt/scoring tables are still deferred. |
 | 2026-08-24 | Added the Course Module content tables (FR-ADM-008/008a/008b): `course_categories`, `course_programmes`, `course_topics`, `course_videos`. Hierarchy is Category → Programme → Topic → Video, with the SRS's 8 phases (Appendix A) modelled as 8 programmes under one category. Video files and thumbnails are Media Library collections, not columns. Assessments (FR-ADM-008c) and student progress are still deferred. |

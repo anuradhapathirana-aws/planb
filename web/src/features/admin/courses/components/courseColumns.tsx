@@ -3,7 +3,7 @@ import { ClipboardList, Eye, EyeOff, Layers, Pencil, Trash2, Video } from 'lucid
 import { Badge } from '@/components/ui/badge';
 import { ImagePlaceholder } from '@/components/shared/ImageDropzone';
 import { RowActions } from '@/components/shared/RowActions';
-import { formatDate } from '@/lib/formatters';
+import { formatDate, formatMoney } from '@/lib/formatters';
 import type { CourseProgramme } from '@shared/types/course';
 
 interface CourseColumnActions {
@@ -86,6 +86,18 @@ export function getCourseColumns({
           </span>
         );
       },
+    },
+    {
+      id: 'price',
+      header: 'Price',
+      cell: ({ row }) =>
+        row.original.is_free ? (
+          <Badge variant="secondary">Free</Badge>
+        ) : (
+          <span className="text-sm font-medium tabular-nums">
+            {formatMoney(row.original.price_cents, row.original.currency)}
+          </span>
+        ),
     },
     {
       id: 'status',

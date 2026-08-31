@@ -64,6 +64,8 @@ class CourseProgrammeService
                 'course_category_id' => $data['course_category_id'],
                 'name' => $data['name'],
                 'description' => $data['description'] ?? null,
+                'price_cents' => $data['price_cents'] ?? 0,
+                'currency' => $data['currency'] ?? config('payments.currency'),
                 'status' => $data['status'] ?? CourseStatus::Draft->value,
                 'sort_order' => $data['sort_order'] ?? $this->nextSortOrder((int) $data['course_category_id']),
             ]);
@@ -81,6 +83,8 @@ class CourseProgrammeService
                 'course_category_id' => $data['course_category_id'],
                 'name' => $data['name'],
                 'description' => $data['description'] ?? null,
+                'price_cents' => $data['price_cents'] ?? 0,
+                'currency' => $data['currency'] ?? config('payments.currency'),
                 'status' => $data['status'] ?? $programme->status->value,
             ]);
 

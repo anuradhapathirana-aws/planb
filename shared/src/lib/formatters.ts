@@ -59,7 +59,37 @@ export function formatDuration(seconds: number | null | undefined): string {
 
   const paddedSecs = String(secs).padStart(2, '0');
 
-  return hours > 0
-    ? `${hours}:${String(minutes).padStart(2, '0')}:${paddedSecs}`
-    : `${minutes}:${paddedSecs}`;
+  return hours > 0 ? `${hours}:${String(minutes).padStart(2, '0')}:${paddedSecs}` : `${minutes}:${paddedSecs}`;
+}
+
+/**
+ * Money for display. Amounts are stored in the smallest unit as integers
+ * (root CLAUDE.md §4.11), so this is the only place they become decimal —
+ * nothing else should divide by 100.
+ */
+export function formatMoney(cents: number | null | undefined, currency = 'LKR'): string {
+  if (cents == null || Number.isNaN(cents)) return '—';
+
+  return new Intl.NumberFormat('en-LK', {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(cents / 100);
+}
+
+/** The inverse, for a price input: "5000.50" → 500050. */
+export function toCents(amount: string | number | null | undefined): number {
+  if (amount === '' || amount == null) return 0;
+
+  const value = typeof amount === 'number' ? amount : Number.parseFloat(amount);
+
+  return Number.isFinite(value) ? Math.round(value * 100) : 0;
+}
+
+/** Cents → the decimal string a price input shows: 500050 → "5000.50". */
+export function fromCents(cents: number | null | undefined): string {
+  if (cents == null || Number.isNaN(cents)) return '';
+
+  return (cents / 100).toFixed(2);
 }

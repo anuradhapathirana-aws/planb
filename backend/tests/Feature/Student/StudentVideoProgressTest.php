@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Tests\Feature\Student;
 
 use App\Enums\CourseStatus;
+use App\Enums\EnrolmentSource;
 use App\Models\CourseProgramme;
 use App\Models\CourseTopic;
 use App\Models\CourseVideo;
+use App\Models\Enrolment;
 use App\Models\Student;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -39,10 +41,25 @@ class StudentVideoProgressTest extends TestCase
 
         $programme = CourseProgramme::factory()->create(['status' => CourseStatus::Published]);
         $topic = CourseTopic::factory()->for($programme, 'programme')->create();
+        $this->enrol($programme);
 
         // A ten-minute lesson.
         $this->video = CourseVideo::factory()->for($topic, 'topic')
             ->create(['duration_seconds' => 600]);
+    }
+
+    /**
+     * Course content now sits behind enrolment, so a test that exercises lessons
+     * or papers has to own the course first. Free access is no longer the default.
+     */
+    private function enrol(CourseProgramme $programme): void
+    {
+        Enrolment::create([
+            'student_id' => $this->student->id,
+            'course_programme_id' => $programme->id,
+            'source' => EnrolmentSource::AdminGrant,
+            'enrolled_at' => now(),
+        ]);
     }
 
     private function flush(int $position, int $delta): TestResponse

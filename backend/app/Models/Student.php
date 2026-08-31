@@ -9,6 +9,7 @@ use Database\Factories\StudentFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -103,6 +104,24 @@ class Student extends Authenticatable implements HasMedia
     public function profession(): BelongsTo
     {
         return $this->belongsTo(Profession::class);
+    }
+
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class)->latest('id');
+    }
+
+    public function enrolments(): HasMany
+    {
+        return $this->hasMany(Enrolment::class);
+    }
+
+    /** Courses this student has paid for (or been granted). */
+    public function enrolledProgrammes(): BelongsToMany
+    {
+        return $this->belongsToMany(CourseProgramme::class, 'enrolments')
+            ->withPivot(['order_id', 'source', 'enrolled_at'])
+            ->withTimestamps();
     }
 
     public function registerMediaCollections(): void

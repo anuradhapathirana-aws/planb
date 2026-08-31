@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { RefreshControl, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next';
 import type { StudentCourseSummary } from '@shared/types/studentCourse';
 import { colors } from '@shared/theme/tokens';
 import { fetchCourses } from '@/api/courses.api';
-import { CourseCard } from '@/components/shared/CourseCard';
+import { CourseCarousel } from '@/components/shared/CourseCarousel';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -21,9 +21,11 @@ import { useAuthStore } from '@/stores/authStore';
 /**
  * Home.
  *
- * One focal point: the course the student is part-way through, with the answer
- * to "what do I do next" as the biggest button on the screen. Everything else
- * is secondary.
+ * Only what the student already owns. One focal point — the course they are
+ * part-way through, with the answer to "what do I do next" as the biggest button
+ * on the screen — and their other enrolled courses in a carousel under it.
+ * Browsing and buying live on the Courses tab; mixing a shop into this screen
+ * would bury the thing they came back to finish.
  */
 export default function HomeScreen() {
   const { t } = useTranslation();
@@ -41,21 +43,27 @@ export default function HomeScreen() {
     setRefreshing(false);
   }, [refetch]);
 
-  const courses = data?.data ?? [];
+  const enrolled = useMemo(
+    () => (data?.data ?? []).filter((course) => course.is_enrolled),
+    [data],
+  );
 
   /*
    * "Continue learning" = the course with the most progress that isn't finished.
-   * Falls back to the first unstarted course, so a brand-new student still gets
-   * a clear next action rather than an empty hero.
+   * Falls back to the first unstarted enrolled course, so a student who has just
+   * bought something still gets a clear next action rather than an empty hero.
    */
-  const inProgress = courses
+  const inProgress = enrolled
     .filter((course) => course.progress.percent_complete > 0 && !course.progress.completed_at)
     .sort((a, b) => b.progress.percent_complete - a.progress.percent_complete)[0];
 
   const nextUp: StudentCourseSummary | undefined =
-    inProgress ?? courses.find((course) => !course.progress.completed_at);
+    inProgress ?? enrolled.find((course) => !course.progress.completed_at);
 
   const firstName = student?.full_name?.trim().split(/\s+/)[0];
+
+  const openCourse = (course: StudentCourseSummary) =>
+    router.push({ pathname: '/course/[id]', params: { id: course.id } });
 
   return (
     <Screen
@@ -88,11 +96,15 @@ export default function HomeScreen() {
         />
       )}
 
-      {!isLoading && !isError && courses.length === 0 && (
+      {/* Nothing bought yet. Points at the Courses tab rather than dead-ending —
+          this is the most common state for a brand-new account. */}
+      {!isLoading && !isError && enrolled.length === 0 && (
         <EmptyState
           icon={GraduationCap}
-          title={t('home.noProgressTitle')}
-          body={t('home.noProgressBody')}
+          title={t('home.browseTitle')}
+          body={t('home.browseBody')}
+          actionLabel={t('courses.browseAll')}
+          onAction={() => router.push('/(tabs)/courses')}
         />
       )}
 
@@ -124,15 +136,15 @@ export default function HomeScreen() {
             size="lg"
             fullWidth
             className="mt-5 bg-accent active:opacity-90"
-            onPress={() => router.push({ pathname: '/course/[id]', params: { id: nextUp.id } })}
+            onPress={() => openCourse(nextUp)}
           />
         </Card>
       )}
 
-      {courses.length > 0 && (
+      {enrolled.length > 0 && (
         <View className="mt-8">
           <View className="mb-3 flex-row items-center justify-between">
-            <Text variant="label">{t('courses.title')}</Text>
+            <Text variant="label">{t('home.myCourses')}</Text>
 
             <Button
               label={t('home.viewAll')}
@@ -142,15 +154,7 @@ export default function HomeScreen() {
             />
           </View>
 
-          <View className="gap-3">
-            {courses.slice(0, 3).map((course) => (
-              <CourseCard
-                key={course.id}
-                course={course}
-                onPress={() => router.push({ pathname: '/course/[id]', params: { id: course.id } })}
-              />
-            ))}
-          </View>
+          <CourseCarousel courses={enrolled} onSelect={openCourse} />
         </View>
       )}
     </Screen>

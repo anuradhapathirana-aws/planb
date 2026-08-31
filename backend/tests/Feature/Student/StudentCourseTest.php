@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace Tests\Feature\Student;
 
 use App\Enums\CourseStatus;
+use App\Enums\EnrolmentSource;
 use App\Models\CourseProgramme;
 use App\Models\CourseTopic;
 use App\Models\CourseVideo;
+use App\Models\Enrolment;
 use App\Models\Student;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -27,8 +29,27 @@ class StudentCourseTest extends TestCase
         Sanctum::actingAs($this->student, ['student'], 'student');
     }
 
-    /** @return array{0: CourseProgramme, 1: CourseVideo, 2: CourseVideo} */
-    private function publishedProgrammeWithTwoLessons(): array
+    /**
+     * Course content now sits behind enrolment, so a test that exercises lessons
+     * or papers has to own the course first. Free access is no longer the default.
+     */
+    private function enrol(CourseProgramme $programme): void
+    {
+        Enrolment::create([
+            'student_id' => $this->student->id,
+            'course_programme_id' => $programme->id,
+            'source' => EnrolmentSource::AdminGrant,
+            'enrolled_at' => now(),
+        ]);
+    }
+
+    /**
+     * A course this student already owns. Enrolment is what opens the content
+     * now, so the fixture grants it — the paywall itself is covered separately.
+     *
+     * @return array{0: CourseProgramme, 1: CourseVideo, 2: CourseVideo}
+     */
+    private function publishedProgrammeWithTwoLessons(bool $enrolled = true): array
     {
         $programme = CourseProgramme::factory()->create(['status' => CourseStatus::Published]);
         $topic = CourseTopic::factory()->for($programme, 'programme')->create(['sort_order' => 0]);
@@ -37,6 +58,10 @@ class StudentCourseTest extends TestCase
             ->create(['sort_order' => 0, 'duration_seconds' => 100]);
         $second = CourseVideo::factory()->for($topic, 'topic')
             ->create(['sort_order' => 1, 'duration_seconds' => 100]);
+
+        if ($enrolled) {
+            $this->enrol($programme);
+        }
 
         return [$programme, $first, $second];
     }

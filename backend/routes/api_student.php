@@ -5,7 +5,9 @@ declare(strict_types=1);
 use App\Enums\CourseStatus;
 use App\Http\Controllers\Student\AuthController;
 use App\Http\Controllers\Student\CourseController;
+use App\Http\Controllers\Student\EnrolmentController;
 use App\Http\Controllers\Student\PaperController;
+use App\Http\Controllers\Student\PaymentController;
 use App\Http\Controllers\Student\ProfileController;
 use App\Http\Controllers\Student\ReferenceDataController;
 use App\Models\CourseProgramme;
@@ -90,6 +92,25 @@ Route::middleware(['auth:student', 'student.actor', 'student.active'])->group(fu
         ->middleware('throttle:student-progress');
 
     // Assessments
+    /*
+     |--------------------------------------------------------------------------
+     | Enrolment and payment
+     |--------------------------------------------------------------------------
+     |
+     | `enrol` is the single entry point: a free course enrols immediately, a paid
+     | one opens an order. The price always comes from the course on the server.
+     */
+    Route::post('courses/{course}/enrol', [EnrolmentController::class, 'store'])
+        ->middleware('throttle:20,1');
+
+    Route::get('orders', [PaymentController::class, 'index']);
+    Route::get('orders/{order}', [PaymentController::class, 'show']);
+    Route::post('orders/{order}/card', [PaymentController::class, 'payByCard'])
+        ->middleware('throttle:20,1');
+    Route::post('orders/{order}/bank-transfer', [PaymentController::class, 'payByBankTransfer'])
+        ->middleware('throttle:10,1');
+    Route::get('payment-methods/bank-transfer', [PaymentController::class, 'bankDetails']);
+
     Route::get('courses/{course}/paper', [PaperController::class, 'show']);
     Route::post('courses/{course}/paper/attempts', [PaperController::class, 'start']);
     Route::post('paper-attempts/{attempt}/submit', [PaperController::class, 'submit']);
