@@ -17,6 +17,7 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 /**
  * A student record, and — since the mobile app — an authenticatable actor.
@@ -30,6 +31,13 @@ class Student extends Authenticatable implements HasMedia
 {
     /** @use HasFactory<StudentFactory> */
     use HasApiTokens, HasFactory, InteractsWithMedia, Notifiable, SoftDeletes;
+
+    public const CV_COLLECTION = 'cv';
+
+    public const PROFILE_VIDEO_COLLECTION = 'profile_video';
+
+    /** CVs and profile videos never get a public URL — see the disk's comment. */
+    public const DOCUMENT_DISK = 'student_documents';
 
     /**
      * `google_sub` and `email_verified_at` are deliberately absent: only
@@ -135,6 +143,28 @@ class Student extends Authenticatable implements HasMedia
         $this->addMediaCollection('profile_photo')
             ->singleFile()
             ->acceptsMimeTypes(['image/jpeg', 'image/png']);
+
+        // Both live on the private disk and are only ever read back through a
+        // short-lived signed link, so neither can be hot-linked or enumerated.
+        $this->addMediaCollection(self::CV_COLLECTION)
+            ->singleFile()
+            ->useDisk(self::DOCUMENT_DISK)
+            ->acceptsMimeTypes(['application/pdf']);
+
+        $this->addMediaCollection(self::PROFILE_VIDEO_COLLECTION)
+            ->singleFile()
+            ->useDisk(self::DOCUMENT_DISK)
+            ->acceptsMimeTypes(['video/mp4', 'video/quicktime']);
+    }
+
+    public function cvMedia(): ?Media
+    {
+        return $this->getFirstMedia(self::CV_COLLECTION);
+    }
+
+    public function profileVideoMedia(): ?Media
+    {
+        return $this->getFirstMedia(self::PROFILE_VIDEO_COLLECTION);
     }
 
     public function getProfilePhotoUrlAttribute(): ?string

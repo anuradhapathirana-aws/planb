@@ -18,7 +18,7 @@ class StudentManagementService
      */
     public function list(array $filters): LengthAwarePaginator
     {
-        $query = Student::query()->with(['industry', 'profession']);
+        $query = Student::query()->with(['industry', 'profession', 'media']);
 
         if (! empty($filters['search'])) {
             $search = $filters['search'];
@@ -56,7 +56,7 @@ class StudentManagementService
     {
         $data['student_id'] = $this->nextStudentId();
 
-        return Student::create($data)->load(['industry', 'profession']);
+        return Student::create($data)->load(['industry', 'profession', 'media']);
     }
 
     /**
@@ -104,7 +104,7 @@ class StudentManagementService
     {
         $student->update($data);
 
-        return $student->fresh(['industry', 'profession']);
+        return $student->fresh(['industry', 'profession', 'media']);
     }
 
     public function block(Student $student): Student

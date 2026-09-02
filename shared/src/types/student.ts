@@ -3,6 +3,27 @@ import type { Profession } from './profession';
 
 export type VisaStatus = 'visit' | 'employment';
 
+/**
+ * A private file on a student record (CV, profile video). Deliberately carries no
+ * URL: reading one needs a fresh short-lived signed link from the documents
+ * endpoint, so nothing here can be hot-linked or shared out of the panel.
+ */
+export interface StudentDocument {
+  has_file: boolean;
+  /** The name the admin uploaded, not the internal storage name. */
+  file_name: string | null;
+  file_size_bytes: number | null;
+  uploaded_at: string | null;
+}
+
+/** Short-lived signed link to one student document. Fetched fresh, never cached. */
+export interface StudentDocumentLink {
+  url: string;
+  expires_at: string;
+}
+
+export type StudentDocumentType = 'cv' | 'profile-video';
+
 export interface Student {
   id: number;
   student_id: string;
@@ -22,6 +43,8 @@ export interface Student {
   is_registered: boolean;
   registered_at: string | null;
   profile_photo_url: string | null;
+  cv: StudentDocument;
+  profile_video: StudentDocument;
   imported_by?: string | null;
   created_at: string;
   updated_at: string;

@@ -35,6 +35,58 @@ export function toDateInputValue(date: Date): string {
   return `${date.getFullYear()}-${month}-${day}`;
 }
 
+/*
+ * CV and profile video limits. These mirror `UploadStudentCvRequest` and
+ * `UploadStudentProfileVideoRequest` exactly — the backend is the enforcement
+ * point (CLAUDE.md §7.3); checking here just saves a 5 MB round trip to be told.
+ */
+export const MAX_CV_BYTES = 5 * 1024 * 1024;
+export const ACCEPTED_CV_TYPES = ['application/pdf'];
+export const ACCEPTED_CV_EXTENSIONS = ['pdf'];
+
+export const MAX_PROFILE_VIDEO_BYTES = 10 * 1024 * 1024;
+export const ACCEPTED_PROFILE_VIDEO_TYPES = ['video/mp4', 'video/quicktime'];
+export const ACCEPTED_PROFILE_VIDEO_EXTENSIONS = ['mp4', 'mov'];
+
+/**
+ * Guidance only, and not enforced anywhere: reading a duration server-side needs
+ * ffprobe, which the server doesn't carry, so the size cap is the real limit.
+ */
+export const PROFILE_VIDEO_GUIDE_MINUTES = 3;
+
+export type StudentDocumentKind = 'cv' | 'profile-video';
+
+const DOCUMENT_RULES = {
+  cv: {
+    types: ACCEPTED_CV_TYPES,
+    extensions: ACCEPTED_CV_EXTENSIONS,
+    maxBytes: MAX_CV_BYTES,
+    typeMessage: 'The CV must be a PDF file.',
+    sizeMessage: 'The CV must be 5 MB or smaller.',
+  },
+  'profile-video': {
+    types: ACCEPTED_PROFILE_VIDEO_TYPES,
+    extensions: ACCEPTED_PROFILE_VIDEO_EXTENSIONS,
+    maxBytes: MAX_PROFILE_VIDEO_BYTES,
+    typeMessage: 'The profile video must be an MP4 or MOV file.',
+    sizeMessage: 'The profile video must be 10 MB or smaller.',
+  },
+} as const;
+
+/** Returns an error message to show under the field, or null when the file is fine. */
+export function validateStudentDocument(kind: StudentDocumentKind, file: File): string | null {
+  const rule = DOCUMENT_RULES[kind];
+  // Some browsers report an empty `type` for .mov, so fall back to the extension.
+  const extension = file.name.split('.').pop()?.toLowerCase() ?? '';
+  const typeOk = file.type
+    ? (rule.types as readonly string[]).includes(file.type)
+    : (rule.extensions as readonly string[]).includes(extension);
+
+  if (!typeOk) return rule.typeMessage;
+  if (file.size > rule.maxBytes) return rule.sizeMessage;
+  return null;
+}
+
 export const studentFormSchema = z.object({
   // Not user-editable: auto-generated on create, read-only on edit.
   student_id: z.string().max(50).optional(),

@@ -7,7 +7,9 @@ import {
   CalendarDays,
   Camera,
   CreditCard,
+  Eye,
   Factory,
+  FileText,
   GraduationCap,
   IdCard,
   Languages,
@@ -19,6 +21,7 @@ import {
   ShieldCheck,
   ShieldOff,
   Trash2,
+  Video,
   X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -34,12 +37,14 @@ import {
   useStudent,
   useDeleteStudent,
   useDeleteStudentPhoto,
+  useOpenStudentDocument,
   useToggleBlockStudent,
   useUploadStudentPhoto,
 } from '@/features/admin/students/hooks/useStudents';
 import { StudentFormDialog } from '@/features/admin/students/components/StudentFormDialog';
-import { formatDate, formatDateTime, initials, labelizeVisaStatus } from '@/lib/formatters';
+import { formatBytes, formatDate, formatDateTime, initials, labelizeVisaStatus } from '@/lib/formatters';
 import { paths } from '@/routes/paths';
+import type { StudentDocument } from '@shared/types/student';
 
 const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
 const ACCEPTED_PHOTO_TYPES = ['image/jpeg', 'image/png'];
@@ -53,6 +58,7 @@ export function StudentDetailPage() {
   const deleteStudent = useDeleteStudent();
   const uploadPhoto = useUploadStudentPhoto(studentId);
   const deletePhoto = useDeleteStudentPhoto(studentId);
+  const openDocument = useOpenStudentDocument(studentId);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   const [editOpen, setEditOpen] = useState(false);
@@ -202,6 +208,23 @@ export function StudentDetailPage() {
 
               <Separator className="sm:col-span-2" />
 
+              <DocumentRow
+                icon={FileText}
+                label="CV"
+                document={student.cv}
+                onOpen={() => openDocument.mutate('cv')}
+                opening={openDocument.isPending && openDocument.variables === 'cv'}
+              />
+              <DocumentRow
+                icon={Video}
+                label="Profile video"
+                document={student.profile_video}
+                onOpen={() => openDocument.mutate('profile-video')}
+                opening={openDocument.isPending && openDocument.variables === 'profile-video'}
+              />
+
+              <Separator className="sm:col-span-2" />
+
               <InfoRow icon={CalendarDays} label="Registered on" value={formatDateTime(student.registered_at)} />
               <InfoRow icon={CalendarDays} label="Record created" value={formatDateTime(student.created_at)} />
               {student.imported_by && <InfoRow icon={CalendarDays} label="Imported by" value={student.imported_by} />}
@@ -270,6 +293,44 @@ export function StudentDetailPage() {
           })
         }
       />
+    </div>
+  );
+}
+
+/**
+ * A private file on the record. There is no URL to link to by design — the View
+ * button mints a fresh short-lived signed link at the moment of the click.
+ */
+function DocumentRow({
+  icon: Icon,
+  label,
+  document,
+  onOpen,
+  opening,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  document: StudentDocument;
+  onOpen: () => void;
+  opening: boolean;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-secondary text-secondary-foreground">
+        <Icon className="size-4" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="truncate text-sm font-medium">{document.has_file ? document.file_name : '—'}</p>
+      </div>
+      {document.has_file && (
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="text-xs text-muted-foreground">{formatBytes(document.file_size_bytes)}</span>
+          <Button size="xs" variant="outline" onClick={onOpen} disabled={opening}>
+            {opening ? <Loader2 className="size-3.5 animate-spin" /> : <Eye className="size-3.5" />} View
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

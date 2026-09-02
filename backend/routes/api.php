@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\StudentDocumentType;
 use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\ChecklistItemController;
 use App\Http\Controllers\Admin\CourseCategoryController;
@@ -18,6 +19,7 @@ use App\Http\Controllers\Admin\StudentManagementController;
 use App\Http\Controllers\CheckoutRedirectController;
 use App\Http\Controllers\CourseVideoPlaybackController;
 use App\Http\Controllers\PaymentWebhookController;
+use App\Http\Controllers\StudentDocumentController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1/admin')->group(function () {
@@ -45,6 +47,14 @@ Route::prefix('v1/admin')->group(function () {
         Route::post('/students/{student}/unblock', [StudentManagementController::class, 'unblock']);
         Route::post('/students/{student}/photo', [StudentManagementController::class, 'uploadPhoto']);
         Route::delete('/students/{student}/photo', [StudentManagementController::class, 'deletePhoto']);
+        Route::post('/students/{student}/cv', [StudentManagementController::class, 'uploadCv']);
+        Route::delete('/students/{student}/cv', [StudentManagementController::class, 'deleteCv']);
+        Route::post('/students/{student}/profile-video', [StudentManagementController::class, 'uploadProfileVideo']);
+        Route::delete('/students/{student}/profile-video', [StudentManagementController::class, 'deleteProfileVideo']);
+        // Mints the signed link the browser then opens; the bytes come from the
+        // unguarded signed route below, for the reason explained on it.
+        Route::get('/students/{student}/documents/{document}/link', [StudentManagementController::class, 'documentLink'])
+            ->whereIn('document', StudentDocumentType::values());
         Route::apiResource('students', StudentManagementController::class)
             ->parameters(['students' => 'student']);
 
@@ -168,5 +178,10 @@ Route::prefix('v1')->group(function () {
 
     Route::get('/course-videos/{video}/playback', CourseVideoPlaybackController::class)
         ->name('course-videos.playback')
+        ->middleware('signed');
+
+    Route::get('/students/{student}/documents/{document}', StudentDocumentController::class)
+        ->name('student-documents.show')
+        ->whereIn('document', StudentDocumentType::values())
         ->middleware('signed');
 });

@@ -39,6 +39,11 @@ The two are kept strictly apart. Sanctum does **not** do this on its own — see
 | POST | `/admin/students/{student}/unblock` | Super Admin, Support Agent | |
 | POST | `/admin/students/{student}/photo` | Super Admin, Support Agent | Multipart `photo` (jpeg/png, max 2MB). Re-encoded via Intervention Image (600×600 cover crop) before storage; replaces any existing photo (single-file Media Library collection). |
 | DELETE | `/admin/students/{student}/photo` | Super Admin, Support Agent | Removes the profile photo. |
+| POST | `/admin/students/{student}/cv` | Super Admin, Support Agent | Multipart `cv` (PDF only — extension *and* sniffed mime, max 5MB). Stored on the private `student_documents` disk; replaces any existing CV (single-file collection). |
+| DELETE | `/admin/students/{student}/cv` | Super Admin, Support Agent | Removes the CV. |
+| POST | `/admin/students/{student}/profile-video` | Super Admin, Support Agent | Multipart `profile_video` (mp4/mov, max 10MB). The "3 minutes" is guidance shown in the UI, not a server rule — reading a duration would need ffprobe. Private disk, single file. |
+| DELETE | `/admin/students/{student}/profile-video` | Super Admin, Support Agent | Removes the profile video. |
+| GET | `/admin/students/{student}/documents/{document}/link` | any admin role | `{document}` is `cv` or `profile-video`. Returns `{ url, expires_at }` — a 30-minute signed link to `GET /v1/students/{student}/documents/{document}`, which sits outside the auth group (a `<video>` element and a PDF viewer send no cookies, so the signature is the authorization). 404 when nothing is on file. `StudentResource` never carries a file URL: it exposes `cv` / `profile_video` as `{ has_file, file_name, file_size_bytes, uploaded_at }`. |
 | POST | `/admin/students/import` | Super Admin | Multipart `file` (CSV, max 2MB). Header row: `student_id` (required), `full_name`, `email`, `contact_number` (optional). Returns `{ imported, skipped, failed, errors: [{row, student_id, message}] }`. Existing `student_id`s are skipped, not errored. |
 
 ## Industries & Professions (FR-ADM-012)

@@ -4,18 +4,23 @@ import {
   blockStudent,
   createStudent,
   deleteStudent,
+  deleteStudentCv,
   deleteStudentPhoto,
+  deleteStudentProfileVideo,
   fetchNextStudentId,
+  fetchStudentDocumentLink,
   fetchStudent,
   fetchStudents,
   fetchStudentStats,
   importStudents,
   unblockStudent,
   updateStudent,
+  uploadStudentCv,
   uploadStudentPhoto,
+  uploadStudentProfileVideo,
 } from '@/api/students.api';
 import { getValidationErrors } from '@shared/lib/serverErrors';
-import type { StudentFormValues, StudentListFilters } from '@shared/types/student';
+import type { StudentDocumentType, StudentFormValues, StudentListFilters } from '@shared/types/student';
 
 const studentsKey = (filters: StudentListFilters) => ['students', filters] as const;
 
@@ -140,6 +145,73 @@ export function useDeleteStudentPhoto(id: number) {
       toast.success('Profile photo removed.');
     },
     onError: () => toast.error('Could not remove photo.'),
+  });
+}
+
+export function useUploadStudentCv(id: number) {
+  const invalidate = useInvalidateStudents();
+
+  return useMutation({
+    mutationFn: (file: File) => uploadStudentCv(id, file),
+    onSuccess: () => {
+      invalidate();
+      toast.success('CV uploaded.');
+    },
+    onError: () => toast.error('Could not upload the CV. Use a PDF under 5 MB.'),
+  });
+}
+
+export function useDeleteStudentCv(id: number) {
+  const invalidate = useInvalidateStudents();
+
+  return useMutation({
+    mutationFn: () => deleteStudentCv(id),
+    onSuccess: () => {
+      invalidate();
+      toast.success('CV removed.');
+    },
+    onError: () => toast.error('Could not remove the CV.'),
+  });
+}
+
+export function useUploadStudentProfileVideo(id: number) {
+  const invalidate = useInvalidateStudents();
+
+  return useMutation({
+    mutationFn: (file: File) => uploadStudentProfileVideo(id, file),
+    onSuccess: () => {
+      invalidate();
+      toast.success('Profile video uploaded.');
+    },
+    onError: () => toast.error('Could not upload the video. Use an MP4 or MOV under 10 MB.'),
+  });
+}
+
+export function useDeleteStudentProfileVideo(id: number) {
+  const invalidate = useInvalidateStudents();
+
+  return useMutation({
+    mutationFn: () => deleteStudentProfileVideo(id),
+    onSuccess: () => {
+      invalidate();
+      toast.success('Profile video removed.');
+    },
+    onError: () => toast.error('Could not remove the video.'),
+  });
+}
+
+/**
+ * Opens a document in a new tab. A mutation rather than a query because the
+ * signed link is short-lived — it has to be minted at the moment of the click,
+ * never served from cache.
+ */
+export function useOpenStudentDocument(id: number) {
+  return useMutation({
+    mutationFn: (document: StudentDocumentType) => fetchStudentDocumentLink(id, document),
+    onSuccess: ({ url }) => {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    },
+    onError: () => toast.error('Could not open the file. Please try again.'),
   });
 }
 

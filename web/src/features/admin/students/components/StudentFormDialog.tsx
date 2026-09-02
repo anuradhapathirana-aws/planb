@@ -7,15 +7,18 @@ import {
   CalendarDays,
   CreditCard,
   Factory,
+  FileText,
   GraduationCap,
   IdCard,
   Image as ImageIcon,
   Loader2,
   Mail,
   MapPin,
+  Paperclip,
   Phone,
   UploadCloud,
   User,
+  Video,
   X,
 } from 'lucide-react';
 import {
@@ -33,25 +36,38 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { FormSection } from '@/components/shared/FormSection';
 import { FieldLabel, FieldError } from '@/components/shared/FormField';
 import { SegmentedToggle } from '@/components/shared/SegmentedToggle';
+import { StudentDocumentField } from '@/features/admin/students/components/StudentDocumentField';
 import {
   latestAllowedDateOfBirth,
   studentFormSchema,
   toDateInputValue,
+  validateStudentDocument,
+  PROFILE_VIDEO_GUIDE_MINUTES,
+  type StudentDocumentKind,
   type StudentFormSchema,
 } from '@/features/admin/students/studentSchema';
 import {
   useCreateStudent,
+  useDeleteStudentCv,
   useDeleteStudentPhoto,
+  useDeleteStudentProfileVideo,
   useNextStudentId,
+  useOpenStudentDocument,
   useUpdateStudent,
+  useUploadStudentCv,
   useUploadStudentPhoto,
+  useUploadStudentProfileVideo,
 } from '@/features/admin/students/hooks/useStudents';
-import { uploadStudentPhoto as uploadStudentPhotoApi } from '@/api/students.api';
+import {
+  uploadStudentCv as uploadStudentCvApi,
+  uploadStudentPhoto as uploadStudentPhotoApi,
+  uploadStudentProfileVideo as uploadStudentProfileVideoApi,
+} from '@/api/students.api';
 import { useActiveIndustries } from '@/features/admin/industries/hooks/useIndustries';
 import { useActiveProfessionsByIndustry } from '@/features/admin/professions/hooks/useProfessions';
 import { applyServerValidationErrors } from '@shared/lib/serverErrors';
 import { cn } from '@/lib/utils';
-import type { Student } from '@shared/types/student';
+import type { Student, StudentDocument } from '@shared/types/student';
 
 interface StudentFormDialogProps {
   open: boolean;
@@ -81,6 +97,11 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
   const updateStudent = useUpdateStudent(student?.id ?? 0);
   const uploadPhoto = useUploadStudentPhoto(student?.id ?? 0);
   const deletePhoto = useDeleteStudentPhoto(student?.id ?? 0);
+  const uploadCv = useUploadStudentCv(student?.id ?? 0);
+  const deleteCv = useDeleteStudentCv(student?.id ?? 0);
+  const uploadProfileVideo = useUploadStudentProfileVideo(student?.id ?? 0);
+  const deleteProfileVideo = useDeleteStudentProfileVideo(student?.id ?? 0);
+  const openDocument = useOpenStudentDocument(student?.id ?? 0);
   const nextStudentId = useNextStudentId(open && !isEditing);
   const mutation = isEditing ? updateStudent : createStudent;
 
@@ -93,6 +114,14 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
   // uploaded once "Add student" creates the record.
   const [stagedPhotoFile, setStagedPhotoFile] = useState<File | null>(null);
   const [stagedPhotoPreview, setStagedPhotoPreview] = useState<string | null>(null);
+  // CV and profile video follow the photo exactly: staged on create, uploaded
+  // immediately on edit. `saved*` mirrors what the server holds so a removal or
+  // replacement shows straight away rather than waiting on a refetch.
+  const [savedCv, setSavedCv] = useState<StudentDocument | null>(null);
+  const [savedProfileVideo, setSavedProfileVideo] = useState<StudentDocument | null>(null);
+  const [stagedCv, setStagedCv] = useState<File | null>(null);
+  const [stagedProfileVideo, setStagedProfileVideo] = useState<File | null>(null);
+  const [documentErrors, setDocumentErrors] = useState<Partial<Record<StudentDocumentKind, string>>>({});
 
   const {
     register,
@@ -136,6 +165,11 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
           : { student_id: '', visa_status: 'visit' },
       );
       setLocalPhotoUrl(student?.profile_photo_url ?? null);
+      setSavedCv(student?.cv ?? null);
+      setSavedProfileVideo(student?.profile_video ?? null);
+      setStagedCv(null);
+      setStagedProfileVideo(null);
+      setDocumentErrors({});
       setStagedPhotoFile(null);
       setStagedPhotoPreview((prev) => {
         if (prev) URL.revokeObjectURL(prev);
@@ -200,6 +234,40 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
     }
   };
 
+  const handleDocumentSelected = (kind: StudentDocumentKind, file: File) => {
+    const message = validateStudentDocument(kind, file);
+    setDocumentErrors((prev) => ({ ...prev, [kind]: message ?? undefined }));
+    if (message) return;
+
+    if (!isEditing) {
+      if (kind === 'cv') setStagedCv(file);
+      else setStagedProfileVideo(file);
+      return;
+    }
+
+    if (kind === 'cv') {
+      uploadCv.mutate(file, { onSuccess: (data) => setSavedCv(data.cv) });
+    } else {
+      uploadProfileVideo.mutate(file, { onSuccess: (data) => setSavedProfileVideo(data.profile_video) });
+    }
+  };
+
+  const handleDocumentRemoved = (kind: StudentDocumentKind) => {
+    setDocumentErrors((prev) => ({ ...prev, [kind]: undefined }));
+
+    if (!isEditing) {
+      if (kind === 'cv') setStagedCv(null);
+      else setStagedProfileVideo(null);
+      return;
+    }
+
+    if (kind === 'cv') {
+      deleteCv.mutate(undefined, { onSuccess: (data) => setSavedCv(data.cv) });
+    } else {
+      deleteProfileVideo.mutate(undefined, { onSuccess: (data) => setSavedProfileVideo(data.profile_video) });
+    }
+  };
+
   /** Surfaces a failed save under the field the backend rejected. */
   const handleServerError = (error: unknown) => {
     const { unmatched } = applyServerValidationErrors(error, setError, STUDENT_FIELD_NAMES);
@@ -226,14 +294,40 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
     setIsFinalizing(true);
     createStudent.mutate(payload, {
       onSuccess: async (created) => {
+        // The record has to exist before anything can be attached to it, so the
+        // staged files go up afterwards — one at a time, so a slow video upload
+        // never competes with the others for bandwidth.
+        const staged: Array<{ label: string; upload: () => Promise<unknown> }> = [];
         if (stagedPhotoFile) {
+          staged.push({ label: 'photo', upload: () => uploadStudentPhotoApi(created.id, stagedPhotoFile) });
+        }
+        if (stagedCv) {
+          staged.push({ label: 'CV', upload: () => uploadStudentCvApi(created.id, stagedCv) });
+        }
+        if (stagedProfileVideo) {
+          staged.push({
+            label: 'profile video',
+            upload: () => uploadStudentProfileVideoApi(created.id, stagedProfileVideo),
+          });
+        }
+
+        const failed: string[] = [];
+        for (const item of staged) {
           try {
-            await uploadStudentPhotoApi(created.id, stagedPhotoFile);
-            queryClient.invalidateQueries({ queryKey: ['students'] });
+            await item.upload();
           } catch {
-            toast.error('Student saved, but the photo could not be uploaded. Add it from the student’s profile.');
+            failed.push(item.label);
           }
         }
+
+        if (staged.length > 0) queryClient.invalidateQueries({ queryKey: ['students'] });
+        if (failed.length > 0) {
+          toast.error(
+            `Student saved, but the ${failed.join(' and ')} could not be uploaded. ` +
+              `Add ${failed.length > 1 ? 'them' : 'it'} from the student’s profile.`,
+          );
+        }
+
         setIsFinalizing(false);
         onOpenChange(false);
       },
@@ -246,7 +340,9 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
 
   const displayPhotoUrl = isEditing ? localPhotoUrl : stagedPhotoPreview;
   const photoBusy = uploadPhoto.isPending || deletePhoto.isPending;
-  const busy = mutation.isPending || isFinalizing;
+  const cvBusy = uploadCv.isPending || deleteCv.isPending;
+  const profileVideoBusy = uploadProfileVideo.isPending || deleteProfileVideo.isPending;
+  const busy = mutation.isPending || isFinalizing || cvBusy || profileVideoBusy;
   const displayStudentId = isEditing ? student.student_id : (nextStudentId.data ?? (nextStudentId.isError ? '—' : 'Loading…'));
 
   return (
@@ -500,6 +596,47 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
                 />
                 <FieldError message={errors.profession_id?.message} />
               </div>
+            </FormSection>
+
+            {/* Documents — both are private files, read back only through a signed link. */}
+            <FormSection icon={Paperclip} title="Documents">
+              <StudentDocumentField
+                label="CV"
+                icon={FileText}
+                accept="application/pdf,.pdf"
+                hint="PDF, up to 5MB"
+                fileName={isEditing ? (savedCv?.has_file ? savedCv.file_name : null) : (stagedCv?.name ?? null)}
+                fileSizeBytes={isEditing ? savedCv?.file_size_bytes : (stagedCv?.size ?? null)}
+                busy={cvBusy}
+                error={documentErrors.cv}
+                onOpen={isEditing && savedCv?.has_file ? () => openDocument.mutate('cv') : undefined}
+                opening={openDocument.isPending && openDocument.variables === 'cv'}
+                onSelect={(file) => handleDocumentSelected('cv', file)}
+                onRemove={() => handleDocumentRemoved('cv')}
+              />
+
+              <StudentDocumentField
+                label="Profile video"
+                icon={Video}
+                accept="video/mp4,video/quicktime,.mp4,.mov"
+                hint={`MP4 or MOV, about ${PROFILE_VIDEO_GUIDE_MINUTES} minutes, up to 10MB`}
+                fileName={
+                  isEditing
+                    ? (savedProfileVideo?.has_file ? savedProfileVideo.file_name : null)
+                    : (stagedProfileVideo?.name ?? null)
+                }
+                fileSizeBytes={
+                  isEditing ? savedProfileVideo?.file_size_bytes : (stagedProfileVideo?.size ?? null)
+                }
+                busy={profileVideoBusy}
+                error={documentErrors['profile-video']}
+                onOpen={
+                  isEditing && savedProfileVideo?.has_file ? () => openDocument.mutate('profile-video') : undefined
+                }
+                opening={openDocument.isPending && openDocument.variables === 'profile-video'}
+                onSelect={(file) => handleDocumentSelected('profile-video', file)}
+                onRemove={() => handleDocumentRemoved('profile-video')}
+              />
             </FormSection>
           </div>
 
