@@ -30,11 +30,18 @@ class StudentServicePurchaseResource extends JsonResource
             // Frozen at purchase time, so a later rename cannot rewrite what the
             // student remembers buying.
             'title' => $this->title_snapshot,
-            'service' => $this->whenLoaded('service', fn () => [
+            'service' => $this->whenLoaded('service', fn () => $this->service ? [
                 'id' => $this->service->id,
                 'name' => $this->service->name,
                 'thumbnail_url' => $this->service->thumbnail_url,
-            ]),
+                /*
+                 * Whether the catalogue entry can still be opened. A service the
+                 * admin has since withdrawn or unpublished still has to appear
+                 * here — it was paid for — but a client that linked to it would
+                 * land on a 404, so it says so rather than making the app guess.
+                 */
+                'is_available' => $this->service->isPurchasable(),
+            ] : null),
             'order' => $this->whenLoaded('order', fn () => [
                 'id' => $this->order->id,
                 'order_number' => $this->order->order_number,

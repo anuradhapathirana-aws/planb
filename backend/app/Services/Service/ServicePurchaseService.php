@@ -201,11 +201,22 @@ class ServicePurchaseService
             ->withQueryString();
     }
 
-    /** What a student sees under "My services". Newest first. */
+    /**
+     * What a student sees under "My services". Newest first.
+     *
+     * The service is loaded `withTrashed()`: one the admin has since withdrawn
+     * still has to appear here, because the student paid for it and the work is
+     * still owed. `title_snapshot` covers the wording either way; the Resource
+     * reports whether the catalogue entry can still be opened.
+     */
     public function listForStudent(Student $student, mixed $perPage = null): LengthAwarePaginator
     {
         return ServicePurchase::where('student_id', $student->id)
-            ->with(['service:id,name', 'service.media', 'order:id,order_number,amount_cents,currency,status,paid_at'])
+            ->with([
+                'service' => fn ($service) => $service->withTrashed()->select(['id', 'name', 'status', 'deleted_at']),
+                'service.media',
+                'order:id,order_number,amount_cents,currency,status,paid_at',
+            ])
             ->orderByDesc('id')
             ->paginate($this->perPage($perPage));
     }

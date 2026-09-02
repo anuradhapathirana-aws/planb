@@ -75,7 +75,14 @@ export function useCheckout(orderId: number) {
     }
   }, []);
 
-  /* The webhook landed: the course is now open, so every cached view of it is stale. */
+  /*
+   * The webhook landed. What that unlocked depends on what was bought — a
+   * course opens, a service becomes a job Plan B has started — so every cached
+   * view of either goes stale. Invalidating both regardless is cheaper than
+   * branching on the product type: these are small, rarely-changing lists, and
+   * an over-invalidation costs one refetch while a missed one leaves a student
+   * looking at a screen that still says they have not paid.
+   */
   useEffect(() => {
     if (!isPaid) return;
 
@@ -83,6 +90,9 @@ export function useCheckout(orderId: number) {
     setPhase('idle');
     void queryClient.invalidateQueries({ queryKey: ['courses'] });
     void queryClient.invalidateQueries({ queryKey: ['orders'] });
+    void queryClient.invalidateQueries({ queryKey: ['services'] });
+    void queryClient.invalidateQueries({ queryKey: ['service'] });
+    void queryClient.invalidateQueries({ queryKey: ['service-purchases'] });
   }, [isPaid, clearTimer]);
 
   /* Stop waiting eventually, and say so honestly rather than spinning forever. */

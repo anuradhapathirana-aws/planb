@@ -29,8 +29,17 @@ export interface StudentServiceSummary {
 }
 
 export interface StudentServiceDetail extends StudentServiceSummary {
-  /** Sanitized HTML. Render through DOMPurify (CLAUDE.md §7.6). */
+  /**
+   * Sanitized HTML. The mobile app renders it through its own allowlist parser
+   * (`mobile/src/lib/parseHtml.ts`); a web client needs DOMPurify (CLAUDE.md §7.6).
+   */
   description: string | null;
+  /**
+   * This student's own most recent purchase of this service, or null — scoped to
+   * the caller on the server, never "the latest purchase". It is what the
+   * delivery tracker is drawn from, so the detail screen needs no second request.
+   */
+  latest_purchase: StudentServicePurchase | null;
 }
 
 export interface StudentServicePurchase {
@@ -39,7 +48,17 @@ export interface StudentServicePurchase {
   is_open: boolean;
   /** Frozen at purchase time — a later rename cannot rewrite what was bought. */
   title: string;
-  service?: { id: number; name: string; thumbnail_url: string | null };
+  service?: {
+    id: number;
+    name: string;
+    thumbnail_url: string | null;
+    /**
+     * Whether the catalogue entry can still be opened. False once the admin has
+     * withdrawn or unpublished it — the purchase stays (it was paid for), but
+     * linking to the service would land on a 404.
+     */
+    is_available: boolean;
+  } | null;
   order?: {
     id: number;
     order_number: string;

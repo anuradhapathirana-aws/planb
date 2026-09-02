@@ -351,9 +351,9 @@ Support Agent, not Content Manager, works the queue: authoring a service is cont
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | GET | `/student/services` | student | Published services only. Query: `search, per_page` (max 50). Each row carries `has_open_purchase` / `open_purchase_status` — **presentation**, so the app can show "In progress" instead of a Buy button that would 422. |
-| GET | `/student/services/{service}` | student | Adds the long `description`. A draft or deleted service **404s** — the published scope is the authorization, not a UI filter. |
+| GET | `/student/services/{service}` | student | Adds the long `description` and `latest_purchase` — **this student's own** most recent purchase, or null, so the app's delivery tracker needs no second request. A draft or deleted service **404s**: the published scope is the authorization, not a UI filter. |
 | POST | `/student/services/{service}/purchase` | student | Opens (or reuses) an order and returns `{ status: "payment_required", order }`. The order is then paid through the ordinary `/student/orders/{order}/card` or `/bank-transfer` endpoints. **Refused with 422 while an earlier purchase of the same service is still `pending` or `in_progress`** — a student may buy a service again, but only once the last one is finished. Rate-limited 20/min. |
-| GET | `/student/service-purchases` | student | "My services". Scoped to the caller; never carries `admin_note` or `handled_by`. |
+| GET | `/student/service-purchases` | student | "My services". Scoped to the caller; never carries `admin_note` or `handled_by`. The service is loaded `withTrashed()` — one the admin has since withdrawn still appears, because it was paid for and the work is still owed — and `service.is_available` says whether the catalogue entry can still be opened, so a client never links into a 404. |
 
 Paying settles through the same webhook as a course. `settleOrder` resolves the product `withTrashed()`, so a service withdrawn between checkout and callback is still fulfilled — the student paid for it.
 

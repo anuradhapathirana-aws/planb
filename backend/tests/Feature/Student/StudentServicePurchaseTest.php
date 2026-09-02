@@ -106,7 +106,50 @@ class StudentServicePurchaseTest extends TestCase
         $this->getJson("/api/v1/student/services/{$this->service->id}")
             ->assertOk()
             ->assertJsonPath('data.id', $this->service->id)
+            ->assertJsonPath('data.latest_purchase', null)
             ->assertJsonStructure(['data' => ['id', 'name', 'summary', 'description', 'price_cents', 'currency']]);
+    }
+
+    /** The app draws its delivery tracker from this, so it must not need a second request. */
+    public function test_the_detail_response_carries_this_students_latest_purchase(): void
+    {
+        ServicePurchase::factory()->create([
+            'student_id' => $this->student->id,
+            'service_id' => $this->service->id,
+        ]);
+
+        $this->getJson("/api/v1/student/services/{$this->service->id}")
+            ->assertOk()
+            ->assertJsonPath('data.latest_purchase.status', 'pending')
+            ->assertJsonPath('data.latest_purchase.is_open', true);
+    }
+
+    /** Scoped to the caller — never "the latest purchase" of anybody's. */
+    public function test_another_students_purchase_never_appears_on_the_detail(): void
+    {
+        ServicePurchase::factory()->create(['service_id' => $this->service->id]);
+
+        $this->getJson("/api/v1/student/services/{$this->service->id}")
+            ->assertOk()
+            ->assertJsonPath('data.latest_purchase', null);
+    }
+
+    /** A withdrawn service still has to show up: it was paid for and is still owed. */
+    public function test_a_purchase_survives_its_service_being_withdrawn(): void
+    {
+        ServicePurchase::factory()->create([
+            'student_id' => $this->student->id,
+            'service_id' => $this->service->id,
+            'title_snapshot' => 'CV Writing',
+        ]);
+
+        $this->service->delete();
+
+        $this->getJson('/api/v1/student/service-purchases')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.title', 'CV Writing')
+            ->assertJsonPath('data.0.service.is_available', false);
     }
 
     /*

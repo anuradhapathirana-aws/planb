@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { GraduationCap, Home, ListChecks, User } from 'lucide-react-native';
+import { GraduationCap, Home, ListChecks, Sparkles, User } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,11 +7,17 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, MIN_TOUCH_TARGET } from '@shared/theme/tokens';
 
 /**
- * Four tabs, not the five root CLAUDE.md §8 reserves.
+ * Five tabs, which is the cap root CLAUDE.md §8 sets — Home, Courses, Services,
+ * Checklists, Profile.
  *
- * Jobs has no backend yet, and a tab that opens onto "coming soon" is a support
- * ticket and a bad first impression. The bar is a flex row — adding it later
- * reflows nothing.
+ * Jobs is the one the SRS names that is missing, and it stays missing until it
+ * has a backend: a tab that opens onto "coming soon" is a support ticket and a
+ * bad first impression. There is no room for it now anyway, so when it arrives
+ * something has to give rather than a sixth being squeezed in.
+ *
+ * Services sits directly after Courses because the two are the same kind of
+ * thing to a student — something Plan B sells them — and grouping them keeps
+ * the bar's left half "what I can buy" and its right half "my own stuff".
  */
 export default function TabsLayout() {
   const { t } = useTranslation();
@@ -58,6 +64,13 @@ export default function TabsLayout() {
         options={{
           title: t('courses.title'),
           tabBarIcon: ({ color, size }) => <GraduationCap size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="services"
+        options={{
+          title: t('services.title'),
+          tabBarIcon: ({ color, size }) => <Sparkles size={size} color={color} />,
         }}
       />
       <Tabs.Screen

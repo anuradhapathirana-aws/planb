@@ -18,9 +18,23 @@ class StudentServiceDetailResource extends JsonResource
     public function toArray(Request $request): array
     {
         return (new StudentServiceSummaryResource($this->resource))->toArray($request) + [
-            // Sanitized when the admin saved it. Still rendered through
-            // DOMPurify on the client (root CLAUDE.md §7.6).
+            // Sanitized when the admin saved it. The mobile app renders it
+            // through its own allowlist parser; a web client needs DOMPurify
+            // (root CLAUDE.md §7.6).
             'description' => $this->description,
+
+            /*
+             * This student's own most recent purchase, or null. It is what the
+             * app draws its delivery tracker from, so the detail screen needs no
+             * second request. Scoped to the caller in
+             * `StudentServiceCatalogService`, never to "the latest purchase".
+             */
+            'latest_purchase' => $this->whenLoaded(
+                'latestPurchase',
+                fn () => $this->latestPurchase
+                    ? new StudentServicePurchaseResource($this->latestPurchase)
+                    : null,
+            ),
         ];
     }
 }

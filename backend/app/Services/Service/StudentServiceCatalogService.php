@@ -60,7 +60,27 @@ class StudentServiceCatalogService
      */
     public function findPublishedOrFail(Student $student, string|int $id): Service
     {
-        return $this->baseQuery($student)->findOrFail($id);
+        $service = $this->baseQuery($student)->findOrFail($id);
+
+        /*
+         * The student's own most recent purchase of this service, so the detail
+         * screen can draw its delivery tracker without a second request and
+         * without cross-referencing a list the student may never have opened.
+         *
+         * Set as a relation rather than declared as a `HasOne` on the model: a
+         * relation cannot take the student as a parameter, and one that quietly
+         * returned *somebody's* latest purchase would be exactly the wrong bug
+         * to have here.
+         */
+        $service->setRelation(
+            'latestPurchase',
+            ServicePurchase::where('student_id', $student->id)
+                ->where('service_id', $service->id)
+                ->latest('id')
+                ->first(),
+        );
+
+        return $service;
     }
 
     /** @return Builder<Service> */

@@ -31,12 +31,17 @@ export interface StudentOrder {
   /** What was bought, frozen at purchase time — a later price change can't rewrite history. */
   title: string;
   /**
-   * What was bought, in terms the app can act on — it opens the course once the
-   * payment lands. `type` is a public token, never the backend's class name, so
-   * a premium service slots in here without a new order shape.
+   * What was bought, in terms the app can act on — it opens the course, or the
+   * service, once the payment lands. `type` is a public token, never the
+   * backend's class name, so adding a product type does not change the order
+   * shape or break an app already installed.
+   *
+   * `null` means this build does not know the token, which is exactly what an
+   * older app sees after a new product type ships. Treat it as "show the order,
+   * offer no shortcut", never as an error.
    */
   item: {
-    type: 'course' | null;
+    type: 'course' | 'service' | null;
     id: number;
   };
   amount_cents: number;

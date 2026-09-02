@@ -38,7 +38,11 @@ type Method = 'card' | 'bank';
  */
 export default function CheckoutScreen() {
   const { t } = useTranslation();
-  const { orderId, courseId } = useLocalSearchParams<{ orderId: string; courseId?: string }>();
+  const { orderId, courseId, serviceId } = useLocalSearchParams<{
+    orderId: string;
+    courseId?: string;
+    serviceId?: string;
+  }>();
 
   const {
     order,
@@ -57,12 +61,25 @@ export default function CheckoutScreen() {
   const [method, setMethod] = useState<Method>(canPayByCard ? 'card' : 'bank');
 
   /*
-   * The course to open once this is paid. Prefer what the order itself says —
-   * the student may have arrived from their payment history rather than from
-   * the course — and fall back to the id the enrol flow passed through.
+   * What to open once this is paid.
+   *
+   * The order itself is preferred over the id the caller passed through: the
+   * student may have arrived from their payment history rather than from the
+   * product, and `item.type` is the server's own word for what was bought
+   * (`"course"` / `"service"`), never the backend's class name.
    */
   const purchasedCourseId =
     order?.item.type === 'course' ? order.item.id : courseId ? Number(courseId) : null;
+
+  const purchasedServiceId =
+    order?.item.type === 'service' ? order.item.id : serviceId ? Number(serviceId) : null;
+
+  /*
+   * A course unlocks the moment it is paid; a service is work that has not
+   * started yet. Telling a student their service is "unlocked" would promise
+   * something that has not happened.
+   */
+  const isService = order?.item.type === 'service' || (!purchasedCourseId && purchasedServiceId !== null);
 
   const amount = order ? formatMoney(order.amount_cents, order.currency) : '';
   const isPayable = order?.status === 'pending' || order?.status === 'failed';
@@ -130,7 +147,8 @@ export default function CheckoutScreen() {
             </View>
           </Card>
 
-          {/* Paid. The only thing left to say is "go and learn". */}
+          {/* Paid. What follows differs by product: a course opens, a service
+              joins a queue somebody has to work through. */}
           {isPaid && (
             <Card className="items-center p-5">
               <View className="h-14 w-14 items-center justify-center rounded-full bg-success-soft">
@@ -141,23 +159,38 @@ export default function CheckoutScreen() {
                 {t('payment.paidTitle')}
               </Text>
               <Text variant="caption" className="mt-1.5 text-center leading-5">
-                {t('payment.paidBody')}
+                {isService ? t('payment.paidBodyService') : t('payment.paidBody')}
               </Text>
 
-              {purchasedCourseId !== null && (
-                <Button
-                  label={t('payment.startLearning')}
-                  size="lg"
-                  fullWidth
-                  className="mt-5"
-                  onPress={() =>
-                    router.replace({
-                      pathname: '/course/[id]',
-                      params: { id: purchasedCourseId },
-                    })
-                  }
-                />
-              )}
+              {isService
+                ? purchasedServiceId !== null && (
+                    <Button
+                      label={t('payment.viewService')}
+                      size="lg"
+                      fullWidth
+                      className="mt-5"
+                      onPress={() =>
+                        router.replace({
+                          pathname: '/service/[id]',
+                          params: { id: purchasedServiceId },
+                        })
+                      }
+                    />
+                  )
+                : purchasedCourseId !== null && (
+                    <Button
+                      label={t('payment.startLearning')}
+                      size="lg"
+                      fullWidth
+                      className="mt-5"
+                      onPress={() =>
+                        router.replace({
+                          pathname: '/course/[id]',
+                          params: { id: purchasedCourseId },
+                        })
+                      }
+                    />
+                  )}
             </Card>
           )}
 

@@ -22,6 +22,8 @@ import { CourseSearchResults } from '@/features/home/CourseSearchResults';
 import { HeroBanner } from '@/features/home/HeroBanner';
 import { HomeHeader } from '@/features/home/HomeHeader';
 import { useCourseSearch } from '@/features/home/useCourseSearch';
+import { ActiveServicesStrip } from '@/features/services/ActiveServicesStrip';
+import { openPurchases, useServicePurchases } from '@/features/services/useServices';
 import { useAuthStore } from '@/stores/authStore';
 
 /**
@@ -58,11 +60,20 @@ export default function HomeScreen() {
   const courses = useQuery({ queryKey: ['courses'], queryFn: () => fetchCourses() });
   const banner = useQuery({ queryKey: ['home-banner'], queryFn: fetchHomeBanner });
 
+  /*
+   * Shared with the Services tab rather than fetched for Home alone, so opening
+   * that tab costs no request. The strip below renders nothing when nothing is
+   * in flight, so this never buys dead space — and it is never a loading state
+   * either: Home must not wait on it.
+   */
+  const servicePurchases = useServicePurchases();
+  const activeServices = openPurchases(servicePurchases.data?.data);
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([courses.refetch(), banner.refetch()]);
+    await Promise.all([courses.refetch(), banner.refetch(), servicePurchases.refetch()]);
     setRefreshing(false);
-  }, [courses, banner]);
+  }, [courses, banner, servicePurchases]);
 
   const all = useMemo(() => courses.data?.data ?? [], [courses.data]);
 
@@ -131,6 +142,10 @@ export default function HomeScreen() {
         }
       >
         <HeroBanner banner={banner.data} loading={banner.isLoading} />
+
+        {/* Above the catalogue on purpose: what the student is already waiting
+            on outranks what they might browse next. */}
+        <ActiveServicesStrip purchases={activeServices} />
 
         <View className="flex-row items-center justify-between">
           <Text variant="title">{t('courses.title')}</Text>
