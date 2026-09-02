@@ -51,7 +51,22 @@ export interface StudentCourseSummary {
   is_enrolled: boolean;
   topics_count: number;
   videos_count: number;
+  /**
+   * Total run time of every lesson, in seconds. 0 when no lesson has a duration
+   * recorded — render nothing rather than "0m" in that case.
+   */
+  total_duration_seconds: number;
   has_paper: boolean;
+  /** ISO 8601. When the course FIRST went live — never refreshed on a republish. */
+  published_at: string | null;
+  /** Published within the last 30 days (`CourseProgramme::NEW_FOR_DAYS`). */
+  is_new: boolean;
+  /**
+   * Only present on a search response, and only when the course's own name did
+   * NOT match — it is the topic title that put this row in the results, so the
+   * UI can explain why "Labour Law Basics" came back for "visa".
+   */
+  matched_topic?: string | null;
   progress: ProgrammeProgress;
 }
 
@@ -62,7 +77,18 @@ export interface StudentCourseDetail extends StudentCourseSummary {
 }
 
 export interface StudentCourseListFilters {
+  /** Matched against the course name AND its topic titles, server-side. */
   search?: string;
   per_page?: number;
   page?: number;
 }
+
+/**
+ * The three filters the Home search dropdown offers over its results.
+ *
+ * `unfinished` is a SUBSET of `enrolled`, not a sibling — these are filters over
+ * one result set, not a partition of it. `available` is everything not enrolled,
+ * at any age; `is_new` is a badge on the row rather than a filter, so an older
+ * course the student has not bought stays findable.
+ */
+export type CourseSearchTab = 'available' | 'enrolled' | 'unfinished';

@@ -84,7 +84,7 @@ export default function SignInScreen() {
         </View>
 
         {/* Form sheet */}
-        <View className="flex-1 rounded-t-[28px] bg-background px-6 pt-8">
+        <View className="flex-1 rounded-t-[16px] bg-background px-6 pt-8">
           <Input
             label={t('auth.emailLabel')}
             placeholder={t('auth.emailPlaceholder')}

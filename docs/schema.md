@@ -113,6 +113,8 @@ FR-ADM-008. A **Course Programme** is one learning programme inside a category �
 
 Course art: **Spatie Media Library**, collection `thumbnail`, single-file, public disk. Optional — a programme without one is normal, and `thumbnail_url` is null. Re-encoded with Intervention Image (1280×720 cover crop, JPEG) before storage per CLAUDE.md §7.4, so it always matches the lesson-thumbnail ratio. No column: the URL is derived from the media record.
 
+**`published_at`** (nullable timestamp, indexed with `status`) records when a course FIRST went live. `status` alone is a flag with no history, so it cannot answer "what is new?" — the app's Home search needs that for its Available tab's NEW badge. Stamped by `CourseProgrammeService::publish()` on the first publish only and never refreshed: an admin who unpublishes to fix a lesson and republishes a week later has not created a new course, and it must not jump back to the top of every student's list. Kept out of `$fillable` so no admin form can backdate a course into the badge. Existing rows were backfilled from `created_at` (not `updated_at`, which moves on every typo fix and would have made old courses look new).
+
 ## `course_topics`
 
 FR-ADM-008a. A learning unit inside a programme, holding one or more videos (and — in a later pass — exactly one assessment, FR-ADM-008c).
@@ -199,7 +201,7 @@ The **arrival checklists** a student works through in the app — one row per st
 
 **The phase is a PHP enum (`App\Enums\ChecklistPhase`), not a table.** The client's process has exactly two stages, and the student app renders them as two fixed tabs, so an admin-managed "checklist groups" table would have been a second CRUD screen maintaining data that never changes. Adding a third phase later is a migration plus one enum case.
 
-There is **no `is_active` flag and no soft delete**: a phase is saved as one document (the admin edits the whole list, reorders it and saves once), and an item dropped from that list is deleted. Student tick-off progress is not built yet — see *Deferred* below — and will need a `student_checklist_items` table plus a decision on what happens to progress when an item is removed.
+There is **no `is_active` flag and no soft delete**: a phase is saved as one document (the admin edits the whole list, reorders it and saves once), and an item dropped from that list is deleted. A student's tick-off progress lives in `student_checklist_items` and **cascades away with the item** — a step the admin has removed is no longer part of the process, so a record of having done it is noise, not history.
 
 | Column | Type | Notes |
 |---|---|---|
@@ -209,6 +211,49 @@ There is **no `is_active` flag and no soft delete**: a phase is saved as one doc
 | description | text, nullable | **Sanitized HTML** from the same rich-text editor as topic descriptions, so a step can carry sub-steps and links. Cleaned by `App\Support\HtmlSanitizer` on write. Null when the admin wrote nothing. |
 | sort_order | unsignedInteger, default 0 | Position within the phase. Set from the submitted array's index — the admin never types an order. |
 | created_at / updated_at | timestamps | |
+
+## `student_checklist_items`
+
+Which arrival-checklist steps a student has ticked off. One row per (student, step). Written only by `App\Services\Checklist\StudentChecklistService`; the admin's authoring service never touches it.
+
+**The row survives an un-tick** — `completed_at` goes back to null rather than the row being deleted. That keeps the one genuinely useful fact here (when a student actually finished a step) and makes tick and un-tick the same idempotent upsert, so a request retried on a flaky connection lands on the same answer instead of flipping the state back.
+
+There is deliberately **no `phase` column**: the phase belongs to the step, and duplicating it here would let the two disagree the day an admin moves an item between phases.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | bigIncrements | |
+| student_id | FK → students, cascadeOnDelete | |
+| checklist_item_id | FK → checklist_items, cascadeOnDelete | An item dropped from a phase takes its progress with it. |
+| completed_at | timestamp, nullable | Null = the row exists but the step is not done (it was un-ticked). |
+| created_at / updated_at | timestamps | |
+
+`unique(student_id, checklist_item_id)` — also the index every read uses, and what makes a double tap a caught duplicate rather than two rows. `index(student_id, completed_at)`.
+
+Progress percentages are **computed, never stored**: `COUNT(completed) / COUNT(items in phase)`, the same reasoning as the deliberately-absent `student_topic_progress`. A stored counter would go stale the moment an admin adds a step.
+
+## `home_banners`
+
+The promo banner across the top of the student app's Home screen (`GET /student/home-banner`).
+
+**A singleton — exactly one row, managed by `App\Services\Settings\HomeBannerService`.** A list would have meant a CRUD screen, an ordering UI and a "which one is live?" question, to solve a problem the client does not have: there is one hero slot and one message in it at a time. Turning this into a rotating set later is a `sort_order` column and a list endpoint; guessing now is a second admin screen nobody asked for.
+
+The image is a **Media Library collection** (`banner`, single file, public disk), not a column — the file needs re-encoding to 1200×600 JPEG and a disk, neither of which a `string` path gives us. There is nothing to protect, so a signed URL would only add latency.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | bigIncrements | |
+| title | string(120), nullable | Headline overlaid on the image. Optional — an image alone is a fine banner. |
+| subtitle | string(200), nullable | Supporting line. Optional. |
+| link_type | string(32), default `none` | PHP enum `App\Enums\HomeBannerLink`: `none`, `courses`, `checklists`, `course`, `url`. |
+| link_course_programme_id | FK → course_programmes, nullable, nullOnDelete | Set only when `link_type` is `course`. Nulls itself out if the course is hard-deleted, and the student resource then degrades the banner to signage rather than sending anyone to a 404. |
+| link_url | string(2048), nullable | Set only when `link_type` is `url`. Validated `url:http,https`. |
+| is_active | boolean, default false | The off switch. An inactive banner keeps its image and wording so the same promo can come back without re-uploading. |
+| created_at / updated_at | timestamps | |
+
+**Only one link column is ever populated**, decided by `link_type` — the service clears the branch that no longer applies on every save, so switching from a course to a URL cannot leave a stale course id behind that would come back to life on the next switch.
+
+A banner that is `is_active` but has no image is **not served**: the endpoint answers `null` and the app renders its own branded fallback hero, rather than an empty box.
 
 ## `student_login_codes`
 
@@ -387,7 +432,6 @@ Idempotency and audit for gateway callbacks.
 
 ### Deferred (not built yet, referenced by future features)
 
-- Student checklist progress (`student_checklist_items`: which items a student has ticked, and when) — needs the student-facing checklist feature. `checklist_items` is authoring-only for now.
 - Payments (`Order`, `Payment`, `BankTransfer`) — Payment Gateway feature.
 - Premium service orders (`PremiumService`, `ServiceOrder`) — Premium Services feature.
 - Job posts — the admin sidebar reserves the section; only `industries` / `professions` exist.
@@ -407,5 +451,8 @@ Idempotency and audit for gateway callbacks.
 | 2026-08-24 | Added the Course Module content tables (FR-ADM-008/008a/008b): `course_categories`, `course_programmes`, `course_topics`, `course_videos`. Hierarchy is Category → Programme → Topic → Video, with the SRS's 8 phases (Appendix A) modelled as 8 programmes under one category. Video files and thumbnails are Media Library collections, not columns. Assessments (FR-ADM-008c) and student progress are still deferred. |
 | 2026-08-15 | `full_name`, `contact_number`, `address`, `date_of_birth`, `visa_status`, `industry_id`, `profession_id` are now required on the admin Add/Edit student form (client-requested; columns stay DB-nullable for CSV import / not-yet-self-registered students). |
 | 2026-08-25 | Added `checklist_items` — the Before Arrival / After Arrival checklists. Phase is a fixed PHP enum rather than an admin-managed table; each phase is saved whole, so `sort_order` comes from the submitted array's position. Student tick-off progress is still deferred. |
+| 2026-09-01 | Added `course_programmes.published_at` (nullable, indexed with `status`) — when a course first went live, for the Home search's NEW badge. Stamped once on first publish and never refreshed; backfilled from `created_at`. |
+| 2026-09-01 | Added `home_banners` — the student app's Home hero, a singleton the admin edits under Settings. Image is a Media Library collection; the link target is a fixed enum plus one typed column per branch, so a deleted course nulls itself out instead of leaving a dead id in a text field. |
+| 2026-09-01 | Added `student_checklist_items` — the student's ticks against the arrival checklists (FR-MOB-030), unblocking the mobile Checklists tab. The row is kept and `completed_at` nulled on an un-tick rather than deleted, so tick/un-tick is one idempotent upsert and the completion date survives. Phase progress stays computed. |
 | 2026-08-25 | Added the student learning tables: `student_video_progress` and `student_programme_progress` (FR-MOB-020/025/027), `course_paper_attempts` and `course_paper_answers` (FR-MOB-024/025). `student_topic_progress` deliberately omitted — see above. Several index names are set explicitly because the generated ones exceed MySQL's 64-character limit. |
 | 2026-08-25 | **Students became authenticatable** for the mobile app. Added `students.email_verified_at` and `students.google_sub` (nullable, unique — Google's stable subject id, so changing the address on a Google account doesn't orphan the record), and the new `student_login_codes` table. No password column and no phone/SMS column: sign-in is an emailed one-time code or Google. `App\Models\Student` now extends `Foundation\Auth\User` with `HasApiTokens`; `config/auth.php` gained a `students` provider plus `sanctum` (provider `users`) and `student` (provider `students`) guards. |

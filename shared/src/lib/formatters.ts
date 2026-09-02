@@ -63,6 +63,33 @@ export function formatDuration(seconds: number | null | undefined): string {
 }
 
 /**
+ * "5h 15m" / "45m" — a whole course's run time, for a catalogue row.
+ *
+ * Distinct from `formatDuration` above, which renders a *player* position as
+ * "8:05". A clock reading is right when you are scrubbing a lesson and wrong
+ * when you are deciding whether a course fits into a weekend.
+ *
+ * Returns '' for nothing, so a course whose lessons have no durations recorded
+ * renders no chip at all rather than a misleading "0m".
+ */
+export function formatCourseLength(seconds: number | null | undefined): string {
+  if (seconds == null || Number.isNaN(seconds) || seconds <= 0) return '';
+
+  const totalMinutes = Math.round(seconds / 60);
+
+  // Anything at all should read as at least a minute — "0m" on a real lesson
+  // looks broken.
+  if (totalMinutes < 1) return '1m';
+
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (hours === 0) return `${minutes}m`;
+
+  return minutes === 0 ? `${hours}h` : `${hours}h ${minutes}m`;
+}
+
+/**
  * Money for display. Amounts are stored in the smallest unit as integers
  * (root CLAUDE.md §4.11), so this is the only place they become decimal —
  * nothing else should divide by 100.

@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { GraduationCap, Home, User } from 'lucide-react-native';
+import { GraduationCap, Home, ListChecks, User } from 'lucide-react-native';
 import { useTranslation } from 'react-i18next';
 import { Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,11 +7,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, MIN_TOUCH_TARGET } from '@shared/theme/tokens';
 
 /**
- * Three tabs, not the five root CLAUDE.md §8 reserves.
+ * Four tabs, not the five root CLAUDE.md §8 reserves.
  *
- * Checklists and Jobs have no backend yet, and a tab that opens onto "coming
- * soon" is a support ticket and a bad first impression. The bar is a flex row —
- * adding them later reflows nothing.
+ * Jobs has no backend yet, and a tab that opens onto "coming soon" is a support
+ * ticket and a bad first impression. The bar is a flex row — adding it later
+ * reflows nothing.
  */
 export default function TabsLayout() {
   const { t } = useTranslation();
@@ -58,6 +58,13 @@ export default function TabsLayout() {
         options={{
           title: t('courses.title'),
           tabBarIcon: ({ color, size }) => <GraduationCap size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="checklist"
+        options={{
+          title: t('checklist.title'),
+          tabBarIcon: ({ color, size }) => <ListChecks size={size} color={color} />,
         }}
       />
       <Tabs.Screen

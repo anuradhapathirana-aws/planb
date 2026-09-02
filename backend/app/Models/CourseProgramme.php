@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Contracts\Purchasable;
 use App\Enums\CourseStatus;
+use App\Services\Course\CourseProgrammeService;
 use Database\Factories\CourseProgrammeFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -34,12 +35,34 @@ class CourseProgramme extends Model implements HasMedia, Purchasable
         'sort_order',
     ];
 
+    /**
+     * How long a published course counts as "new" on the student app's Home
+     * search. A rolling window rather than the calendar month it stands in for:
+     * on the 1st, a calendar month would show an empty tab even though
+     * something shipped yesterday.
+     */
+    public const NEW_FOR_DAYS = 30;
+
     protected function casts(): array
     {
         return [
             'status' => CourseStatus::class,
             'price_cents' => 'integer',
+            'published_at' => 'datetime',
         ];
+    }
+
+    /**
+     * `published_at` is deliberately absent from `$fillable`: only
+     * {@see CourseProgrammeService::publish} writes it,
+     * so no admin form or mass-assignment can backdate a course into the "New"
+     * list.
+     */
+    public function isNewlyPublished(): bool
+    {
+        return $this->status === CourseStatus::Published
+            && $this->published_at !== null
+            && $this->published_at->greaterThanOrEqualTo(now()->subDays(self::NEW_FOR_DAYS));
     }
 
     /*

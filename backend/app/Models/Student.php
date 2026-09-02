@@ -116,6 +116,12 @@ class Student extends Authenticatable implements HasMedia
         return $this->hasMany(Enrolment::class);
     }
 
+    /** This student's arrival-checklist ticks. Null `completed_at` = not done. */
+    public function checklistProgress(): HasMany
+    {
+        return $this->hasMany(StudentChecklistItem::class);
+    }
+
     /** Courses this student has paid for (or been granted). */
     public function enrolledProgrammes(): BelongsToMany
     {

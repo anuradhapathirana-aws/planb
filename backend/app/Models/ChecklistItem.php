@@ -9,6 +9,7 @@ use Database\Factories\ChecklistItemFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ChecklistItem extends Model
 {
@@ -32,6 +33,19 @@ class ChecklistItem extends Model
         return [
             'phase' => ChecklistPhase::class,
         ];
+    }
+
+    /**
+     * Every student's tick against this step.
+     *
+     * Always constrain it to one student when eager loading — an unscoped load
+     * on a popular step pulls the whole cohort's rows into memory.
+     *
+     * @return HasMany<StudentChecklistItem, $this>
+     */
+    public function completions(): HasMany
+    {
+        return $this->hasMany(StudentChecklistItem::class);
     }
 
     /** @param  Builder<self>  $query */

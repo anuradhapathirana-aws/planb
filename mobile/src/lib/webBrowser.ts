@@ -1,3 +1,4 @@
+import { Linking } from 'react-native';
 import { isRunningInExpoGo, requireOptionalNativeModule } from 'expo';
 import type * as WebBrowserModule from 'expo-web-browser';
 
@@ -58,4 +59,32 @@ export function getWebBrowser(): Module | null {
 
 export function isWebBrowserAvailable(): boolean {
   return getWebBrowser() !== null;
+}
+
+/**
+ * Opens a link the student tapped inside the app — a Home banner pointing at a
+ * Plan B page, say. NOT the payment hand-off: that one needs
+ * `openAuthSessionAsync` and its own redirect handling, and lives in the
+ * checkout flow.
+ *
+ * Falls back to the OS browser when the native module is missing, rather than
+ * doing nothing. Unlike card checkout there is nothing here that depends on
+ * staying inside the app, so bouncing out is a worse experience but a working
+ * one — and the alternative is a tap that silently does nothing.
+ */
+export async function openExternalUrl(url: string): Promise<void> {
+  const browser = getWebBrowser();
+
+  try {
+    if (browser) {
+      await browser.openBrowserAsync(url);
+
+      return;
+    }
+
+    if (await Linking.canOpenURL(url)) await Linking.openURL(url);
+  } catch {
+    // A dead link is not worth interrupting the student over — they tapped a
+    // banner, not a button they were waiting on.
+  }
 }

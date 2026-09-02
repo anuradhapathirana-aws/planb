@@ -11,6 +11,7 @@
 export * from './types/api';
 export * from './types/auth';
 export * from './types/checklist';
+export * from './types/homeBanner';
 export * from './types/course';
 export * from './types/industry';
 export * from './types/order';
@@ -21,6 +22,7 @@ export * from './types/student';
 export * from './types/paper';
 export * from './types/progress';
 export * from './types/studentAuth';
+export * from './types/studentChecklist';
 export * from './types/studentCourse';
 export * from './types/studentOrder';
 

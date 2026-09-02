@@ -22,6 +22,12 @@ export interface CourseCardProps {
    */
   onEnrol?: () => void;
   enrolling?: boolean;
+  /**
+   * Stretch to the tallest card in the row. Set by `CourseCarousel`, where a
+   * course with no category label would otherwise sit visibly shorter than its
+   * neighbours. Off in vertical lists, where each row sizes to its own content.
+   */
+  fill?: boolean;
 }
 
 /**
@@ -33,7 +39,13 @@ export interface CourseCardProps {
  * buy, which is also why locking is presentation here and enforcement on the
  * server.
  */
-export function CourseCard({ course, onPress, onEnrol, enrolling = false }: CourseCardProps) {
+export function CourseCard({
+  course,
+  onPress,
+  onEnrol,
+  enrolling = false,
+  fill = false,
+}: CourseCardProps) {
   const { t } = useTranslation();
   const [thumbnailFailed, setThumbnailFailed] = useState(false);
   const { progress } = course;
@@ -59,6 +71,17 @@ export function CourseCard({ course, onPress, onEnrol, enrolling = false }: Cour
             })}`
       }
       className="overflow-hidden"
+      /*
+       * `flexGrow` with an AUTO basis, never `flex-1`.
+       *
+       * NativeWind's `flex-1` is `{flexGrow:1, flexShrink:1, flexBasis:0%}`, and
+       * a zero basis inside an auto-height parent is a trap: the carousel wraps
+       * each card in a `width`-only View, that View measures itself from its
+       * child's basis, and a basis of 0 collapses the whole row to nothing.
+       * An auto basis means the card's natural content height sizes the wrapper
+       * first; `flexGrow` then stretches it to match the tallest sibling.
+       */
+      style={fill ? { flexGrow: 1, flexBasis: 'auto' } : undefined}
     >
       <View className="aspect-video w-full items-center justify-center bg-muted">
         {showThumbnail ? (
@@ -86,12 +109,25 @@ export function CourseCard({ course, onPress, onEnrol, enrolling = false }: Cour
         )}
       </View>
 
-      <View className="p-4">
+      {/*
+        `justify-between` plus `flex-1` is what keeps the progress bars of
+        adjacent cards on the same line: the text block takes what it needs at
+        the top, and the footer is pinned to the bottom of whatever height the
+        tallest sibling sets.
+      */}
+      <View
+        className="p-4"
+        style={fill ? { flexGrow: 1, flexBasis: 'auto', justifyContent: 'space-between' } : undefined}
+      >
         <View className="flex-row items-start gap-3">
           <View className="flex-1">
-            {course.category_name && (
-              <Text variant="label" className="mb-1">
-                {course.category_name}
+            {/*
+              Reserved even when empty in a filled card, so a course with no
+              category doesn't pull its title a line higher than its neighbour's.
+            */}
+            {(course.category_name || fill) && (
+              <Text variant="label" className="mb-1" numberOfLines={1}>
+                {course.category_name ?? ' '}
               </Text>
             )}
 

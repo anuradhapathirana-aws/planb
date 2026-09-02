@@ -6,12 +6,14 @@ namespace App\Services\Course;
 
 use App\Enums\CourseStatus;
 use App\Models\CourseProgramme;
+use App\Models\CourseTopic;
 use App\Models\CourseVideo;
 use App\Models\Student;
 use App\Models\StudentProgrammeProgress;
 use App\Models\StudentVideoProgress;
 use App\Services\Enrolment\EnrolmentService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 /**
@@ -37,11 +39,18 @@ class StudentCourseService
         $programmes = CourseProgramme::query()
             ->where('status', CourseStatus::Published)
             ->withCount(['topics', 'videos'])
+            /*
+             * Total run time, summed in the same query rather than by loading
+             * every lesson row. `duration_seconds` is nullable, so an
+             * unpublished-quality course can sum to null — the resource coerces
+             * that to 0 and the UI hides the chip rather than showing "0m".
+             */
+            ->withSum('videos as total_duration_seconds', 'duration_seconds')
             // `media` avoids an N+1 when each row renders its thumbnail URL.
             ->with(['category', 'media', 'paper:id,course_programme_id'])
             ->when(
                 filled($filters['search'] ?? null),
-                fn ($query) => $query->where('name', 'like', '%'.$filters['search'].'%'),
+                fn ($query) => $this->applySearch($query, (string) $filters['search']),
             )
             ->orderBy('sort_order')
             ->orderBy('name')
@@ -50,7 +59,82 @@ class StudentCourseService
         $this->attachProgressSummaries($student, $programmes->getCollection());
         $this->attachAccess($student, $programmes->getCollection());
 
+        if (filled($filters['search'] ?? null)) {
+            $this->attachMatchedTopics($programmes->getCollection(), (string) $filters['search']);
+        }
+
         return $programmes;
+    }
+
+    /**
+     * Search a course by its own name OR by any of its topics' titles.
+     *
+     * Topics are searched because that is where the words a student actually
+     * types live — nobody searches "Course Module 3", they search "visa" or
+     * "medical", and those are topic titles. The two conditions are wrapped in
+     * one closure so the OR cannot escape the `status = published` filter
+     * around it, which would leak drafts into the results.
+     *
+     * `like %term%` rather than a full-text index: the catalogue is dozens of
+     * rows, not thousands, and a MySQL FULLTEXT index would not match a partial
+     * word ("vis" finding "visa") — which is exactly what type-ahead needs.
+     *
+     * @param  Builder<CourseProgramme>  $query
+     */
+    private function applySearch(Builder $query, string $search): Builder
+    {
+        // Escape the LIKE wildcards themselves, or a student typing "100%"
+        // matches every course in the catalogue.
+        $term = '%'.addcslashes($search, '%_\\').'%';
+
+        return $query->where(function (Builder $inner) use ($term): void {
+            $inner->where('name', 'like', $term)
+                ->orWhereHas('topics', fn (Builder $topics) => $topics->where('title', 'like', $term));
+        });
+    }
+
+    /**
+     * For each hit, the topic title that matched — but only when the course's
+     * own name did not.
+     *
+     * Without it a search for "visa" returning "Labour Law Basics" reads as a
+     * bug. With it the row can say "Topic: Visa renewal" and the result
+     * explains itself.
+     *
+     * One extra query for the whole page rather than one per row.
+     *
+     * @param  Collection<int, CourseProgramme>  $programmes
+     */
+    private function attachMatchedTopics(Collection $programmes, string $search): void
+    {
+        $needle = mb_strtolower($search);
+
+        $unexplained = $programmes->filter(
+            fn (CourseProgramme $programme) => ! str_contains(mb_strtolower($programme->name), $needle),
+        );
+
+        if ($unexplained->isEmpty()) {
+            return;
+        }
+
+        $term = '%'.addcslashes($search, '%_\\').'%';
+
+        // `sort_order` so a course matching several topics reports the first one
+        // the student would meet, not an arbitrary row.
+        $titles = CourseTopic::query()
+            ->whereIn('course_programme_id', $unexplained->pluck('id'))
+            ->where('title', 'like', $term)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get(['course_programme_id', 'title'])
+            ->groupBy('course_programme_id');
+
+        foreach ($unexplained as $programme) {
+            $programme->setAttribute(
+                'matched_topic',
+                $titles->get($programme->id)?->first()?->title,
+            );
+        }
     }
 
     /** One programme with its topics, lessons, per-lesson progress and lock state. */

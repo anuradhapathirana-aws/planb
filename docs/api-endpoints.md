@@ -158,7 +158,7 @@ An item `id` belonging to the *other* phase is a **422**, not a silent move acro
 
 Writes are gated by `ChecklistItemPolicy::manage` — a class-level ability rather than per-row `create`/`update`/`delete`, since one request does all three.
 
-**Student-facing note.** These endpoints are admin-only. The student app's checklist endpoints (read + tick off) are not built yet and will need their own resource and a progress table — see `docs/schema.md`.
+**Student-facing note.** These endpoints are admin-only. The student's own view of the same checklists — with their ticks — is *Student Checklists* below, on its own resources.
 
 ---
 
@@ -224,6 +224,19 @@ Notes:
 
 **`is_locked`** is true until the previous lesson in the programme is watched — ordering runs across topics, so finishing topic 1 opens topic 2's first lesson. The app greys the row out rather than hiding it.
 
+### Course search (Home)
+
+`GET /student/courses?search=` matches **the programme name OR any of its topic titles**. Topic titles are searched because that is where the words students actually type live — nobody searches "Course Module 3", they search "visa" or "medical".
+
+- **The OR is wrapped in its own closure** so it cannot escape the `status = published` filter around it. A test asserts a draft course with a matching topic never appears.
+- **`matched_topic`** comes back only when the course's own name did *not* match — it is the reason the row is in the results, so the UI can say "Topic: Visa renewal" instead of looking like it returned the wrong course. One extra query per page, not per row.
+- **A course matching on both its name and several topics is returned once**, not once per hit.
+- **`%` and `_` in the search term are escaped** (`addcslashes`). A student typing `100%` matches courses containing "100%", not every course in the catalogue.
+- **`like %term%`, not a FULLTEXT index.** The catalogue is dozens of rows, and FULLTEXT would not match a partial word — "vis" finding "visa" is exactly what type-ahead needs.
+- **`is_new`** is `published_at` within `CourseProgramme::NEW_FOR_DAYS` (30). A rolling window rather than a calendar month: on the 1st, a calendar month shows an empty tab even though something shipped yesterday.
+
+The app's Home dropdown filters these results into three tabs client-side — **Available** (not enrolled, any age), **Enrolled**, **Unfinished** (enrolled, not completed). `unfinished` is a subset of `enrolled`, not a sibling; they are filters over one result set. Switching tabs never costs a round trip, and an empty search box reuses the `GET /student/courses` response Home has already fetched.
+
 ### Progress and the no-skip rule
 
 Client-side clamping in the player is UX only. The server treats both numbers as *claims*:
@@ -234,6 +247,17 @@ Client-side clamping in the player is UX only. The server treats both numbers as
 - A lesson with `duration_seconds = null` can never be completed, which is why `POST /admin/course-programmes/{programme}/publish` now **refuses to publish** a programme with no lessons, or any lesson missing a file or duration (422 on `status`). This is a behaviour change to a previously permissive endpoint.
 
 Playback bytes are still served by the existing `GET /api/v1/course-videos/{video}/playback` (`signed` middleware only). A student link carries their id inside the signature, so the byte route re-checks the block flag at play time and a student blocked after their link was issued stops playing immediately. **Residual risk, stated plainly:** anyone holding that URL can play it for its 30-minute lifetime. That is inherent to handing a URL to a platform video player; the real fix is Bunny Stream token auth.
+
+## Student Home
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/student/home-banner` | The banner, or **`{ "data": null }`** — a normal answer, not an error. |
+
+- **`data` is null in three cases the app treats identically**: nothing set up, switched off, or active with no image. The app renders its own branded fallback hero for all three, so the top of Home is never an empty box.
+- **The link arrives resolved.** `StudentHomeBannerResource` returns one `link` object — `{ type }`, `{ type: 'course', course_id }` or `{ type: 'url', url }` — rather than the three columns the admin resource exposes. The client switches on a discriminated union instead of re-implementing "which column applies".
+- **A course link whose course has been deleted degrades to `{ type: 'none' }`** rather than sending the student to a 404.
+- **There is no `/student/home` aggregate endpoint, deliberately.** Home's checklist and course progress tiles are computed from the *same* cached `GET /student/checklists` and `GET /student/courses` responses their tabs use, so opening Home warms both. A combined endpoint would be one round trip instead of three, and would buy a screen whose numbers could disagree with the screens they link to.
 
 ## Student Assessments
 
@@ -254,6 +278,42 @@ Attempt state on the paper summary: `attempts_used`, `attempts_remaining` (null 
 - Starting again while an attempt is in progress **resumes** it rather than burning a retry.
 - Only submitted attempts count against `max_attempts`.
 - **The correct answers are revealed only when they can no longer help** — the student passed, or has no attempts left. Revealing them after a failed attempt would make unlimited retries meaningless.
+
+## Home Banner
+
+The promo across the top of the student app's Home screen. A **singleton**, so there is no index and no id in any path — the same shape as the checklist phases, which are also edited as one document rather than browsed as a collection.
+
+| Method | Path | Auth / role | Notes |
+|---|---|---|---|
+| GET | `/admin/home-banner` | any admin role | The row, **created empty on first read** so the form always has a shape to bind to. |
+| PUT | `/admin/home-banner` | Super Admin, Content Manager | `{ title, subtitle, link_type, link_course_programme_id, link_url, is_active }`. |
+| POST | `/admin/home-banner/image` | Super Admin, Content Manager | `multipart/form-data`, field `image`. JPG/PNG, re-encoded to 1200×600 JPEG. |
+| DELETE | `/admin/home-banner/image` | Super Admin, Content Manager | Clears the image; wording and settings survive. |
+
+- **The image is uploaded on its own request**, not with the wording — a multi-MB file riding along with every typo fix would make saving slow, and a failed upload would take the text with it.
+- **A `course` link must name a published course.** A draft is a 422, because a student tapping through would land on a 404: the student route binds courses through a published-only scope.
+- **A `url` link is validated `url:http,https`.** A `javascript:` or `intent:` address has no business in a promo banner.
+- **Switching `link_type` clears the branch that no longer applies**, so a stale course id cannot come back to life the next time someone switches back.
+- `is_live` on the response is `is_active && image_url !== null` — it is what lets the admin screen warn "switched on, but students see nothing".
+
+Writes are gated by `HomeBannerPolicy::manage`, a class-level ability (there is no per-row anything on a singleton).
+
+## Student Checklists (FR-MOB-030)
+
+The student's side of the two arrival checklists. Its own resources, never the admin ones (root `CLAUDE.md` §16.5): `StudentChecklistItemResource` adds the student's own tick and drops the authoring timestamps.
+
+**No entitlement check, deliberately.** The checklists are Plan B's migration guidance, not purchased content, so every signed-in student sees both phases. What *is* scoped per student is the ticks — every read and write goes through the authenticated `Student`, never an id from the request.
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/student/checklists` | **Both phases in one response**, in enum order, items already in `sort_order`. Each phase carries `progress: { completed, total, percent_complete }`. |
+| PUT | `/student/checklist-items/{checklistItem}` | `{ is_completed: bool }` → `{ item, progress }`, where `progress` also carries `phase`. Throttled 120/min. |
+
+- **Both phases come down together** because the app renders them as two tabs over a few dozen short rows. A request per tab would buy a spinner on every switch and save nothing on a connection where the round trip is the expensive part.
+- **The tick sends the state the student wants, not "flip it".** A retry after a dropped response then lands on the same answer instead of undoing the tick. The service upserts, and the unique index turns a genuine double tap into a caught duplicate rather than two rows.
+- **Progress is recomputed server-side on every write** and returned with the item. The app's ring re-seeds from it rather than adjusting a local counter — the same reasoning as the player's progress flush.
+- **An empty phase is `percent_complete: 0`, never 100 and never a 404.** "Plan B hasn't published this list yet" is a real state.
+- `description` is the admin's sanitized rich-text HTML — the steps for that item. The mobile app parses the sanitizer's allowlist into native views (`mobile/src/lib/parseHtml.ts`); any web client rendering it still needs DOMPurify (root `CLAUDE.md` §7.6).
 
 ## Payments & enrolment (FR-MOB-031-037, FR-ADM-018-021)
 

@@ -31,7 +31,19 @@ class StudentCourseSummaryResource extends JsonResource
             'is_enrolled' => (bool) $this->getAttribute('is_enrolled'),
             'topics_count' => (int) ($this->topics_count ?? 0),
             'videos_count' => (int) ($this->videos_count ?? 0),
+            // Sum of every lesson's duration. 0 when nothing has a duration yet.
+            'total_duration_seconds' => (int) ($this->getAttribute('total_duration_seconds') ?? 0),
             'has_paper' => $this->paper !== null,
+            'published_at' => $this->published_at?->toIso8601String(),
+            // Drives the Home search's "New" tab. Computed here rather than
+            // shipping a raw date the client would have to reason about.
+            'is_new' => $this->isNewlyPublished(),
+            /*
+             * Only set on a search response, and only when the course's own
+             * name did NOT match — it is the reason this row is in the results.
+             * Absent otherwise, so a normal list response carries no dead field.
+             */
+            'matched_topic' => $this->whenNotNull($this->getAttribute('matched_topic')),
             'progress' => $this->progress_summary,
         ];
     }

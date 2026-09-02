@@ -29,6 +29,14 @@ export interface CourseCarouselProps {
  * are already theirs: they should all be reachable without scrolling the page,
  * leaving the vertical space on Home for what to do next. Cards snap, and the
  * next one peeks past the edge so the gesture is discoverable without a hint.
+ *
+ * **Every card is the same width and the same height.** Width is computed once
+ * here rather than left to the content, so the first card lines up with the
+ * heading above it and the peek is exactly the same on every phone. Height is
+ * the tallest card's — `alignItems: 'stretch'` on the row plus `fill` on the
+ * card — because a course with no category label, or a one-line name next to a
+ * two-line one, would otherwise leave the progress bars on different lines and
+ * the row looking broken.
  */
 export function CourseCarousel({ courses, onSelect }: CourseCarouselProps) {
   const { width } = useWindowDimensions();
@@ -57,12 +65,14 @@ export function CourseCarousel({ courses, onSelect }: CourseCarouselProps) {
         keyExtractor={(course) => String(course.id)}
         renderItem={({ item }) => (
           <View style={{ width: cardWidth }}>
-            <CourseCard course={item} onPress={() => onSelect(item)} />
+            <CourseCard course={item} onPress={() => onSelect(item)} fill />
           </View>
         )}
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: GUTTER, gap: GAP }}
+        // `stretch` is the row default, but it is load-bearing here — see the
+        // note above — so it is stated rather than relied on.
+        contentContainerStyle={{ paddingHorizontal: GUTTER, gap: GAP, alignItems: 'stretch' }}
         snapToInterval={interval}
         snapToAlignment="start"
         decelerationRate="fast"

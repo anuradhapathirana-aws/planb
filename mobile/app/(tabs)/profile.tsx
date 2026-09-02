@@ -7,11 +7,15 @@ import { useTranslation } from 'react-i18next';
 
 import { colors } from '@shared/theme/tokens';
 import { fetchMe, signOut as signOutRequest } from '@/api/auth.api';
+import { fetchCourses } from '@/api/courses.api';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { Card, PressableCard } from '@/components/ui/Card';
 import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
+import { useChecklistOverview } from '@/features/checklist/useChecklists';
+import { ContinueLearningCard } from '@/features/profile/ContinueLearningCard';
+import { ProgressTiles } from '@/features/profile/ProgressTiles';
 import { queryClient } from '@/lib/queryClient';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -38,6 +42,15 @@ export default function ProfileScreen() {
   });
 
   const student = data ?? cached;
+
+  /*
+   * Progress moved here from Home, which is now the catalogue. Both of these
+   * reuse the query keys the Courses and Checklists tabs already own, so this
+   * screen costs nothing extra once either has been opened — and its numbers
+   * can never disagree with the screens they link to.
+   */
+  const courses = useQuery({ queryKey: ['courses'], queryFn: () => fetchCourses() });
+  const checklists = useChecklistOverview();
 
   useEffect(() => {
     if (data) setStudent(data);
@@ -83,6 +96,16 @@ export default function ProfileScreen() {
           {student?.student_id}
         </Text>
       </Card>
+
+      <View className="mt-4">
+        <ProgressTiles
+          phases={checklists.data ?? []}
+          courses={courses.data?.data ?? []}
+          loading={courses.isLoading || checklists.isLoading}
+        />
+      </View>
+
+      <ContinueLearningCard courses={courses.data?.data ?? []} />
 
       <Card className="mt-4 divide-y divide-border">
         <Row icon={Mail} label={t('auth.emailLabel')} value={student?.email ?? '—'} />

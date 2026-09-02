@@ -13,6 +13,7 @@ import {
   Wallet,
   BarChart3,
   Settings,
+  Image,
   type LucideIcon,
 } from 'lucide-react';
 import { paths } from '@/routes/paths';
@@ -77,6 +78,12 @@ export const adminNavGroups: AdminNavGroup[] = [
     ],
   },
   {
-    items: [{ label: 'Settings', icon: Settings, comingSoon: true }],
+    items: [
+      {
+        label: 'Settings',
+        icon: Settings,
+        children: [{ label: 'Home Banner', icon: Image, href: paths.admin.homeBanner }],
+      },
+    ],
   },
 ];

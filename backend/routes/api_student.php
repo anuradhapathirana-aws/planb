@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 use App\Enums\CourseStatus;
 use App\Http\Controllers\Student\AuthController;
+use App\Http\Controllers\Student\ChecklistController;
 use App\Http\Controllers\Student\CourseController;
 use App\Http\Controllers\Student\EnrolmentController;
+use App\Http\Controllers\Student\HomeController;
 use App\Http\Controllers\Student\PaperController;
 use App\Http\Controllers\Student\PaymentController;
 use App\Http\Controllers\Student\ProfileController;
@@ -79,6 +81,13 @@ Route::middleware(['auth:student', 'student.actor', 'student.active'])->group(fu
     Route::post('profile/photo', [ProfileController::class, 'uploadPhoto']);
     Route::delete('profile/photo', [ProfileController::class, 'deletePhoto']);
 
+    /*
+     * Home. Only what no other tab already serves — the screen's two progress
+     * summaries reuse the courses and checklists endpoints so Home warms their
+     * caches rather than duplicating their data.
+     */
+    Route::get('home-banner', [HomeController::class, 'banner']);
+
     // Courses
     Route::get('courses', [CourseController::class, 'index']);
     Route::get('courses/{course}', [CourseController::class, 'show']);
@@ -110,6 +119,20 @@ Route::middleware(['auth:student', 'student.actor', 'student.active'])->group(fu
     Route::post('orders/{order}/bank-transfer', [PaymentController::class, 'payByBankTransfer'])
         ->middleware('throttle:10,1');
     Route::get('payment-methods/bank-transfer', [PaymentController::class, 'bankDetails']);
+
+    /*
+     * Arrival checklists (FR-MOB-030). Both phases come back in one response —
+     * they are two tabs over a few dozen short rows, so a request per tab would
+     * buy a spinner and nothing else.
+     *
+     * The tick is a PUT carrying the state the student wants, not a toggle: a
+     * retry on a flaky connection then lands on the same answer instead of
+     * flipping the step back. Rate limited generously — working down a
+     * checklist is a burst of taps, not abuse.
+     */
+    Route::get('checklists', [ChecklistController::class, 'index']);
+    Route::put('checklist-items/{checklistItem}', [ChecklistController::class, 'update'])
+        ->middleware('throttle:120,1');
 
     Route::get('courses/{course}/paper', [PaperController::class, 'show']);
     Route::post('courses/{course}/paper/attempts', [PaperController::class, 'start']);

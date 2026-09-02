@@ -47,7 +47,7 @@ export function Sheet({ visible, title, onClose, children, scroll = true }: Shee
         />
 
         <View
-          className="max-h-[75%] rounded-t-[24px] bg-card"
+          className="max-h-[75%] rounded-t-[16px] bg-card"
           style={{ paddingBottom: insets.bottom + 8 }}
         >
           {/* Grabber, the universal "this drags/dismisses" affordance. */}

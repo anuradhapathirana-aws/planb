@@ -139,7 +139,17 @@ class CourseProgrammeService
     {
         $this->assertReadyToPublish($programme);
 
-        $programme->update(['status' => CourseStatus::Published]);
+        /*
+         * `published_at` is stamped once and never refreshed. An admin who
+         * unpublishes a course to fix a lesson and republishes it a week later
+         * has not created a new course, and it must not jump back to the top of
+         * every student's "New" tab. Written with forceFill because the column
+         * is kept out of `$fillable` — this is the only place allowed to set it.
+         */
+        $programme->forceFill([
+            'status' => CourseStatus::Published,
+            'published_at' => $programme->published_at ?? now(),
+        ])->save();
 
         return $this->loadTree($programme);
     }

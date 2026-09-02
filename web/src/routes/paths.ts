@@ -14,5 +14,6 @@ export const paths = {
     courseCategories: '/admin/courses/categories',
     orders: '/admin/orders',
     checklists: '/admin/checklists',
+    homeBanner: '/admin/settings/home-banner',
   },
 } as const;

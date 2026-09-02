@@ -11,12 +11,22 @@ import { apiClient } from './client';
 
 /** Mirrors the student course routes in `backend/routes/api_student.php`. */
 
+/**
+ * The server's own default is 20 per page, and nothing in the app paginates
+ * this list: Home filters it by category client-side and the Courses tab renders
+ * it whole. At 20 a 25-course catalogue would silently lose five, and the
+ * category chips would filter a list that was already truncated — a wrong
+ * answer with no symptom. 50 is the server's ceiling, so this asks for
+ * everything it will give.
+ */
+const MAX_PER_PAGE = 50;
+
 export async function fetchCourses(
   filters: StudentCourseListFilters = {},
 ): Promise<PaginatedResponse<StudentCourseSummary>> {
   const { data } = await apiClient.get<PaginatedResponse<StudentCourseSummary>>(
     '/student/courses',
-    { params: filters },
+    { params: { per_page: MAX_PER_PAGE, ...filters } },
   );
 
   return data;

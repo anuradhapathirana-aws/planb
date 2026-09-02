@@ -66,3 +66,21 @@ export function CourseCardSkeleton() {
     </View>
   );
 }
+
+/** The checklist-row placeholder: rail, checkbox, title, meta line. */
+export function ChecklistItemSkeleton() {
+  return (
+    <View className="flex-row overflow-hidden rounded-xl border border-border bg-card">
+      <Skeleton className="w-1 rounded-none" />
+
+      <View className="flex-1 flex-row items-center gap-3 p-3">
+        <Skeleton className="h-[26px] w-[26px] rounded-full" />
+
+        <View className="flex-1 gap-2">
+          <Skeleton className="h-4 w-3/4" />
+          <Skeleton className="h-3 w-1/4" />
+        </View>
+      </View>
+    </View>
+  );
+}

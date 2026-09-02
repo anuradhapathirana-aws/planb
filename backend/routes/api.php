@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\CourseCategoryController;
 use App\Http\Controllers\Admin\CoursePaperController;
 use App\Http\Controllers\Admin\CourseProgrammeController;
 use App\Http\Controllers\Admin\CourseVideoController;
+use App\Http\Controllers\Admin\HomeBannerController;
 use App\Http\Controllers\Admin\IndustryController;
 use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\ProfessionController;
@@ -95,6 +96,16 @@ Route::prefix('v1/admin')->group(function () {
          * before the controller runs. Not a paginated resource — the admin
          * edits the entire list in one tab.
          */
+        /*
+         * Settings > Home banner. A singleton, so no index and no id in the
+         * path. The image is uploaded on its own endpoint so a multi-MB file
+         * does not ride along with every wording tweak.
+         */
+        Route::get('/home-banner', [HomeBannerController::class, 'show']);
+        Route::put('/home-banner', [HomeBannerController::class, 'update']);
+        Route::post('/home-banner/image', [HomeBannerController::class, 'uploadImage']);
+        Route::delete('/home-banner/image', [HomeBannerController::class, 'deleteImage']);
+
         Route::get('/checklists/{phase}', [ChecklistItemController::class, 'index']);
         Route::put('/checklists/{phase}', [ChecklistItemController::class, 'update']);
     });

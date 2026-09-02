@@ -28,8 +28,16 @@ If a pattern is used by more than one feature it belongs in `components/shared/`
 - **Never redefine a type or a Zod schema that exists in `@shared`.** The API contract lives in
   `shared/src/` and is consumed by both apps. A local copy silently drifts the first time a backend
   Resource changes.
-- **No raw hex in components.** Colours, radii, and spacing come from `@shared/theme/tokens` via
+- **No raw hex in components.** Colours and spacing come from `@shared/theme/tokens` via
   `tailwind.config.js`. One brand change, one file.
+- **Radii are the one deliberate fork from the shared tokens**, and they live in
+  `mobile/tailwind.config.js` (`mobileRadii`), not in `tokens.json`. The client asked for tighter
+  corners on the phone, and the two clients genuinely want different values — the admin panel is
+  dense tables and dialogs on a large screen, the student app is full-bleed cards on a 390px one.
+  Do NOT "restore consistency" by pointing them back at `radii`; that silently undoes a design
+  decision. Changing the admin panel's corners means editing `web/src/index.css` too.
+- **`rounded-full` is never part of that scale.** Avatars, pills, the progress ring and the checkbox
+  are circles by intent — rescaling radii must leave them alone.
 - **Every user-facing string goes through `t('key')`.** EN + SI live in `@shared/i18n`.
 - **Server state is TanStack Query. Client state is Zustand.** No `useEffect + fetch`.
 - **Forms are React Hook Form + Zod**, schema imported from `@shared/schemas`.
