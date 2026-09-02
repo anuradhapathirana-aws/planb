@@ -12,6 +12,8 @@ use App\Http\Controllers\Admin\HomeBannerController;
 use App\Http\Controllers\Admin\IndustryController;
 use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\ProfessionController;
+use App\Http\Controllers\Admin\ServiceController;
+use App\Http\Controllers\Admin\ServicePurchaseController;
 use App\Http\Controllers\Admin\StudentManagementController;
 use App\Http\Controllers\CheckoutRedirectController;
 use App\Http\Controllers\CourseVideoPlaybackController;
@@ -82,6 +84,28 @@ Route::prefix('v1/admin')->group(function () {
         Route::post('/course-videos/{video}/thumbnail', [CourseVideoController::class, 'uploadThumbnail']);
         Route::delete('/course-videos/{video}/thumbnail', [CourseVideoController::class, 'deleteThumbnail']);
         Route::get('/course-videos/{video}/stream', [CourseVideoController::class, 'stream']);
+
+        /*
+         * Premium services. The second thing students can buy, and it reuses the
+         * order/payment layer unchanged - only fulfilment is new. Static
+         * sub-routes are declared before the apiResource so `{service}` never
+         * swallows them.
+         */
+        Route::post('/services/{service}/thumbnail', [ServiceController::class, 'uploadThumbnail']);
+        Route::delete('/services/{service}/thumbnail', [ServiceController::class, 'deleteThumbnail']);
+        Route::post('/services/{service}/publish', [ServiceController::class, 'publish']);
+        Route::post('/services/{service}/unpublish', [ServiceController::class, 'unpublish']);
+        Route::apiResource('services', ServiceController::class);
+
+        /*
+         * The delivery queue. A course purchase is finished once it is paid; a
+         * service still has to be done by somebody, so each one is a job an
+         * admin works through here.
+         */
+        Route::get('/service-purchases/stats', [ServicePurchaseController::class, 'stats']);
+        Route::get('/service-purchases', [ServicePurchaseController::class, 'index']);
+        Route::get('/service-purchases/{purchase}', [ServicePurchaseController::class, 'show']);
+        Route::post('/service-purchases/{purchase}/status', [ServicePurchaseController::class, 'advance']);
 
         // Orders, payments and the bank-transfer verification queue (FR-ADM-018-021).
         Route::get('/orders/stats', [OrderController::class, 'stats']);

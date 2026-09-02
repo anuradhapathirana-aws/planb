@@ -12,6 +12,7 @@ use App\Http\Controllers\Student\PaperController;
 use App\Http\Controllers\Student\PaymentController;
 use App\Http\Controllers\Student\ProfileController;
 use App\Http\Controllers\Student\ReferenceDataController;
+use App\Http\Controllers\Student\ServiceController;
 use App\Models\CourseProgramme;
 use App\Models\CourseVideo;
 use Illuminate\Support\Facades\Route;
@@ -110,6 +111,31 @@ Route::middleware(['auth:student', 'student.actor', 'student.active'])->group(fu
      | one opens an order. The price always comes from the course on the server.
      */
     Route::post('courses/{course}/enrol', [EnrolmentController::class, 'store'])
+        ->middleware('throttle:20,1');
+
+    /*
+     |--------------------------------------------------------------------------
+     | Premium services
+     |--------------------------------------------------------------------------
+     |
+     | Paid one-off help - CV writing, visa consultation. Same order/payment
+     | layer as a course; only what a settled order produces differs.
+     |
+     | These take a raw `{service}` id rather than a model-bound one on purpose.
+     | `Route::bind` registers GLOBALLY, so a published-only binder here would
+     | also hide every draft service from `/admin/services/{service}` - the trap
+     | this file already documents for `course`. The published scope lives in
+     | `StudentServiceCatalogService` instead, and it is the authorization.
+     |
+     | `service-purchases` is declared before `services/{service}` only for
+     | readability; the two cannot collide.
+     */
+    Route::get('service-purchases', [ServiceController::class, 'purchases']);
+    Route::get('services', [ServiceController::class, 'index']);
+    Route::get('services/{service}', [ServiceController::class, 'show'])
+        ->whereNumber('service');
+    Route::post('services/{service}/purchase', [ServiceController::class, 'purchase'])
+        ->whereNumber('service')
         ->middleware('throttle:20,1');
 
     Route::get('orders', [PaymentController::class, 'index']);

@@ -12,8 +12,10 @@ use App\Models\CourseProgramme;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\PaymentWebhookEvent;
+use App\Models\Service;
 use App\Models\User;
 use App\Services\Enrolment\EnrolmentService;
+use App\Services\Service\ServicePurchaseService;
 use App\Support\Payment\CheckoutSession;
 use App\Support\Payment\WebhookResult;
 use Illuminate\Database\QueryException;
@@ -40,6 +42,7 @@ class PaymentService
     public function __construct(
         private readonly PaymentGatewayManager $gateways,
         private readonly EnrolmentService $enrolments,
+        private readonly ServicePurchaseService $servicePurchases,
     ) {}
 
     /**
@@ -320,12 +323,22 @@ class PaymentService
             'paid_at' => $payment->paid_at ?? now(),
         ]);
 
-        $purchasable = $locked->purchasable;
+        /*
+         * `withTrashed()` matters: courses and services are both soft-deletable,
+         * and an admin withdrawing one between checkout and callback would
+         * otherwise resolve this to null — a student who paid, and a warning in
+         * the log instead of the thing they bought.
+         */
+        $purchasable = $locked->purchasable()->withTrashed()->first();
 
         /*
-         * Only courses grant enrolment. When premium services arrive they will
-         * need their own fulfilment branch here — deliberately an explicit check
-         * rather than a silent no-op, so an unhandled product type is obvious.
+         * One branch per product type, explicit rather than a silent no-op, so
+         * an unhandled type is obvious in the log instead of being a student who
+         * paid and got nothing.
+         *
+         * A course grants access, which simply exists. A service creates a job
+         * somebody has to work through. Both are idempotent, because this runs
+         * again on every replayed callback.
          */
         if ($purchasable instanceof CourseProgramme) {
             $this->enrolments->grant(
@@ -334,6 +347,12 @@ class PaymentService
                 EnrolmentSource::Purchase,
                 $locked,
             );
+
+            return;
+        }
+
+        if ($purchasable instanceof Service) {
+            $this->servicePurchases->fulfil($locked->student, $purchasable, $locked);
 
             return;
         }

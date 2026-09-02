@@ -6,6 +6,7 @@ namespace App\Http\Resources\Student;
 
 use App\Models\CourseProgramme;
 use App\Models\Order;
+use App\Models\Service;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -22,12 +23,13 @@ class StudentOrderResource extends JsonResource
      *
      * Mapped rather than sending `purchasable_type` straight through: the class
      * name says more about our structure than a client needs, and a rename would
-     * break every app already installed. A premium service adds one line here.
+     * break every app already installed.
      *
      * @var array<class-string, string>
      */
     private const ITEM_TYPES = [
         CourseProgramme::class => 'course',
+        Service::class => 'service',
     ];
 
     public function toArray(Request $request): array

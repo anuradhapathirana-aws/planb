@@ -315,6 +315,50 @@ The student's side of the two arrival checklists. Its own resources, never the a
 - **An empty phase is `percent_complete: 0`, never 100 and never a 404.** "Plan B hasn't published this list yet" is a real state.
 - `description` is the admin's sanitized rich-text HTML — the steps for that item. The mobile app parses the sanitizer's allowlist into native views (`mobile/src/lib/parseHtml.ts`); any web client rendering it still needs DOMPurify (root `CLAUDE.md` §7.6).
 
+## Premium Services
+
+Paid one-off help a student buys on its own — CV writing, visa consultation. The second thing implementing `App\Contracts\Purchasable`, so it reuses the order, payment, webhook and receipt layer **unchanged**; only fulfilment is new. A course grants an `Enrolment` (access that simply exists); a service creates a `ServicePurchase` (a job somebody has to work through).
+
+A service always costs money — `price_cents` must be **above zero**. There is no free branch and no admin grant.
+
+### Admin
+
+| Method | Path | Auth / role | Notes |
+|---|---|---|---|
+| GET | `/admin/services` | any admin role | Query: `search, status(draft\|published), sort(name\|sort_order\|price_cents\|created_at), direction, per_page, page`. Carries `purchases_count` and `open_purchases_count`. |
+| POST | `/admin/services` | Super Admin, Content Manager | `{ name, summary?, description?, price_cents, currency?, delivery_time?, status? }`. `description` is rich-text HTML, sanitized server-side on write. Name must be unique among non-deleted services. |
+| GET | `/admin/services/{service}` | any admin role | |
+| PUT | `/admin/services/{service}` | Super Admin, Content Manager | |
+| DELETE | `/admin/services/{service}` | **Super Admin** | Soft delete. Purchases already paid for stay in the queue and must still be delivered. |
+| POST | `/admin/services/{service}/thumbnail` | Super Admin, Content Manager | Multipart `thumbnail` (jpeg/png, max 2MB). Re-encoded via Intervention Image (1280×720 cover crop) before storage, per CLAUDE.md §7.4. |
+| DELETE | `/admin/services/{service}/thumbnail` | Super Admin, Content Manager | |
+| POST | `/admin/services/{service}/publish` | Super Admin, Content Manager | Only a published service can be bought. |
+| POST | `/admin/services/{service}/unpublish` | Super Admin, Content Manager | |
+
+### Admin — the delivery queue
+
+| Method | Path | Auth / role | Notes |
+|---|---|---|---|
+| GET | `/admin/service-purchases` | any admin role | Query: `search, status, service_id, student_id, sort(purchased_at\|created_at\|status), direction, per_page, page`. |
+| GET | `/admin/service-purchases/stats` | any admin role | `{ pending, in_progress, completed }`. |
+| GET | `/admin/service-purchases/{purchase}` | any admin role | Carries `admin_note` and `handled_by` — internal, and the reason the student side has its own Resource. |
+| POST | `/admin/service-purchases/{purchase}/status` | **Super Admin, Support Agent** | `{ status, note? }`. Legal moves: `pending → in_progress\|completed\|cancelled`, `in_progress → completed\|cancelled`. `completed` and `cancelled` are terminal — a closed request cannot be reopened, so its timestamps stay a truthful history. An illegal move is a 422. Each response carries `allowed_transitions` so the UI never offers one. |
+
+Support Agent, not Content Manager, works the queue: authoring a service is content work, delivering one is operations.
+
+### Student
+
+| Method | Path | Auth | Notes |
+|---|---|---|---|
+| GET | `/student/services` | student | Published services only. Query: `search, per_page` (max 50). Each row carries `has_open_purchase` / `open_purchase_status` — **presentation**, so the app can show "In progress" instead of a Buy button that would 422. |
+| GET | `/student/services/{service}` | student | Adds the long `description`. A draft or deleted service **404s** — the published scope is the authorization, not a UI filter. |
+| POST | `/student/services/{service}/purchase` | student | Opens (or reuses) an order and returns `{ status: "payment_required", order }`. The order is then paid through the ordinary `/student/orders/{order}/card` or `/bank-transfer` endpoints. **Refused with 422 while an earlier purchase of the same service is still `pending` or `in_progress`** — a student may buy a service again, but only once the last one is finished. Rate-limited 20/min. |
+| GET | `/student/service-purchases` | student | "My services". Scoped to the caller; never carries `admin_note` or `handled_by`. |
+
+Paying settles through the same webhook as a course. `settleOrder` resolves the product `withTrashed()`, so a service withdrawn between checkout and callback is still fulfilled — the student paid for it.
+
+`GET /student/orders/{order}` reports `item: { type: "service", id }` for a service order, alongside `"course"` for a course.
+
 ## Payments & enrolment (FR-MOB-031-037, FR-ADM-018-021)
 
 **Two rules govern this whole area and neither may be relaxed:**

@@ -49,6 +49,18 @@ const HomeBannerPage = lazy(() =>
 const OrdersListPage = lazy(() =>
   import('@/features/admin/orders/pages/OrdersListPage').then((m) => ({ default: m.OrdersListPage })),
 );
+const ServicesListPage = lazy(() =>
+  import('@/features/admin/services/pages/ServicesListPage').then((m) => ({ default: m.ServicesListPage })),
+);
+// Its own chunk keeps the rich-text editor off every other admin page.
+const ServiceFormPage = lazy(() =>
+  import('@/features/admin/services/pages/ServiceFormPage').then((m) => ({ default: m.ServiceFormPage })),
+);
+const ServicePurchasesListPage = lazy(() =>
+  import('@/features/admin/services/pages/ServicePurchasesListPage').then((m) => ({
+    default: m.ServicePurchasesListPage,
+  })),
+);
 const CourseCategoriesListPage = lazy(() =>
   import('@/features/admin/courseCategories/pages/CourseCategoriesListPage').then((m) => ({
     default: m.CourseCategoriesListPage,
@@ -91,6 +103,11 @@ export const router = createBrowserRouter([
       { path: 'courses/new', element: page(<CourseFormPage />) },
       { path: 'courses/:id/edit', element: page(<CourseFormPage />) },
       { path: 'courses/:id/paper', element: page(<CoursePaperPage />) },
+      { path: 'services', element: page(<ServicesListPage />) },
+      // Static segment before the :id route so /services/new isn't read as an id.
+      { path: 'services/new', element: page(<ServiceFormPage />) },
+      { path: 'services/:id/edit', element: page(<ServiceFormPage />) },
+      { path: 'service-purchases', element: page(<ServicePurchasesListPage />) },
       { path: 'orders', element: page(<OrdersListPage />) },
       { path: 'checklists', element: page(<ChecklistsPage />) },
       { path: 'settings/home-banner', element: page(<HomeBannerPage />) },

@@ -9,6 +9,8 @@ import {
   FolderTree,
   IdCard,
   Star,
+  Sparkles,
+  ClipboardCheck,
   Bell,
   Wallet,
   BarChart3,
@@ -50,6 +52,7 @@ export const adminNavGroups: AdminNavGroup[] = [
           { label: 'Categories', icon: FolderTree, href: paths.admin.courseCategories },
         ],
       },
+      { label: 'Services', icon: Sparkles, href: paths.admin.services },
       { label: 'Checklists', icon: ListChecks, href: paths.admin.checklists },
       {
         label: 'Jobs',
@@ -67,6 +70,7 @@ export const adminNavGroups: AdminNavGroup[] = [
     label: 'Operations',
     items: [
       { label: 'Orders & Payments', icon: ShoppingCart, href: paths.admin.orders },
+      { label: 'Service Purchases', icon: ClipboardCheck, href: paths.admin.servicePurchases },
       { label: 'Notifications', icon: Bell, comingSoon: true },
     ],
   },

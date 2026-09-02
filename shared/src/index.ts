@@ -16,6 +16,7 @@ export * from './types/course';
 export * from './types/industry';
 export * from './types/order';
 export * from './types/profession';
+export * from './types/service';
 export * from './types/student';
 
 // Student-facing contracts (mirrors backend/app/Http/Resources/Student/)
@@ -25,6 +26,7 @@ export * from './types/studentAuth';
 export * from './types/studentChecklist';
 export * from './types/studentCourse';
 export * from './types/studentOrder';
+export * from './types/studentService';
 
 // Zod schemas — UX validation only; the backend is the enforcement point.
 export * from './schemas/bankTransfer';

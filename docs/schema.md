@@ -414,6 +414,51 @@ Concrete rather than polymorphic on purpose: enrolment is a course concept. A pr
 
 **`unique(student_id, course_programme_id)`** is load-bearing: it is what makes a replayed webhook or a double-tapped button incapable of enrolling — or charging — twice.
 
+## `services`
+
+Premium services — paid one-off help a student buys on its own (CV writing, visa consultation). The second implementer of `App\Contracts\Purchasable`, which is what lets the whole order/payment/webhook layer sell one without a line of change.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | bigIncrements | |
+| name | string, indexed | See the uniqueness note below. |
+| summary | string(300), nullable | One line for a catalogue card. |
+| description | text, nullable | Rich-text HTML, sanitized by `App\Support\HtmlSanitizer` in the Service **on write**, never on render. |
+| price_cents | unsignedBigInteger, default 0 | Smallest currency unit, integer (CLAUDE.md §4.11). **Must be above zero** — enforced in `ServiceRequest`, not by the column, since a service exists to be paid for and a free one would open an order `OrderService` refuses. |
+| currency | char(3), default `LKR` | |
+| delivery_time | string(120), nullable | Free text, e.g. "3-5 working days". Shown before purchase so "nothing has happened yet" is an expectation rather than a support ticket. |
+| status | enum: `draft`, `published` | PHP enum `App\Enums\ServiceStatus`. Its own enum rather than reusing `CourseStatus`: the two share their cases today, but one gaining a state must not silently give it to the other. |
+| sort_order | unsignedInteger, default 0 | |
+| created_at / updated_at / deleted_at | timestamps + soft delete | |
+
+Thumbnail: **Spatie Media Library**, collection `thumbnail`, single-file, JPG/PNG, re-encoded to 1280×720 JPEG before storage (same treatment and aspect as course art).
+
+**`name` is indexed but deliberately NOT unique.** Uniqueness is enforced in `StoreServiceRequest`/`UpdateServiceRequest` against non-deleted rows. MySQL cannot express a partial unique index over `deleted_at IS NULL`, so a column-level constraint would turn "delete a service, later create one with the same name" into a 500 instead of a form error. A feature test covers exactly that case.
+
+## `service_purchases`
+
+One paid service and how far Plan B has got with delivering it. The service-side counterpart of `enrolments`, and concrete for the same reason: an enrolment is access that simply exists, whereas this is a piece of work with a lifecycle an admin advances by hand.
+
+Written only by `App\Services\Service\ServicePurchaseService`. Created only by a settled order — there is no free service and no admin grant.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | bigIncrements | |
+| student_id | FK → `students.id`, cascadeOnDelete | |
+| service_id | FK → `services.id`, cascadeOnDelete | |
+| order_id | FK → `orders.id`, cascadeOnDelete, **unique** | See below. |
+| title_snapshot | string | Copied from `orders.title_snapshot`. Renaming a service later must not rewrite what somebody bought. |
+| status | enum: `pending`, `in_progress`, `completed`, `cancelled` | PHP enum `App\Enums\ServicePurchaseStatus`, which also owns the transition table. `completed` / `cancelled` are terminal. Not fillable — only `ServicePurchaseService::advance()` writes it. |
+| handled_by | FK → `users.id`, nullable, nullOnDelete | Who last moved it along. |
+| admin_note | string(1000), nullable | **Internal.** Never present on a student-facing payload; a test asserts its absence. |
+| purchased_at | timestamp | |
+| started_at / completed_at / cancelled_at | timestamp, nullable | |
+| created_at / updated_at | timestamps | |
+
+**`unique(order_id)`** is load-bearing, exactly like `enrolments.unique(student_id, course_programme_id)`: gateways replay callbacks, so the same order settles more than once, and one purchase per order makes a replay incapable of creating a second job for the delivery team.
+
+Repeat purchases are allowed but not concurrent ones: `ServicePurchaseService::purchase()` refuses while a `pending` or `in_progress` purchase of the same service exists, so a double tap cannot become a double charge, while a genuine second consultation still can be bought.
+
 ## `payment_webhook_events`
 
 Idempotency and audit for gateway callbacks.
@@ -433,7 +478,6 @@ Idempotency and audit for gateway callbacks.
 ### Deferred (not built yet, referenced by future features)
 
 - Payments (`Order`, `Payment`, `BankTransfer`) — Payment Gateway feature.
-- Premium service orders (`PremiumService`, `ServiceOrder`) — Premium Services feature.
 - Job posts — the admin sidebar reserves the section; only `industries` / `professions` exist.
 
 ---
@@ -442,6 +486,7 @@ Idempotency and audit for gateway callbacks.
 
 | Date | Change |
 |---|---|
+| 2026-09-02 | Premium Services: `services` (the second `Purchasable`) and `service_purchases` (its fulfilment queue). The order/payment/webhook layer is unchanged — only `PaymentService::settleOrder` gained a branch. |
 | 2026-08-13 | Initial schema: `users` (staff/admin auth) and `students` (Student Management). |
 | 2026-08-14 | `student_id` on single-record create is now server-generated, not admin-supplied. Profile photo upload (`profile_photo` media collection, already in the initial schema) is now wired up end-to-end via `POST/DELETE /admin/students/{student}/photo`. |
 | 2026-08-14 | Added `industries` and `professions` (FR-ADM-012 master data, with an Industry→Profession grouping requested beyond the original flat-list SRS wording). `students.profession_category` (free-text placeholder) removed in favor of `students.industry_id` / `students.profession_id`. |
