@@ -19,6 +19,14 @@ export interface ProgressRingProps {
   strokeWidth?: number;
   /** Set when the ring sits on a navy surface rather than a white card. */
   onDark?: boolean;
+  /**
+   * Arc colour. Gold is the default and the signature; navy is for a ring whose
+   * job is to match surrounding brand chrome rather than read as an award.
+   *
+   * `primary` is invisible on a navy surface, so it must not be combined with
+   * `onDark` — that pairing is what `accent` exists for.
+   */
+  tone?: 'accent' | 'primary';
   label?: string;
 }
 
@@ -27,6 +35,7 @@ export function ProgressRing({
   size = 72,
   strokeWidth = 7,
   onDark = false,
+  tone = 'accent',
   label,
 }: ProgressRingProps) {
   const safePercent = Math.max(0, Math.min(100, Math.round(percent)));
@@ -58,7 +67,7 @@ export function ProgressRing({
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke={colors.accent}
+          stroke={tone === 'primary' ? colors.primary : colors.accent}
           strokeWidth={strokeWidth}
           strokeLinecap="round"
           fill="none"

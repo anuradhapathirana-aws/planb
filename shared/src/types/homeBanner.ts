@@ -1,8 +1,14 @@
 /** Where tapping the Home banner takes a student. Mirrors `App\Enums\HomeBannerLink`. */
-export type HomeBannerLinkType = 'none' | 'courses' | 'checklists' | 'course' | 'url';
+export type HomeBannerLinkType =
+  | 'none'
+  | 'courses'
+  | 'services'
+  | 'checklists'
+  | 'course'
+  | 'url';
 
 /**
- * The Home hero banner as the ADMIN form edits it.
+ * One Home carousel slide as the ADMIN form edits it.
  *
  * Every stored column is present, including the ones the current `link_type`
  * isn't using — switching the link type in the form must not blank a value the
@@ -20,6 +26,8 @@ export interface HomeBanner {
   link_course_name: string | null;
   link_url: string | null;
   is_active: boolean;
+  /** Position in the carousel, low to high. */
+  sort_order: number;
   image_url: string | null;
   /** True only when it is switched on AND has an image — i.e. students see it. */
   is_live: boolean;
@@ -47,13 +55,18 @@ export interface SaveHomeBannerPayload {
 export type StudentHomeBannerLink =
   | { type: 'none' }
   | { type: 'courses' }
+  | { type: 'services' }
   | { type: 'checklists' }
   | { type: 'course'; course_id: number }
   | { type: 'url'; url: string };
 
 export interface StudentHomeBanner {
-  /** Always present — the endpoint answers `null` rather than send an imageless banner. */
-  image_url: string;
+  /**
+   * Null when the admin has written the wording but not uploaded artwork yet.
+   * The app draws a branded card in that case rather than an empty box, which
+   * is what lets a slide go live before its image exists.
+   */
+  image_url: string | null;
   title: string | null;
   subtitle: string | null;
   link: StudentHomeBannerLink;

@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { Pressable, View } from 'react-native';
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
-import { ChevronDown, ListChecks } from 'lucide-react-native';
+import { ChevronDown, ListChecks } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 
 import type { StudentChecklistItem } from '@shared/types/studentChecklist';

@@ -1,5 +1,5 @@
-import { CheckCircle2, Clock, Hourglass, RotateCcw, XCircle } from 'lucide-react-native';
-import type { LucideIcon } from 'lucide-react-native';
+import { CheckCircle2, Clock, Hourglass, RotateCcw, XCircle } from '@/components/icons';
+import type { LucideIcon } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 
 import type { OrderStatus } from '@shared/types/order';

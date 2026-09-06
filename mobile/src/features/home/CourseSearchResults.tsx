@@ -1,6 +1,6 @@
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
-import { SearchX, WifiOff } from 'lucide-react-native';
+import { SearchX, WifiOff } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 
 import type { StudentCourseSummary } from '@shared/types/studentCourse';
@@ -61,7 +61,7 @@ export function CourseSearchResults({
       <Animated.View
         entering={reduceMotion ? undefined : FadeIn.duration(140)}
         exiting={reduceMotion ? undefined : FadeOut.duration(100)}
-        className="mx-5 mt-1.5 overflow-hidden rounded-xl border border-border bg-card"
+        className="mx-4 mt-1.5 overflow-hidden rounded-xl border border-border bg-card"
         // Android paints by elevation, not document order, so without this the
         // ScrollView behind would draw over the panel.
         style={{ elevation: 8 }}
@@ -115,7 +115,7 @@ export function CourseSearchResults({
         </View>
 
         {isSearching && results.length === 0 ? (
-          <View className="items-center gap-2 px-5 py-8">
+          <View className="items-center gap-2 px-5 py-6">
             <ActivityIndicator size="small" color={colors.primary} />
             <Text variant="caption">{t('common.loading')}</Text>
           </View>

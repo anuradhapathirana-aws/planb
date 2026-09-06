@@ -1,6 +1,6 @@
 import { View } from 'react-native';
 import { router } from 'expo-router';
-import { GraduationCap, ListChecks, type LucideIcon } from 'lucide-react-native';
+import { GraduationCap, ListChecks, type LucideIcon } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 
 import type { StudentChecklistPhase } from '@shared/types/studentChecklist';

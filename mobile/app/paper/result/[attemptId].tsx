@@ -1,7 +1,7 @@
 import { View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
-import { CheckCircle2, XCircle } from 'lucide-react-native';
+import { CheckCircle2, XCircle } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 
 import { colors } from '@shared/theme/tokens';

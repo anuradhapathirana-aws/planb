@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
-import { Calendar } from 'lucide-react-native';
+import { Calendar } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 
 import { colors } from '@shared/theme/tokens';

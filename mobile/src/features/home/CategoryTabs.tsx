@@ -41,8 +41,8 @@ export function CategoryTabs({ categories, value, onChange, allLabel }: Category
       showsHorizontalScrollIndicator={false}
       // Breaks the page gutter so chips can scroll edge to edge, then re-adds it
       // so the first chip still lines up with the heading above.
-      className="-mx-5"
-      contentContainerStyle={{ paddingHorizontal: 20, gap: 4 }}
+      className="-mx-4"
+      contentContainerStyle={{ paddingHorizontal: 16, gap: 4 }}
     >
       <Chip label={allLabel} selected={value === ALL_CATEGORIES} onPress={() => onChange(null)} />
 

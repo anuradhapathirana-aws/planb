@@ -1,7 +1,7 @@
 import { Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ChevronLeft, Clock, ShieldCheck, Sparkles, WifiOff } from 'lucide-react-native';
+import { ChevronLeft, Clock, ShieldCheck, Sparkles, WifiOff } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 
 import { formatMoney } from '@shared/lib/formatters';

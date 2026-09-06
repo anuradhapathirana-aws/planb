@@ -1,6 +1,6 @@
 import { View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
-import { PartyPopper } from 'lucide-react-native';
+import { PartyPopper } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 
 import type { ChecklistPhase } from '@shared/types/checklist';

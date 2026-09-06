@@ -1,20 +1,23 @@
 import { useCallback, useMemo, useState } from 'react';
-import { FlatList, RefreshControl, View } from 'react-native';
+import { FlatList, Keyboard, RefreshControl, View, type LayoutChangeEvent } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { GraduationCap, WifiOff } from 'lucide-react-native';
+import { GraduationCap, WifiOff } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { StudentCourseSummary } from '@shared/types/studentCourse';
 import { colors } from '@shared/theme/tokens';
 import { fetchCourses } from '@/api/courses.api';
-import { CourseCard } from '@/components/shared/CourseCard';
+import { CourseGridCard } from '@/components/shared/CourseGridCard';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { SearchField } from '@/components/ui/SearchField';
 import { SegmentedToggle } from '@/components/ui/SegmentedToggle';
-import { CourseCardSkeleton } from '@/components/ui/Skeleton';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { Text } from '@/components/ui/Text';
 import { useEnrol } from '@/features/enrolment/useEnrol';
+import { CourseSearchResults } from '@/features/home/CourseSearchResults';
+import { useCourseSearch } from '@/features/home/useCourseSearch';
 
 type Tab = 'all' | 'enrolled';
 
@@ -24,6 +27,26 @@ export default function CoursesScreen() {
   const [tab, setTab] = useState<Tab>('all');
   const [refreshing, setRefreshing] = useState(false);
   const { enrol, pendingCourseId } = useEnrol();
+
+  const search = useCourseSearch();
+  const [searchOpen, setSearchOpen] = useState(false);
+  /*
+   * Where the dropdown starts. Measured rather than assumed: the header's
+   * height moves with the system font size, so the panel has to be told where
+   * the field actually ended up on this device.
+   */
+  const [searchAnchor, setSearchAnchor] = useState(0);
+
+  const closeSearch = useCallback(() => {
+    setSearchOpen(false);
+    Keyboard.dismiss();
+  }, []);
+
+  const onSearchAnchorLayout = useCallback((event: LayoutChangeEvent) => {
+    const { y, height } = event.nativeEvent.layout;
+
+    setSearchAnchor(y + height);
+  }, []);
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['courses'],
@@ -53,8 +76,20 @@ export default function CoursesScreen() {
 
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
-      <View className="gap-4 px-5 pb-4 pt-4">
+      <View className="gap-2.5 px-4 pb-3 pt-3" onLayout={onSearchAnchorLayout}>
         <Text variant="display">{t('courses.title')}</Text>
+
+        <SearchField
+          accessibilityLabel={t('search.label')}
+          placeholder={t('search.placeholder')}
+          value={search.query}
+          onChangeText={(value) => {
+            search.setQuery(value);
+            setSearchOpen(true);
+          }}
+          onFocus={() => setSearchOpen(true)}
+          onSubmitEditing={() => setSearchOpen(true)}
+        />
 
         <SegmentedToggle<Tab>
           value={tab}
@@ -67,30 +102,40 @@ export default function CoursesScreen() {
       </View>
 
       {isLoading ? (
-        <View className="gap-3 px-5">
-          <CourseCardSkeleton />
-          <CourseCardSkeleton />
-          <CourseCardSkeleton />
+        <View className="gap-2.5 px-4">
+          <View className="flex-row gap-2.5">
+            <Skeleton className="h-[190px] flex-1 rounded-xl" />
+            <Skeleton className="h-[190px] flex-1 rounded-xl" />
+          </View>
+          <View className="flex-row gap-2.5">
+            <Skeleton className="h-[190px] flex-1 rounded-xl" />
+            <Skeleton className="h-[190px] flex-1 rounded-xl" />
+          </View>
         </View>
       ) : (
         <FlatList
           data={visible}
           keyExtractor={(course) => String(course.id)}
+          /*
+           * Two to a row, matching Home's Recent strip. The tile carries a
+           * compact buy button beside its price — icon-only, so it fits at this
+           * width without crowding, where the wide card's labelled Enrol button
+           * would not.
+           */
+          numColumns={2}
+          columnWrapperStyle={{ gap: 10 }}
           renderItem={({ item }) => (
-            <CourseCard
-              course={item}
-              onPress={() => openCourse(item)}
-              /*
-               * Enrolling straight from the list, without a detour through the
-               * course page. The button only renders for a course the student
-               * does not have — CourseCard decides that from `is_enrolled`.
-               */
-              onEnrol={() => enrol(item.id)}
-              enrolling={pendingCourseId === item.id}
-            />
+            <View className="w-[47%] grow">
+              <CourseGridCard
+                course={item}
+                onPress={() => openCourse(item)}
+                onEnrol={item.is_enrolled ? undefined : () => enrol(item.id)}
+                enrolling={pendingCourseId === item.id}
+              />
+            </View>
           )}
-          contentContainerClassName="px-5 gap-3"
-          contentContainerStyle={{ paddingBottom: 24, flexGrow: 1 }}
+          contentContainerClassName="px-4 gap-2.5"
+          contentContainerStyle={{ paddingBottom: 16, flexGrow: 1 }}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -127,6 +172,20 @@ export default function CoursesScreen() {
               />
             )
           }
+        />
+      )}
+
+      {searchOpen && (
+        <CourseSearchResults
+          {...search}
+          anchorTop={searchAnchor}
+          onDismiss={closeSearch}
+          onSelect={(course) => {
+            closeSearch();
+            openCourse(course);
+          }}
+          onEnrol={(course) => enrol(course.id)}
+          enrollingCourseId={pendingCourseId}
         />
       )}
     </View>

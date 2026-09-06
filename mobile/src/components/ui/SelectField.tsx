@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
-import { Check, ChevronDown, Search } from 'lucide-react-native';
+import { Check, ChevronDown, Search } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 
 import { colors } from '@shared/theme/tokens';

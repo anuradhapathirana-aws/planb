@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { Image } from 'expo-image';
-import { BookOpen, CheckCircle2, ChevronRight, Lock } from 'lucide-react-native';
+import { BookOpen, CheckCircle2, ChevronRight, Lock } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 
 import type { StudentCourseSummary } from '@shared/types/studentCourse';

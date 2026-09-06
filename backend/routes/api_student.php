@@ -87,7 +87,7 @@ Route::middleware(['auth:student', 'student.actor', 'student.active'])->group(fu
      * summaries reuse the courses and checklists endpoints so Home warms their
      * caches rather than duplicating their data.
      */
-    Route::get('home-banner', [HomeController::class, 'banner']);
+    Route::get('home-banners', [HomeController::class, 'banners']);
 
     // Courses
     Route::get('courses', [CourseController::class, 'index']);

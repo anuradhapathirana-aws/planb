@@ -24,6 +24,8 @@ class StudentHomeBannerResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
+            // Null is normal: a slide may carry wording and no artwork yet, and
+            // the app draws a branded card for it rather than an empty box.
             'image_url' => $this->image_url,
             'title' => $this->title,
             'subtitle' => $this->subtitle,

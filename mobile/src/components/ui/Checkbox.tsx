@@ -6,7 +6,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { Check } from 'lucide-react-native';
+import { Check } from '@/components/icons';
 
 import { MIN_TOUCH_TARGET } from '@shared/theme/tokens';
 import { cn } from '@/lib/cn';

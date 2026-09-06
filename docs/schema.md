@@ -234,9 +234,9 @@ Progress percentages are **computed, never stored**: `COUNT(completed) / COUNT(i
 
 ## `home_banners`
 
-The promo banner across the top of the student app's Home screen (`GET /student/home-banner`).
+The promo carousel across the top of the student app's Home screen (`GET /student/home-banners`).
 
-**A singleton — exactly one row, managed by `App\Services\Settings\HomeBannerService`.** A list would have meant a CRUD screen, an ordering UI and a "which one is live?" question, to solve a problem the client does not have: there is one hero slot and one message in it at a time. Turning this into a rotating set later is a `sort_order` column and a list endpoint; guessing now is a second admin screen nobody asked for.
+**Was a singleton; now an ordered list, managed by `App\Services\Settings\HomeBannerService`.** The one-row rule was always a service convention rather than a schema constraint, so becoming a carousel cost exactly what this file predicted it would — a `sort_order` column and a list endpoint. No second table, no data migration, and an existing banner simply became slide 1. `HomeBannerService::current()` is retained as "the first slide" so the admin panel's single-banner screen keeps working until its carousel replacement lands.
 
 The image is a **Media Library collection** (`banner`, single file, public disk), not a column — the file needs re-encoding to 1200×600 JPEG and a disk, neither of which a `string` path gives us. There is nothing to protect, so a signed URL would only add latency.
 
@@ -245,9 +245,10 @@ The image is a **Media Library collection** (`banner`, single file, public disk)
 | id | bigIncrements | |
 | title | string(120), nullable | Headline overlaid on the image. Optional — an image alone is a fine banner. |
 | subtitle | string(200), nullable | Supporting line. Optional. |
-| link_type | string(32), default `none` | PHP enum `App\Enums\HomeBannerLink`: `none`, `courses`, `checklists`, `course`, `url`. |
+| link_type | string(32), default `none` | PHP enum `App\Enums\HomeBannerLink`: `none`, `courses`, `services`, `checklists`, `course`, `url`. |
 | link_course_programme_id | FK → course_programmes, nullable, nullOnDelete | Set only when `link_type` is `course`. Nulls itself out if the course is hard-deleted, and the student resource then degrades the banner to signage rather than sending anyone to a 404. |
 | link_url | string(2048), nullable | Set only when `link_type` is `url`. Validated `url:http,https`. |
+| sort_order | unsignedSmallInteger, default 0 | Carousel position, low to high. Ties break on `id` so the sequence is stable. Indexed with `is_active` — the student endpoint only ever asks "the live slides, in order". |
 | is_active | boolean, default false | The off switch. An inactive banner keeps its image and wording so the same promo can come back without re-uploading. |
 | created_at / updated_at | timestamps | |
 

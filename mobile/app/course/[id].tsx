@@ -1,38 +1,70 @@
-import { Pressable, View } from 'react-native';
-import { Image } from 'expo-image';
+import { useMemo, useState } from 'react';
+import { Pressable, ScrollView, Share, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
+import * as Linking from 'expo-linking';
 import { router, useLocalSearchParams } from 'expo-router';
 import {
-  CheckCircle2,
+  BookOpen,
   ChevronLeft,
-  ClipboardCheck,
-  Lock,
+  Clock,
   Play,
+  Share2,
   ShieldCheck,
+  Star,
+  User,
   WifiOff,
-} from 'lucide-react-native';
+} from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 
 import type { StudentCourseVideo } from '@shared/types/studentCourse';
 import { colors } from '@shared/theme/tokens';
-import { formatDuration, formatMoney } from '@shared/lib/formatters';
+import { formatCourseLength, formatMoney } from '@shared/lib/formatters';
 import { fetchCourse } from '@/api/courses.api';
-import { Badge } from '@/components/ui/Badge';
+import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { ProgressRing } from '@/components/ui/ProgressRing';
-import { Screen } from '@/components/ui/Screen';
+import { ProgressBar } from '@/components/ui/ProgressBar';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { Tabs, type TabItem } from '@/components/ui/Tabs';
 import { Text } from '@/components/ui/Text';
 import { useToast } from '@/components/ui/Toast';
+import { CourseAssessmentCard } from '@/features/courses/CourseAssessmentCard';
+import { CourseHero } from '@/features/courses/CourseHero';
+import { CourseTopicCard } from '@/features/courses/CourseTopicCard';
+import { courseSocialProof, formatCompactCount } from '@/features/courses/courseSocialProof';
 import { useEnrol } from '@/features/enrolment/useEnrol';
+import { cn } from '@/lib/cn';
 
+type CourseTab = 'lessons' | 'about' | 'assessment';
+
+/**
+ * One course: what it covers, what it costs, and the one thing to do next.
+ *
+ * The screen is built around a pinned action bar rather than a button somewhere
+ * in the scroll. A student who has read three topics and decided to buy should
+ * not have to find the Enrol button again, and a student mid-course should be
+ * one tap from the next lesson at any scroll position.
+ *
+ * `is_enrolled` and `is_locked` are presentation only. Every stream, progress
+ * and paper endpoint refuses without an enrolment regardless of what renders
+ * here (root CLAUDE.md, Payments & Purchasables).
+ */
 export default function CourseDetailScreen() {
   const { t } = useTranslation();
   const toast = useToast();
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const courseId = Number(id);
+
+  const [tab, setTab] = useState<CourseTab>('lessons');
+  /*
+   * `undefined` means "the student has not touched the accordion yet", which is
+   * not the same as `null` ("they closed everything"). Without the distinction,
+   * collapsing the first topic would immediately re-open it.
+   */
+  const [openTopicId, setOpenTopicId] = useState<number | null | undefined>(undefined);
 
   // Already on the course screen, so a free enrolment must not push a second copy.
   const { enrol, pendingCourseId } = useEnrol({ navigateToCourse: false });
@@ -45,6 +77,41 @@ export default function CourseDetailScreen() {
 
   const isEnrolled = data?.is_enrolled ?? false;
 
+  /* SAMPLE DATA until the backend carries ratings — see courseSocialProof.ts. */
+  const proof = useMemo(() => courseSocialProof(courseId), [courseId]);
+
+  /**
+   * The lesson the action bar opens: the first unwatched one the student is
+   * allowed into, falling back to the first unlocked one so a fully-watched
+   * course still offers a rewatch.
+   */
+  const nextLesson = useMemo(() => {
+    if (!data) return null;
+
+    const lessons = data.topics.flatMap((topic) => topic.videos);
+
+    return (
+      lessons.find((lesson) => !lesson.is_locked && !lesson.progress.is_watched) ??
+      lessons.find((lesson) => !lesson.is_locked) ??
+      null
+    );
+  }, [data]);
+
+  const tabItems = useMemo(() => {
+    const items: TabItem<CourseTab>[] = [{ value: 'lessons', label: t('courses.lessons') }];
+
+    if (data?.description) items.push({ value: 'about', label: t('courses.tabAbout') });
+    if (data?.paper) items.push({ value: 'assessment', label: t('paper.title') });
+
+    return items;
+  }, [data?.description, data?.paper, t]);
+
+  // A course with no description has no About tab, so a stale selection has to
+  // fall back rather than render an empty panel.
+  const activeTab = tabItems.some((item) => item.value === tab) ? tab : 'lessons';
+
+  const expandedTopicId = openTopicId === undefined ? (data?.topics[0]?.id ?? null) : openTopicId;
+
   function openLesson(lesson: StudentCourseVideo) {
     if (lesson.is_locked) {
       /*
@@ -53,30 +120,60 @@ export default function CourseDetailScreen() {
        * message would send paying students hunting for a lesson to finish.
        */
       toast.info(isEnrolled ? t('courses.locked') : t('enrol.lockedLesson'));
+
       return;
     }
 
     router.push({ pathname: '/lesson/[id]', params: { id: lesson.id } });
   }
 
+  async function shareCourse() {
+    if (!data) return;
+
+    const url = Linking.createURL(`/course/${data.id}`);
+
+    try {
+      await Share.share({
+        title: data.name,
+        message: t('courses.shareMessage', { name: data.name, url }),
+        url,
+      });
+    } catch {
+      // A dismissed share sheet resolves rather than throws, so anything caught
+      // here is a real failure worth telling the student about.
+      toast.error(t('common.genericError'));
+    }
+  }
+
+  const length = data ? formatCourseLength(data.total_duration_seconds) : '';
+  const price = data
+    ? data.is_free
+      ? t('courses.free')
+      : formatMoney(data.price_cents, data.currency)
+    : '';
+
   return (
-    <Screen scroll flush>
-      <View className="px-5 pt-2">
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t('common.back')}
-          hitSlop={12}
-          onPress={() => router.back()}
-          className="-ml-2 h-11 w-11 items-center justify-center rounded-full active:bg-muted"
-        >
-          <ChevronLeft size={24} color={colors.foreground} />
-        </Pressable>
+    <View className="flex-1 bg-background">
+      <View className="flex-row items-center gap-2 px-3 pb-2" style={{ paddingTop: insets.top + 4 }}>
+        <CircleButton icon={ChevronLeft} label={t('common.back')} onPress={() => router.back()} />
+
+        <Text variant="heading" numberOfLines={1} className="flex-1 text-center">
+          {t('courses.detailTitle')}
+        </Text>
+
+        <CircleButton
+          icon={Share2}
+          label={t('courses.share')}
+          disabled={!data}
+          onPress={() => void shareCourse()}
+        />
       </View>
 
       {isLoading && (
-        <View className="gap-4 px-5 pt-4">
+        <View className="gap-4 px-5 pt-2">
+          <Skeleton className="aspect-[16/10] w-full rounded-xl" />
           <Skeleton className="h-8 w-3/4" />
-          <Skeleton className="h-28 w-full" />
+          <Skeleton className="h-10 w-full" />
           <Skeleton className="h-40 w-full" />
         </View>
       )}
@@ -93,219 +190,223 @@ export default function CourseDetailScreen() {
       )}
 
       {data && (
-        <View className="px-5">
-          {/* Only when there is art. An empty placeholder banner would take a
-              third of the screen to say nothing. */}
-          {data.thumbnail_url && (
-            // Layout classes go on the wrapper, never on the expo-image element:
-            // it is not registered with NativeWind (no cssInterop in this app), so
-            // a `className` there is silently dropped. Same reason Avatar styles
-            // its Image with `style`.
-            <View className="mt-3 aspect-video w-full overflow-hidden rounded-xl bg-muted">
-              <Image
-                source={{ uri: data.thumbnail_url }}
-                style={{ width: '100%', height: '100%' }}
-                contentFit="cover"
-                transition={150}
-                cachePolicy="disk"
-                accessibilityIgnoresInvertColors
-              />
-            </View>
-          )}
+        <>
+          <ScrollView
+            contentContainerClassName="px-5 pt-1"
+            // Clears the pinned action bar, which would otherwise cover the last
+            // topic of the syllabus.
+            contentContainerStyle={{ paddingBottom: insets.bottom + 148 }}
+            showsVerticalScrollIndicator={false}
+          >
+            <CourseHero course={data} />
 
-          <View className="flex-row items-start gap-4 pt-3">
-            <View className="flex-1">
-              {data.category_name && <Text variant="label">{data.category_name}</Text>}
-              <Text variant="display" className="mt-1">
-                {data.name}
-              </Text>
-              {/* Progress is meaningless before enrolling — a 0% ring on a
-                  course nobody has bought reads as "you are failing this". */}
-              <Text variant="caption" className="mt-2">
-                {data.is_enrolled
-                  ? t('courses.progress', {
-                      watched: data.progress.videos_watched,
-                      total: data.progress.videos_total,
-                    })
-                  : t('courses.content', {
-                      topics: data.topics_count,
-                      lessons: data.videos_count,
-                    })}
-              </Text>
-            </View>
-
-            {data.is_enrolled && <ProgressRing percent={data.progress.percent_complete} size={64} />}
-          </View>
-
-          {data.description && (
-            <Text variant="body" className="mt-4 text-muted-foreground">
-              {data.description}
+            <Text variant="title" className="mt-4">
+              {data.name}
             </Text>
-          )}
 
-          {/*
-            The paywall. Presentation only — the syllabus below stays readable
-            because that is how a student decides to buy, and every lesson,
-            stream and paper endpoint refuses on the server regardless of what
-            this screen renders.
-          */}
-          {!data.is_enrolled && (
-            <Card className="mt-5 border-primary/25 bg-primary-soft p-5">
-              <View className="flex-row items-center gap-3">
-                <View className="h-10 w-10 items-center justify-center rounded-full bg-card">
-                  <Lock size={18} color={colors.primary} />
+            <View className="mt-2 flex-row flex-wrap items-center gap-x-5 gap-y-1.5">
+              {length !== '' && (
+                <View className="flex-row items-center gap-1.5">
+                  <Clock size={14} color={colors.primary} />
+                  <Text variant="caption">{t('courses.metaDuration', { length })}</Text>
                 </View>
+              )}
 
-                <View className="flex-1">
-                  <Text variant="heading">{t('enrol.paywallTitle')}</Text>
-                  <Text variant="caption" className="mt-0.5 leading-5">
-                    {t('enrol.paywallBody')}
-                  </Text>
-                </View>
-              </View>
-
-              <View className="mt-4 flex-row items-center justify-between gap-3">
-                <Text className="text-[22px] font-bold leading-8 text-foreground">
-                  {data.is_free ? t('courses.free') : formatMoney(data.price_cents, data.currency)}
-                </Text>
-
-                <Text variant="caption" className="flex-1 text-right leading-5">
-                  {t('courses.content', {
-                    topics: data.topics_count,
-                    lessons: data.videos_count,
+              <View className="flex-row items-center gap-1.5">
+                {/* Gold as a filled indicator, never as text — see tokens.ts on
+                    the accent's contrast. */}
+                <Star size={14} color={colors.accent} fill={colors.accent} />
+                <Text variant="caption">
+                  {t('courses.metaRating', {
+                    rating: proof.rating.toFixed(1),
+                    count: proof.ratings_count.toLocaleString('en-LK'),
                   })}
                 </Text>
               </View>
+            </View>
 
-              <Button
-                label={data.is_free ? t('enrol.actionFree') : t('enrol.action')}
-                icon={ShieldCheck}
-                size="lg"
-                fullWidth
-                className="mt-4"
-                loading={pendingCourseId === data.id}
-                onPress={() => enrol(data.id)}
-              />
-            </Card>
-          )}
-
-          {/* Assessment */}
-          {data.paper && (
-            <Card className="mt-6 p-4">
-              <View className="flex-row items-center gap-3">
-                <View className="h-10 w-10 items-center justify-center rounded-full bg-accent-soft">
-                  <ClipboardCheck size={18} color={colors.accent} />
-                </View>
-
-                <View className="flex-1">
-                  <Text variant="heading">{data.paper.title}</Text>
-                  <Text variant="caption" className="mt-0.5">
-                    {t('paper.passMark', { mark: data.paper.pass_mark })}
-                  </Text>
-                </View>
+            <View className="mt-3 flex-row items-center justify-between gap-3 border-t border-border pt-3">
+              <View className="flex-1 flex-row items-center gap-2">
+                <Avatar name={proof.instructor_name} size={28} />
+                <Text variant="caption" className="flex-1 text-foreground" numberOfLines={1}>
+                  {proof.instructor_name}
+                </Text>
               </View>
 
-              {/*
-                A disabled button with no explanation is a dead end. The backend
-                sends `blocked_reason` precisely so the student is told which of
-                the four reasons applies.
-              */}
-              {!data.paper.can_attempt && data.paper.blocked_reason && (
-                <Text variant="caption" className="mt-3 leading-5">
-                  {t(`paper.blocked.${data.paper.blocked_reason}`)}
+              <View className="flex-row items-center gap-2">
+                <LearnerStack />
+                <Text className="text-[13px] font-semibold leading-5 text-primary">
+                  {t('courses.learners', { count: formatCompactCount(proof.learners) })}
                 </Text>
+              </View>
+            </View>
+
+            {tabItems.length > 1 && (
+              <Tabs className="mt-4" value={activeTab} items={tabItems} onChange={setTab} />
+            )}
+
+            <View className="mt-4 gap-3">
+              {activeTab === 'lessons' &&
+                (data.topics.length === 0 ? (
+                  <EmptyState
+                    icon={BookOpen}
+                    title={t('courses.syllabusEmptyTitle')}
+                    body={t('courses.syllabusEmptyBody')}
+                  />
+                ) : (
+                  data.topics.map((topic, index) => (
+                    <CourseTopicCard
+                      key={topic.id}
+                      topic={topic}
+                      index={index}
+                      expanded={topic.id === expandedTopicId}
+                      onToggle={() => setOpenTopicId(topic.id === expandedTopicId ? null : topic.id)}
+                      onOpenLesson={openLesson}
+                    />
+                  ))
+                ))}
+
+              {activeTab === 'about' && data.description && (
+                <Card className="p-4">
+                  {/* Plain text, not rich text: unlike a topic's, the course
+                      description is a `max:2000` plain textarea in the admin. */}
+                  <Text variant="body" className="text-muted-foreground">
+                    {data.description}
+                  </Text>
+                </Card>
               )}
 
-              <Button
-                label={data.paper.has_passed ? t('paper.title') : t('paper.start')}
-                variant={data.paper.can_attempt ? 'primary' : 'secondary'}
-                size="md"
-                fullWidth
-                className="mt-4"
-                disabled={!data.paper.can_attempt && !data.paper.has_passed}
-                onPress={() => router.push({ pathname: '/paper/[id]', params: { id: data.id } })}
-              />
-            </Card>
-          )}
+              {activeTab === 'assessment' && data.paper && (
+                <CourseAssessmentCard
+                  paper={data.paper}
+                  onStart={() => router.push({ pathname: '/paper/[id]', params: { id: data.id } })}
+                />
+              )}
+            </View>
+          </ScrollView>
 
-          {/* Topics and lessons */}
-          <View className="mt-8 gap-6">
-            {data.topics.map((topic, topicIndex) => (
-              <View key={topic.id}>
-                <View className="mb-3 flex-row items-center justify-between">
-                  <Text variant="label" className="flex-1">
-                    {`${topicIndex + 1}. ${topic.title}`}
+          {/* Pinned: the one thing to do next stays reachable at any scroll position. */}
+          <View
+            className="absolute bottom-0 left-0 right-0 border-t border-border bg-card px-5 pt-3"
+            style={{ paddingBottom: insets.bottom + 12 }}
+          >
+            {isEnrolled ? (
+              <>
+                <View className="mb-2 flex-row items-center justify-between gap-3">
+                  <Text variant="caption">
+                    {t('courses.progress', {
+                      watched: data.progress.videos_watched,
+                      total: data.progress.videos_total,
+                    })}
                   </Text>
 
-                  {topic.is_complete && (
-                    <Badge label={t('courses.complete')} tone="success" icon={CheckCircle2} />
-                  )}
+                  <Text className="text-[13px] font-semibold leading-5 text-primary">
+                    {data.progress.percent_complete}%
+                  </Text>
                 </View>
 
-                <Card className="divide-y divide-border">
-                  {topic.videos.map((lesson) => (
-                    <LessonRow key={lesson.id} lesson={lesson} onPress={() => openLesson(lesson)} />
-                  ))}
-                </Card>
-              </View>
-            ))}
+                <ProgressBar
+                  percent={data.progress.percent_complete}
+                  tone={data.progress.completed_at ? 'success' : 'accent'}
+                  className="mb-3"
+                  accessibilityLabel={`${data.name} ${data.progress.percent_complete} percent complete`}
+                />
+
+                {nextLesson ? (
+                  <Button
+                    label={
+                      data.progress.videos_watched === 0
+                        ? t('courses.startLearning')
+                        : t('courses.continueLearning')
+                    }
+                    icon={Play}
+                    size="lg"
+                    fullWidth
+                    onPress={() => openLesson(nextLesson)}
+                  />
+                ) : data.paper ? (
+                  <Button
+                    label={data.paper.has_passed ? t('paper.title') : t('paper.start')}
+                    size="lg"
+                    fullWidth
+                    variant={data.paper.can_attempt ? 'primary' : 'secondary'}
+                    disabled={!data.paper.can_attempt && !data.paper.has_passed}
+                    onPress={() => router.push({ pathname: '/paper/[id]', params: { id: data.id } })}
+                  />
+                ) : null}
+              </>
+            ) : (
+              <>
+                {/* The reason to buy, on the same line of sight as the price —
+                    the old paywall card said this halfway down the scroll. */}
+                <Text variant="caption" className="mb-2 text-center">
+                  {t('enrol.paywallBody')}
+                </Text>
+
+                <Button
+                  label={data.is_free ? t('enrol.actionFree') : t('enrol.actionPriced', { price })}
+                  icon={ShieldCheck}
+                  size="lg"
+                  fullWidth
+                  loading={pendingCourseId === data.id}
+                  onPress={() => enrol(data.id)}
+                />
+              </>
+            )}
           </View>
-        </View>
+        </>
       )}
-    </Screen>
+    </View>
   );
 }
 
-function LessonRow({
-  lesson,
+function CircleButton({
+  icon: Icon,
+  label,
   onPress,
+  disabled = false,
 }: {
-  lesson: StudentCourseVideo;
+  icon: typeof ChevronLeft;
+  label: string;
   onPress: () => void;
+  disabled?: boolean;
 }) {
-  const { t } = useTranslation();
-  const watched = lesson.progress.is_watched;
-
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={
-        lesson.is_locked ? `${lesson.title}. ${t('courses.locked')}` : lesson.title
-      }
-      accessibilityState={{ disabled: lesson.is_locked }}
+      accessibilityLabel={label}
+      accessibilityState={{ disabled }}
+      hitSlop={10}
+      disabled={disabled}
       onPress={onPress}
-      className="min-h-[64px] flex-row items-center gap-3 p-4 active:bg-muted"
+      className={cn(
+        'h-11 w-11 items-center justify-center rounded-full border border-border bg-card active:bg-muted',
+        disabled && 'opacity-40',
+      )}
     >
-      <View
-        className={
-          watched
-            ? 'h-9 w-9 items-center justify-center rounded-full bg-success-soft'
-            : lesson.is_locked
-              ? 'h-9 w-9 items-center justify-center rounded-full bg-muted'
-              : 'h-9 w-9 items-center justify-center rounded-full bg-primary-soft'
-        }
-      >
-        {watched ? (
-          <CheckCircle2 size={17} color={colors.success} />
-        ) : lesson.is_locked ? (
-          <Lock size={15} color={colors['muted-foreground']} />
-        ) : (
-          <Play size={15} color={colors.primary} />
-        )}
-      </View>
-
-      <View className="flex-1">
-        <Text
-          className={lesson.is_locked ? 'text-muted-foreground' : undefined}
-          numberOfLines={2}
-        >
-          {lesson.title}
-        </Text>
-
-        <Text variant="caption" className="mt-0.5">
-          {watched ? t('courses.watched') : formatDuration(lesson.duration_seconds)}
-        </Text>
-      </View>
+      <Icon size={20} color={colors.foreground} />
     </Pressable>
+  );
+}
+
+/**
+ * The overlapping avatars beside the learner count. Decorative — we do not
+ * publish who else is on a course, and would not want to.
+ */
+function LearnerStack() {
+  return (
+    <View className="flex-row items-center" pointerEvents="none">
+      {[0, 1, 2].map((index) => (
+        <View
+          key={index}
+          className={cn(
+            'h-6 w-6 items-center justify-center rounded-full border-2 border-background bg-primary-soft',
+            index > 0 && '-ml-2',
+          )}
+        >
+          <User size={11} color={colors.primary} />
+        </View>
+      ))}
+    </View>
   );
 }

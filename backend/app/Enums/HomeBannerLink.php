@@ -16,6 +16,7 @@ enum HomeBannerLink: string
     /** Not tappable. A banner can be pure signage. */
     case None = 'none';
     case Courses = 'courses';
+    case Services = 'services';
     case Checklists = 'checklists';
     /** One specific course, in `link_course_programme_id`. */
     case Course = 'course';

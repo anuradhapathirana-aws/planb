@@ -4,7 +4,7 @@ import { Image } from 'expo-image';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Controller, useForm } from 'react-hook-form';
-import { Camera, Hash, ImageIcon, Landmark, Send } from 'lucide-react-native';
+import { Camera, Hash, ImageIcon, Landmark, Send } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 
 import { bankTransferSchema, type BankTransferValues } from '@shared/schemas/bankTransfer';

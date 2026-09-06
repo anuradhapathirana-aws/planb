@@ -13,7 +13,7 @@ import {
   RotateCcw,
   VideoOff,
   WifiOff,
-} from 'lucide-react-native';
+} from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 

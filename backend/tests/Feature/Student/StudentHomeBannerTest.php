@@ -46,33 +46,49 @@ class StudentHomeBannerTest extends TestCase
         return $banner->fresh() ?? $banner;
     }
 
-    public function test_no_banner_set_up_is_null_not_a_404(): void
+    public function test_no_slides_set_up_is_an_empty_list_not_a_404(): void
     {
-        $this->getJson('/api/v1/student/home-banner')
+        $this->getJson('/api/v1/student/home-banners')
             ->assertOk()
-            ->assertJsonPath('data', null);
+            ->assertJsonCount(0, 'data');
     }
 
-    public function test_an_inactive_banner_is_not_served(): void
+    public function test_an_inactive_slide_is_not_served(): void
     {
         $this->withImage(HomeBanner::create(['title' => 'Hidden', 'is_active' => false]));
 
-        $this->getJson('/api/v1/student/home-banner')
+        $this->getJson('/api/v1/student/home-banners')
             ->assertOk()
-            ->assertJsonPath('data', null);
+            ->assertJsonCount(0, 'data');
     }
 
-    /** Switched on but never given an image would render an empty box in the app. */
-    public function test_an_active_banner_with_no_image_is_not_served(): void
+    /**
+     * Wording without artwork is a usable slide: the app draws it as a branded
+     * card. This is what lets an admin write the copy now and upload the image
+     * later, instead of the slide staying invisible until both halves exist.
+     */
+    public function test_an_active_slide_with_no_image_is_served_without_one(): void
     {
         HomeBanner::create(['title' => 'No art', 'is_active' => true]);
 
-        $this->getJson('/api/v1/student/home-banner')
+        $this->getJson('/api/v1/student/home-banners')
             ->assertOk()
-            ->assertJsonPath('data', null);
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.title', 'No art')
+            ->assertJsonPath('data.0.image_url', null);
     }
 
-    public function test_an_active_banner_comes_back_with_a_resolved_link(): void
+    /** Neither artwork nor wording is genuinely empty — that one still goes. */
+    public function test_an_active_slide_with_neither_image_nor_title_is_dropped(): void
+    {
+        HomeBanner::create(['subtitle' => 'Orphaned subtitle', 'is_active' => true]);
+
+        $this->getJson('/api/v1/student/home-banners')
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
+    }
+
+    public function test_an_active_slide_comes_back_with_a_resolved_link(): void
     {
         $course = CourseProgramme::factory()->create(['status' => CourseStatus::Published]);
 
@@ -84,14 +100,14 @@ class StudentHomeBannerTest extends TestCase
             'is_active' => true,
         ]));
 
-        $response = $this->getJson('/api/v1/student/home-banner')->assertOk();
+        $response = $this->getJson('/api/v1/student/home-banners')->assertOk();
 
-        $response->assertJsonPath('data.title', 'New intake open')
-            ->assertJsonPath('data.subtitle', 'Apply before 30 September')
-            ->assertJsonPath('data.link.type', 'course')
-            ->assertJsonPath('data.link.course_id', $course->id);
+        $response->assertJsonPath('data.0.title', 'New intake open')
+            ->assertJsonPath('data.0.subtitle', 'Apply before 30 September')
+            ->assertJsonPath('data.0.link.type', 'course')
+            ->assertJsonPath('data.0.link.course_id', $course->id);
 
-        $this->assertNotNull($response->json('data.image_url'));
+        $this->assertNotNull($response->json('data.0.image_url'));
     }
 
     /**
@@ -106,16 +122,16 @@ class StudentHomeBannerTest extends TestCase
             'is_active' => true,
         ]));
 
-        $response = $this->getJson('/api/v1/student/home-banner')->assertOk();
+        $response = $this->getJson('/api/v1/student/home-banners')->assertOk();
 
-        $response->assertJsonPath('data.link', [
+        $response->assertJsonPath('data.0.link', [
             'type' => 'url',
             'url' => 'https://planbinternational.lk/intake',
         ]);
 
-        $response->assertJsonMissingPath('data.is_active')
-            ->assertJsonMissingPath('data.link_course_programme_id')
-            ->assertJsonMissingPath('data.link_url');
+        $response->assertJsonMissingPath('data.0.is_active')
+            ->assertJsonMissingPath('data.0.link_course_programme_id')
+            ->assertJsonMissingPath('data.0.link_url');
     }
 
     /** A course deleted after the banner was set up must not send anyone to a 404. */
@@ -135,8 +151,56 @@ class StudentHomeBannerTest extends TestCase
 
         $this->assertNull($banner->fresh()?->link_course_programme_id);
 
-        $this->getJson('/api/v1/student/home-banner')
+        $this->getJson('/api/v1/student/home-banners')
             ->assertOk()
-            ->assertJsonPath('data.link.type', 'none');
+            ->assertJsonPath('data.0.link.type', 'none');
+    }
+
+    /**
+     * The carousel's whole point: several slides, in the order the admin set.
+     *
+     * Seeded out of order so a pass cannot come from insertion order alone.
+     */
+    public function test_slides_come_back_in_the_admins_order(): void
+    {
+        $this->withImage(HomeBanner::create([
+            'title' => 'Services',
+            'link_type' => HomeBannerLink::Services->value,
+            'is_active' => true,
+            'sort_order' => 1,
+        ]));
+
+        $this->withImage(HomeBanner::create([
+            'title' => 'Courses',
+            'link_type' => HomeBannerLink::Courses->value,
+            'is_active' => true,
+            'sort_order' => 0,
+        ]));
+
+        $this->getJson('/api/v1/student/home-banners')
+            ->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('data.0.title', 'Courses')
+            ->assertJsonPath('data.0.link.type', 'courses')
+            ->assertJsonPath('data.1.title', 'Services')
+            ->assertJsonPath('data.1.link.type', 'services');
+    }
+
+    /** One switched-off slide must not leave a gap between the others. */
+    public function test_an_inactive_slide_is_dropped_from_the_middle(): void
+    {
+        foreach ([['A', 0, true], ['B', 1, false], ['C', 2, true]] as [$title, $order, $active]) {
+            $this->withImage(HomeBanner::create([
+                'title' => $title,
+                'is_active' => $active,
+                'sort_order' => $order,
+            ]));
+        }
+
+        $this->getJson('/api/v1/student/home-banners')
+            ->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('data.0.title', 'A')
+            ->assertJsonPath('data.1.title', 'C');
     }
 }

@@ -16,6 +16,7 @@ class DatabaseSeeder extends Seeder
             AdminUserSeeder::class,
             IndustrySeeder::class,
             StudentSeeder::class,
+            HomeCarouselSeeder::class,
         ]);
     }
 }

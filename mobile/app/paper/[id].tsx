@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Check, ChevronLeft, WifiOff } from 'lucide-react-native';
+import { Check, ChevronLeft, WifiOff } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 
 import type { PaperAnswerPayload } from '@shared/types/paper';

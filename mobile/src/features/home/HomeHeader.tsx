@@ -1,72 +1,69 @@
 import { Pressable, View } from 'react-native';
+import { Bell } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 
 import type { StudentProfile } from '@shared/types/studentAuth';
+import { colors } from '@shared/theme/tokens';
 import { Avatar } from '@/components/ui/Avatar';
 import { Text } from '@/components/ui/Text';
-import { useNow } from '@/lib/useNow';
 
 export interface HomeHeaderProps {
   student: StudentProfile | null;
   onPress: () => void;
+  onNotifications: () => void;
 }
 
 /**
- * Photo, greeting, and the date — the standard mobile app header.
+ * Photo, greeting, and the notification bell — one row across the top of Home.
  *
- * The date sits on the avatar's row rather than on one of its own, which is
- * where the reference design puts a hamburger. We have no drawer to open, so
- * the slot was free and the clock costs no extra height.
+ * The clock that used to sit here is gone at the client's request, and it was
+ * the right cut: the phone's own status bar shows the time a few pixels above,
+ * so the app was repeating the OS and re-rendering every minute to do it.
+ *
+ * The greeting is the tap target for Profile, not just the avatar. A 38px
+ * circle is under the 44px minimum on its own, and making the whole block
+ * pressable gives a comfortable target without drawing a bigger photo.
  */
-export function HomeHeader({ student, onPress }: HomeHeaderProps) {
-  const { t, i18n } = useTranslation();
-  const now = useNow();
-
-  /*
-   * Formatted through Intl with the app's own locale, not a hand-built
-   * "MON, 1 SEP" — month and weekday names have to come from the locale, and
-   * en-LK puts the day before the month where en-US would not.
-   *
-   * `hourCycle` is left to the locale: forcing 12- or 24-hour would disagree
-   * with the phone's own status bar a few pixels above.
-   */
-  const locale = i18n.language === 'si' ? 'si-LK' : 'en-LK';
-
-  const date = now.toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short' });
-  const time = now.toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' });
+export function HomeHeader({ student, onPress, onNotifications }: HomeHeaderProps) {
+  const { t } = useTranslation();
 
   const firstName = student?.full_name?.trim().split(/\s+/)[0];
 
   return (
-    <View className="px-5 pt-2">
-      <View className="flex-row items-center justify-between">
-        {/*
-          Explicitly NOT a live region: this re-renders every minute, and a
-          screen reader announcing the time over whatever the student is doing
-          would be the most irritating thing in the app.
-        */}
-        <Text variant="label" accessibilityLiveRegion="none">
-          {`${date} · ${time}`}
-        </Text>
+    <View className="flex-row items-center gap-3 px-4 pb-1 pt-2">
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={t('profile.title')}
+        onPress={onPress}
+        hitSlop={8}
+        className="min-h-[44px] flex-1 flex-row items-center gap-3 active:opacity-70"
+      >
+        <Avatar uri={student?.profile_photo_url} name={student?.full_name} size={42} />
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t('profile.title')}
-          onPress={onPress}
-          hitSlop={8}
-          className="active:opacity-70"
-        >
-          <Avatar uri={student?.profile_photo_url} name={student?.full_name} size={38} />
-        </Pressable>
-      </View>
+        <View className="flex-1">
+          <Text variant="heading" numberOfLines={1}>
+            {firstName ? t('home.greeting', { name: firstName }) : t('home.greetingFallback')}
+          </Text>
 
-      <Text variant="display" numberOfLines={1} className="mt-2">
-        {firstName ? t('home.greeting', { name: firstName }) : t('home.greetingFallback')}
-      </Text>
+          <Text variant="caption" numberOfLines={1}>
+            {t('home.learnPrompt')}
+          </Text>
+        </View>
+      </Pressable>
 
-      <Text variant="caption" className="mt-0.5">
-        {t('home.learnPrompt')}
-      </Text>
+      {/*
+        Circled to match the avatar opposite it, which is what keeps the row
+        looking like a pair of controls rather than a photo with a stray icon.
+      */}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={t('notifications.title')}
+        onPress={onNotifications}
+        hitSlop={8}
+        className="h-11 w-11 items-center justify-center rounded-full border border-border bg-card active:bg-muted"
+      >
+        <Bell size={19} color={colors.primary} />
+      </Pressable>
     </View>
   );
 }

@@ -1,5 +1,5 @@
 import { View } from 'react-native';
-import { ChevronRight } from 'lucide-react-native';
+import { ChevronRight } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 
 import type { StudentServicePurchase } from '@shared/types/studentService';

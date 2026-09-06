@@ -9,7 +9,7 @@ import {
   Info,
   ShieldCheck,
   WifiOff,
-} from 'lucide-react-native';
+} from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 
 import { formatMoney } from '@shared/lib/formatters';

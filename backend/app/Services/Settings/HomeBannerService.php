@@ -6,15 +6,17 @@ namespace App\Services\Settings;
 
 use App\Enums\HomeBannerLink;
 use App\Models\HomeBanner;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\UploadedFile;
 use Intervention\Image\ImageManager;
 
 /**
- * The one way in and out of the Home banner singleton.
+ * The one way in and out of the Home carousel.
  *
- * Nothing else may call `HomeBanner::create()` — that is what keeps "exactly
- * one row" true without a database constraint that would need its own
- * migration to relax later.
+ * Nothing else may call `HomeBanner::create()`. The table used to hold exactly
+ * one row by convention; it now holds an ordered list, and `current()` is kept
+ * as "the first slide" so the existing single-banner admin screen goes on
+ * working untouched until its carousel replacement lands.
  */
 class HomeBannerService
 {
@@ -32,7 +34,7 @@ class HomeBannerService
      */
     public function current(): HomeBanner
     {
-        $banner = HomeBanner::query()->with('linkedCourse')->first();
+        $banner = HomeBanner::query()->with('linkedCourse')->ordered()->first();
 
         return $banner ?? HomeBanner::query()->create([]);
     }
@@ -46,9 +48,28 @@ class HomeBannerService
      */
     public function forStudents(): ?HomeBanner
     {
-        $banner = HomeBanner::query()->with('linkedCourse')->first();
+        return $this->liveForStudents()->first();
+    }
 
-        return $banner?->isPublishable() === true ? $banner : null;
+    /**
+     * Every slide the carousel should show, in the admin's order.
+     *
+     * A slide that is switched off, or active but has no image, is dropped
+     * rather than sent — the app would render an empty box for it, and one
+     * blank page in a swipeable carousel reads as a broken app. An empty
+     * collection is a normal answer: the app falls back to its branded hero.
+     *
+     * @return Collection<int, HomeBanner>
+     */
+    public function liveForStudents(): Collection
+    {
+        return HomeBanner::query()
+            ->with('linkedCourse')
+            ->where('is_active', true)
+            ->ordered()
+            ->get()
+            ->filter(fn (HomeBanner $banner) => $banner->isPublishable())
+            ->values();
     }
 
     /**

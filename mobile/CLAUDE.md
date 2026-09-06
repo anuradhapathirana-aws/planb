@@ -79,6 +79,10 @@ so patterns transfer between the two codebases.
   to a screen reader otherwise.
 - The `--accent` gold (`#c79a3a`) is ~2.5:1 on white and **fails WCAG AA for text**. Fills, borders,
   and indicators only — never body text on a light surface.
+- **Icons come from `@/components/icons`, never from `'lucide-react-native'` directly.** Metro does
+  not tree-shake, so the package's root barrel drags all ~1,780 icon modules into the graph — it was
+  44% of the bundle for the 44 icons we render, and it is why a cold start took minutes. That module
+  deep-imports one file per icon; add a line to it when you need a new one.
 
 ## 5. Config and builds
 

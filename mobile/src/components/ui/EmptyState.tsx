@@ -1,5 +1,5 @@
 import { View } from 'react-native';
-import type { LucideIcon } from 'lucide-react-native';
+import type { LucideIcon } from '@/components/icons';
 
 import { colors } from '@shared/theme/tokens';
 import { Button } from './Button';

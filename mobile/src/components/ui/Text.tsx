@@ -22,10 +22,19 @@ export type TextVariant =
   | 'label';
 
 const VARIANTS: Record<TextVariant, string> = {
+  /*
+   * Titles are Plan B navy, not slate. `body` and below stay `foreground` — a
+   * whole screen set in brand colour stops the headings standing out at all,
+   * which is the opposite of the point.
+   *
+   * These are for titles on LIGHT surfaces. Navy cards (`bg-surface`) set their
+   * own `text-white` on a plain `Text` and always have; do not reach for these
+   * variants there.
+   */
   // Screen titles. One per screen, at most.
-  display: 'text-[28px] font-bold leading-9 text-foreground',
-  title: 'text-[20px] font-semibold leading-7 text-foreground',
-  heading: 'text-[17px] font-semibold leading-6 text-foreground',
+  display: 'text-[28px] font-bold leading-9 text-primary',
+  title: 'text-[20px] font-semibold leading-7 text-primary',
+  heading: 'text-[17px] font-semibold leading-6 text-primary',
   body: 'text-[15px] font-normal leading-6 text-foreground',
   bodyStrong: 'text-[15px] font-medium leading-6 text-foreground',
   caption: 'text-[13px] font-normal leading-5 text-muted-foreground',

@@ -1,5 +1,5 @@
-import { CheckCircle2, Clock, Loader, XCircle } from 'lucide-react-native';
-import type { LucideIcon } from 'lucide-react-native';
+import { CheckCircle2, Clock, Loader, XCircle } from '@/components/icons';
+import type { LucideIcon } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 
 import type { ServicePurchaseStatus } from '@shared/types/service';

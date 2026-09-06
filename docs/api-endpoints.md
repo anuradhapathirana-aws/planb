@@ -257,9 +257,10 @@ Playback bytes are still served by the existing `GET /api/v1/course-videos/{vide
 
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/student/home-banner` | The banner, or **`{ "data": null }`** — a normal answer, not an error. |
+| GET | `/student/home-banners` | The carousel slides, in `sort_order`. **`{ "data": [] }`** is a normal answer, not an error. |
 
-- **`data` is null in three cases the app treats identically**: nothing set up, switched off, or active with no image. The app renders its own branded fallback hero for all three, so the top of Home is never an empty box.
+- **A slide is omitted in three cases the app treats identically**: switched off, active with no image, or never set up. One blank page inside a swipeable carousel reads as a broken app, so the slide is dropped rather than sent.
+- **An empty list is normal.** The app renders two built-in branded slides — Courses and Services — so the top of Home is never an empty box on a fresh install. They step aside entirely as soon as one real slide is published.
 - **The link arrives resolved.** `StudentHomeBannerResource` returns one `link` object — `{ type }`, `{ type: 'course', course_id }` or `{ type: 'url', url }` — rather than the three columns the admin resource exposes. The client switches on a discriminated union instead of re-implementing "which column applies".
 - **A course link whose course has been deleted degrades to `{ type: 'none' }`** rather than sending the student to a 404.
 - **There is no `/student/home` aggregate endpoint, deliberately.** Home's checklist and course progress tiles are computed from the *same* cached `GET /student/checklists` and `GET /student/courses` responses their tabs use, so opening Home warms both. A combined endpoint would be one round trip instead of three, and would buy a screen whose numbers could disagree with the screens they link to.

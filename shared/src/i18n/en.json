@@ -40,7 +40,7 @@
   },
   "home": {
     "title": "Home",
-    "greeting": "Hello, {{name}}",
+    "greeting": "Hello, {{name}} 👋",
     "greetingFallback": "Welcome back",
     "keepGoing": "Keep going — you're {{percent}}% through.",
     "allCaughtUp": "You're all caught up.",
@@ -58,11 +58,18 @@
     "categoryEmptyTitle": "Nothing in this category",
     "categoryEmptyBody": "Try another category, or view all courses.",
     "allCaughtUpBody": "Every course you own is finished. Nice work.",
-    "heroFallbackTitle": "Your UAE journey starts here",
-    "heroFallbackBody": "Work through your courses and arrival checklists, step by step.",
     "tileNothingYet": "Nothing yet",
     "tileCoursesActive_one": "{{count}} in progress",
-    "tileCoursesActive_other": "{{count}} in progress"
+    "tileCoursesActive_other": "{{count}} in progress",
+    "recentTitle": "Recent courses",
+    "profileTitle": "Get personalised learning",
+    "profileCta": "Edit your profile",
+    "slideCoursesTitle": "Find your course",
+    "slideCoursesBody": "Training built for working and studying in the UAE.",
+    "slideCoursesCta": "Browse courses",
+    "slideServicesTitle": "Let us handle the paperwork",
+    "slideServicesBody": "CV writing, visa help and interview coaching from the Plan B team.",
+    "slideServicesCta": "See services"
   },
   "courses": {
     "title": "Courses",
@@ -87,7 +94,20 @@
     "content": "{{topics}} topics · {{lessons}} lessons",
     "noneEnrolledTitle": "No courses yet",
     "noneEnrolledBody": "Enrol in a course and it will appear here with your progress.",
-    "browseAll": "Browse all courses"
+    "browseAll": "Browse all courses",
+    "detailTitle": "Course details",
+    "share": "Share course",
+    "shareMessage": "{{name}} — a Plan B Academy course: {{url}}",
+    "tabAbout": "About",
+    "metaDuration": "Duration {{length}}",
+    "metaRating": "Rating {{rating}} ({{count}})",
+    "learners": "{{count}} learners",
+    "newBadge": "New",
+    "startLearning": "Start learning",
+    "continueLearning": "Continue learning",
+    "syllabusEmptyTitle": "Lessons coming soon",
+    "syllabusEmptyBody": "Plan B is still adding lessons to this course.",
+    "topicEmpty": "No lessons in this topic yet."
   },
   "search": {
     "label": "Search courses",
@@ -167,7 +187,9 @@
       "attempts_exhausted": "You've used all your attempts. Contact Plan B support.",
       "already_passed": "You've already passed this assessment.",
       "no_questions": "This assessment isn't ready yet."
-    }
+    },
+    "questionCount_one": "{{count}} question",
+    "questionCount_other": "{{count}} questions"
   },
   "profile": {
     "title": "Profile",
@@ -224,11 +246,11 @@
   "enrol": {
     "action": "Enrol",
     "actionFree": "Start for free",
-    "paywallTitle": "Unlock this course",
     "paywallBody": "One payment. Lifetime access to every lesson and the assessment.",
     "lockedLesson": "Enrol to unlock this lesson.",
     "done": "You're enrolled. Enjoy the course.",
-    "failed": "We couldn't start your enrolment. Please try again."
+    "failed": "We couldn't start your enrolment. Please try again.",
+    "actionPriced": "Enrol now · {{price}}"
   },
   "payment": {
     "title": "Checkout",
@@ -324,8 +346,11 @@
     "cancelledBody": "Plan B could not deliver this one. Contact them about a refund.",
     "completedBody": "This is done. Plan B will have been in touch.",
     "waitingBody": "Plan B has your payment and will start shortly.",
-    "workingBody": "Plan B is working on this now.",
-    "homeStripTitle": "In progress",
-    "homeStripAction": "View"
+    "workingBody": "Plan B is working on this now."
+  },
+  "notifications": {
+    "title": "Notifications",
+    "emptyTitle": "No notifications yet",
+    "emptyBody": "Updates about your courses, payments and services will show up here."
   }
 }

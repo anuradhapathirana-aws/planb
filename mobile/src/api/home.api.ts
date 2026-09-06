@@ -4,16 +4,18 @@ import type { StudentHomeBanner } from '@shared/types/homeBanner';
 import { apiClient } from './client';
 
 /**
- * The Home hero banner.
+ * The Home carousel slides.
  *
- * The only Home-specific request there is. The screen's two progress summaries
- * deliberately reuse `GET /student/courses` and `GET /student/checklists` — the
- * same requests the Courses and Checklists tabs make — so opening Home warms
- * their caches instead of fetching a third shape that could disagree with them.
+ * The only Home-specific request there is. The screen's course and service
+ * sections deliberately reuse `GET /student/courses` and
+ * `GET /student/service-purchases` — the *same* requests the Courses and
+ * Services tabs make — so opening Home warms their caches instead of fetching a
+ * third shape that could disagree with them.
  */
-export async function fetchHomeBanner(): Promise<StudentHomeBanner | null> {
-  const { data } = await apiClient.get<ApiResource<StudentHomeBanner | null>>('/student/home-banner');
+export async function fetchHomeBanners(): Promise<StudentHomeBanner[]> {
+  const { data } = await apiClient.get<ApiResource<StudentHomeBanner[]>>('/student/home-banners');
 
-  // Null is a normal answer: nothing set up, switched off, or no image uploaded.
+  // An empty list is a normal answer: nothing set up, every slide switched off,
+  // or none has an image. The carousel shows its built-in slides instead.
   return data.data;
 }

@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { GraduationCap, Home, ListChecks, Sparkles, User } from 'lucide-react-native';
+import { GraduationCap, Home, ListChecks, Sparkles, User } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 import { Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

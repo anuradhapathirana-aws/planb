@@ -31,6 +31,7 @@ class HomeBannerResource extends JsonResource
             'link_course_name' => $this->linkedCourse?->name,
             'link_url' => $this->link_url,
             'is_active' => $this->is_active,
+            'sort_order' => $this->sort_order,
             'image_url' => $this->image_url,
             // Lets the admin screen warn "switched on, but students see nothing".
             'is_live' => $this->isPublishable(),

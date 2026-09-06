@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { Image } from 'expo-image';
-import { ChevronRight, Clock, Sparkles } from 'lucide-react-native';
+import { ChevronRight, Clock, Sparkles } from '@/components/icons';
 import type { StudentServiceSummary } from '@shared/types/studentService';
 import { colors } from '@shared/theme/tokens';
 import { formatMoney } from '@shared/lib/formatters';

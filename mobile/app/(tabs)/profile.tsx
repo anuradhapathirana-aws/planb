@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { RefreshControl, View } from 'react-native';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { ChevronRight, LogOut, Mail, Pencil, Phone, Receipt, ShieldCheck } from 'lucide-react-native';
+import { ChevronRight, LogOut, Mail, Pencil, Phone, Receipt, ShieldCheck } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 
 import { colors } from '@shared/theme/tokens';

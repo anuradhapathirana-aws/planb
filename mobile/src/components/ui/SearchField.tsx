@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Pressable, TextInput, View, type TextInputProps } from 'react-native';
-import { Search, X } from 'lucide-react-native';
+import { Search, X } from '@/components/icons';
 
 import { colors } from '@shared/theme/tokens';
 import { cn } from '@/lib/cn';
