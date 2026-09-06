@@ -82,11 +82,17 @@ export const adminNavGroups: AdminNavGroup[] = [
     ],
   },
   {
+    label: 'Mobile Configuration',
+    items: [{ label: 'Home Banners', icon: Image, href: paths.admin.homeBanners }],
+  },
+  {
     items: [
       {
         label: 'Settings',
         icon: Settings,
-        children: [{ label: 'Home Banner', icon: Image, href: paths.admin.homeBanner }],
+        // Home Banner moved out to Mobile Configuration; this group keeps its
+        // shape for the app-wide settings that will land here.
+        children: [{ label: 'General', icon: Settings, comingSoon: true }],
       },
     ],
   },

@@ -8,56 +8,40 @@ use App\Enums\HomeBannerLink;
 use App\Models\HomeBanner;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Intervention\Image\ImageManager;
 
 /**
  * The one way in and out of the Home carousel.
  *
  * Nothing else may call `HomeBanner::create()`. The table used to hold exactly
- * one row by convention; it now holds an ordered list, and `current()` is kept
- * as "the first slide" so the existing single-banner admin screen goes on
- * working untouched until its carousel replacement lands.
+ * one row by convention; it now holds an ordered list that the admin panel
+ * manages as a collection.
  */
 class HomeBannerService
 {
-    /** 2:1, which is the aspect the app's hero reserves. */
-    private const IMAGE_WIDTH = 1200;
+    /** 16:9, which is the aspect the app's carousel reserves. */
+    private const IMAGE_WIDTH = 1280;
 
-    private const IMAGE_HEIGHT = 600;
-
-    /**
-     * The row, creating the empty default on first read.
-     *
-     * Persisting it rather than returning an unsaved model means the admin
-     * screen has something to upload an image against before it has been saved
-     * once — Media Library needs a saved model with an id.
-     */
-    public function current(): HomeBanner
-    {
-        $banner = HomeBanner::query()->with('linkedCourse')->ordered()->first();
-
-        return $banner ?? HomeBanner::query()->create([]);
-    }
+    private const IMAGE_HEIGHT = 720;
 
     /**
-     * What the student app should see, or null.
+     * Every slide, in the admin's order.
      *
-     * Null covers three cases the app treats identically — no banner set up,
-     * switched off, or active with no image — and it falls back to its own
-     * branded hero for all of them.
+     * @return Collection<int, HomeBanner>
      */
-    public function forStudents(): ?HomeBanner
+    public function all(): Collection
     {
-        return $this->liveForStudents()->first();
+        return HomeBanner::query()->with('linkedCourse')->ordered()->get();
     }
 
     /**
      * Every slide the carousel should show, in the admin's order.
      *
-     * A slide that is switched off, or active but has no image, is dropped
-     * rather than sent — the app would render an empty box for it, and one
-     * blank page in a swipeable carousel reads as a broken app. An empty
-     * collection is a normal answer: the app falls back to its branded hero.
+     * A slide that is switched off, or has neither artwork nor wording, is
+     * dropped rather than sent — the app would render an empty box for it, and
+     * one blank page in a swipeable carousel reads as a broken app. An empty
+     * collection is a normal answer: the app falls back to its branded slides.
      *
      * @return Collection<int, HomeBanner>
      */
@@ -73,20 +57,91 @@ class HomeBannerService
     }
 
     /**
-     * @param array{
-     *     title?: string|null,
-     *     subtitle?: string|null,
-     *     link_type?: string,
-     *     link_course_programme_id?: int|null,
-     *     link_url?: string|null,
-     *     is_active?: bool,
-     * } $data
+     * A new slide, appended to the end of the carousel.
+     *
+     * @param  array<string, mixed>  $data
      */
-    public function save(array $data): HomeBanner
+    public function create(array $data): HomeBanner
     {
-        $banner = $this->current();
+        $banner = new HomeBanner;
 
-        $linkType = HomeBannerLink::from($data['link_type'] ?? $banner->link_type->value);
+        // Appended rather than inserted: an admin adding a slide is not asking
+        // to reshuffle the ones already live. They can drag it up afterwards.
+        $banner->sort_order = (int) HomeBanner::query()->max('sort_order') + 1;
+
+        return $this->fill($banner, $data);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public function update(HomeBanner $banner, array $data): HomeBanner
+    {
+        return $this->fill($banner, $data);
+    }
+
+    public function delete(HomeBanner $banner): void
+    {
+        // Media Library cleans up the file with the row it belongs to.
+        $banner->delete();
+    }
+
+    /**
+     * Rewrite the carousel order from a list of ids.
+     *
+     * Position in the array IS the order — the client sends the sequence it is
+     * showing, not a per-row number to reconcile (root CLAUDE.md §8). One
+     * transaction, so a half-applied reorder cannot leave two slides fighting
+     * over the same position.
+     *
+     * @param  list<int>  $orderedIds
+     */
+    public function reorder(array $orderedIds): void
+    {
+        DB::transaction(function () use ($orderedIds): void {
+            foreach ($orderedIds as $position => $id) {
+                HomeBanner::query()->whereKey($id)->update(['sort_order' => $position]);
+            }
+        });
+    }
+
+    /**
+     * Re-encodes before storing (root CLAUDE.md §7.4). Beyond stripping
+     * whatever a source file carried, it also stops a 6 MB phone photo becoming
+     * the first thing every student downloads on every cold start.
+     */
+    public function updateImage(HomeBanner $banner, UploadedFile $file): HomeBanner
+    {
+        $encoded = ImageManager::gd()
+            ->read($file->getRealPath())
+            ->cover(self::IMAGE_WIDTH, self::IMAGE_HEIGHT)
+            ->toJpeg(82);
+
+        $tempPath = tempnam(sys_get_temp_dir(), 'planb_home_banner_').'.jpg';
+        file_put_contents($tempPath, (string) $encoded);
+
+        $banner->addMedia($tempPath)
+            ->usingFileName('home-banner.jpg')
+            ->toMediaCollection(HomeBanner::IMAGE_COLLECTION);
+
+        return $banner->fresh(['linkedCourse']) ?? $banner;
+    }
+
+    public function removeImage(HomeBanner $banner): HomeBanner
+    {
+        $banner->clearMediaCollection(HomeBanner::IMAGE_COLLECTION);
+
+        return $banner->fresh(['linkedCourse']) ?? $banner;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function fill(HomeBanner $banner, array $data): HomeBanner
+    {
+        /** @var string $rawLink */
+        $rawLink = $data['link_type'] ?? $banner->link_type->value;
+        $linkType = HomeBannerLink::from($rawLink);
 
         /*
          * Clear the branch that does not apply. Without this, switching the
@@ -107,39 +162,6 @@ class HomeBannerService
         ]);
 
         $banner->save();
-
-        return $banner->fresh(['linkedCourse']) ?? $banner;
-    }
-
-    /**
-     * Re-encodes before storing (root CLAUDE.md §7.4). Beyond stripping
-     * whatever a source file carried, it also stops a 6 MB phone photo becoming
-     * the first thing every student downloads on every cold start.
-     */
-    public function updateImage(UploadedFile $file): HomeBanner
-    {
-        $banner = $this->current();
-
-        $encoded = ImageManager::gd()
-            ->read($file->getRealPath())
-            ->cover(self::IMAGE_WIDTH, self::IMAGE_HEIGHT)
-            ->toJpeg(82);
-
-        $tempPath = tempnam(sys_get_temp_dir(), 'planb_home_banner_').'.jpg';
-        file_put_contents($tempPath, (string) $encoded);
-
-        $banner->addMedia($tempPath)
-            ->usingFileName('home-banner.jpg')
-            ->toMediaCollection(HomeBanner::IMAGE_COLLECTION);
-
-        return $banner->fresh(['linkedCourse']) ?? $banner;
-    }
-
-    public function removeImage(): HomeBanner
-    {
-        $banner = $this->current();
-
-        $banner->clearMediaCollection(HomeBanner::IMAGE_COLLECTION);
 
         return $banner->fresh(['linkedCourse']) ?? $banner;
     }

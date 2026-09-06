@@ -2,7 +2,7 @@ import { z } from 'zod';
 import type { HomeBannerLinkType } from '@shared/types/homeBanner';
 
 /**
- * UX validation for the Home banner form. The backend
+ * UX validation for one Home carousel slide. The backend
  * (`SaveHomeBannerRequest`) is the enforcement point — this exists so the admin
  * sees the problem before saving, and the two are kept deliberately in step.
  */
@@ -10,7 +10,7 @@ export const homeBannerFormSchema = z
   .object({
     title: z.string().max(120, 'Keep the headline under 120 characters.'),
     subtitle: z.string().max(200, 'Keep the supporting line under 200 characters.'),
-    link_type: z.enum(['none', 'courses', 'checklists', 'course', 'url']),
+    link_type: z.enum(['none', 'courses', 'services', 'checklists', 'course', 'url']),
     /** '' while nothing is chosen — a Select cannot hold null. */
     link_course_programme_id: z.string(),
     link_url: z.string().max(2048, 'That web address is too long.'),
@@ -60,6 +60,7 @@ export interface HomeBannerLinkOption {
 export const HOME_BANNER_LINKS: readonly HomeBannerLinkOption[] = [
   { value: 'none', label: 'Nothing', hint: 'The banner is signage only — tapping it does nothing.' },
   { value: 'courses', label: 'Courses tab', hint: 'Opens the student’s Courses tab.' },
+  { value: 'services', label: 'Services tab', hint: 'Opens the premium services the student can buy.' },
   { value: 'checklists', label: 'Checklists tab', hint: 'Opens the Before / After Arrival checklists.' },
   { value: 'course', label: 'A specific course', hint: 'Opens one course. It must be published.' },
   { value: 'url', label: 'A web page', hint: 'Opens the page inside the app’s browser.' },

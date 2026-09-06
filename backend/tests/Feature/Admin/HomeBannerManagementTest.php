@@ -50,30 +50,98 @@ class HomeBannerManagementTest extends TestCase
         ], $overrides);
     }
 
-    /** Reading it before anything is saved must not 404 — the admin form needs a shape. */
-    public function test_the_singleton_is_created_on_first_read(): void
+    public function test_the_list_starts_empty_and_is_not_a_404(): void
     {
         $this->actingAsRole(RoleName::SuperAdmin);
 
-        $this->getJson('/api/v1/admin/home-banner')
+        $this->getJson('/api/v1/admin/home-banners')
             ->assertOk()
-            ->assertJsonPath('data.link_type', 'none')
-            ->assertJsonPath('data.is_active', false)
-            ->assertJsonPath('data.image_url', null);
+            ->assertJsonCount(0, 'data');
+    }
+
+    public function test_slides_are_created_and_appended_to_the_end(): void
+    {
+        $this->actingAsRole(RoleName::SuperAdmin);
+
+        $first = $this->postJson('/api/v1/admin/home-banners', $this->payload(['title' => 'One']))
+            ->assertCreated()
+            ->assertJsonPath('data.sort_order', 1)
+            ->json('data.id');
+
+        $this->postJson('/api/v1/admin/home-banners', $this->payload(['title' => 'Two']))
+            ->assertCreated()
+            ->assertJsonPath('data.sort_order', 2);
+
+        $this->getJson('/api/v1/admin/home-banners')
+            ->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('data.0.id', $first)
+            ->assertJsonPath('data.0.title', 'One')
+            ->assertJsonPath('data.1.title', 'Two');
+    }
+
+    public function test_a_slide_is_updated_in_place(): void
+    {
+        $this->actingAsRole(RoleName::SuperAdmin);
+
+        $banner = HomeBanner::create($this->payload(['title' => 'Before']));
+
+        $this->putJson("/api/v1/admin/home-banners/{$banner->id}", $this->payload(['title' => 'After']))
+            ->assertOk()
+            ->assertJsonPath('data.title', 'After');
 
         $this->assertSame(1, HomeBanner::query()->count());
     }
 
-    public function test_saving_twice_never_creates_a_second_row(): void
+    public function test_a_slide_is_deleted(): void
     {
         $this->actingAsRole(RoleName::SuperAdmin);
 
-        $this->putJson('/api/v1/admin/home-banner', $this->payload())->assertOk();
-        $this->putJson('/api/v1/admin/home-banner', $this->payload(['title' => 'Changed']))
-            ->assertOk()
-            ->assertJsonPath('data.title', 'Changed');
+        $banner = HomeBanner::create($this->payload());
 
-        $this->assertSame(1, HomeBanner::query()->count());
+        $this->deleteJson("/api/v1/admin/home-banners/{$banner->id}")->assertNoContent();
+
+        $this->assertSame(0, HomeBanner::query()->count());
+    }
+
+    /** Position in the submitted array IS the order (root CLAUDE.md §8). */
+    public function test_reordering_rewrites_the_sequence(): void
+    {
+        $this->actingAsRole(RoleName::SuperAdmin);
+
+        $a = HomeBanner::create($this->payload(['title' => 'A', 'sort_order' => 0]));
+        $b = HomeBanner::create($this->payload(['title' => 'B', 'sort_order' => 1]));
+        $c = HomeBanner::create($this->payload(['title' => 'C', 'sort_order' => 2]));
+
+        $this->postJson('/api/v1/admin/home-banners/reorder', ['ids' => [$c->id, $a->id, $b->id]])
+            ->assertOk()
+            ->assertJsonPath('data.0.title', 'C')
+            ->assertJsonPath('data.1.title', 'A')
+            ->assertJsonPath('data.2.title', 'B');
+
+        $this->assertSame(0, $c->fresh()?->sort_order);
+        $this->assertSame(1, $a->fresh()?->sort_order);
+        $this->assertSame(2, $b->fresh()?->sort_order);
+    }
+
+    /**
+     * A partial list would renumber only the slides sent and leave the rest
+     * colliding with them; a duplicate would put two slides in one position.
+     */
+    public function test_a_partial_or_duplicated_reorder_is_rejected(): void
+    {
+        $this->actingAsRole(RoleName::SuperAdmin);
+
+        $a = HomeBanner::create($this->payload(['title' => 'A']));
+        HomeBanner::create($this->payload(['title' => 'B']));
+
+        $this->postJson('/api/v1/admin/home-banners/reorder', ['ids' => [$a->id]])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('ids');
+
+        $this->postJson('/api/v1/admin/home-banners/reorder', ['ids' => [$a->id, $a->id]])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('ids');
     }
 
     public function test_a_course_link_requires_a_published_course(): void
@@ -82,34 +150,34 @@ class HomeBannerManagementTest extends TestCase
 
         $draft = CourseProgramme::factory()->create(['status' => CourseStatus::Draft]);
 
-        $this->putJson('/api/v1/admin/home-banner', $this->payload([
+        $this->postJson('/api/v1/admin/home-banners', $this->payload([
             'link_type' => HomeBannerLink::Course->value,
             'link_course_programme_id' => $draft->id,
         ]))->assertUnprocessable()->assertJsonValidationErrors('link_course_programme_id');
 
         // And it must be named at all.
-        $this->putJson('/api/v1/admin/home-banner', $this->payload([
+        $this->postJson('/api/v1/admin/home-banners', $this->payload([
             'link_type' => HomeBannerLink::Course->value,
         ]))->assertUnprocessable()->assertJsonValidationErrors('link_course_programme_id');
 
         $published = CourseProgramme::factory()->create(['status' => CourseStatus::Published]);
 
-        $this->putJson('/api/v1/admin/home-banner', $this->payload([
+        $this->postJson('/api/v1/admin/home-banners', $this->payload([
             'link_type' => HomeBannerLink::Course->value,
             'link_course_programme_id' => $published->id,
-        ]))->assertOk()->assertJsonPath('data.link_course_name', $published->name);
+        ]))->assertCreated()->assertJsonPath('data.link_course_name', $published->name);
     }
 
     public function test_a_url_link_must_be_an_http_address(): void
     {
         $this->actingAsRole(RoleName::SuperAdmin);
 
-        $this->putJson('/api/v1/admin/home-banner', $this->payload([
+        $this->postJson('/api/v1/admin/home-banners', $this->payload([
             'link_type' => HomeBannerLink::Url->value,
             'link_url' => 'javascript:alert(1)',
         ]))->assertUnprocessable()->assertJsonValidationErrors('link_url');
 
-        $this->putJson('/api/v1/admin/home-banner', $this->payload([
+        $this->postJson('/api/v1/admin/home-banners', $this->payload([
             'link_type' => HomeBannerLink::Url->value,
         ]))->assertUnprocessable()->assertJsonValidationErrors('link_url');
     }
@@ -121,12 +189,12 @@ class HomeBannerManagementTest extends TestCase
 
         $course = CourseProgramme::factory()->create(['status' => CourseStatus::Published]);
 
-        $this->putJson('/api/v1/admin/home-banner', $this->payload([
+        $banner = HomeBanner::create($this->payload([
             'link_type' => HomeBannerLink::Course->value,
             'link_course_programme_id' => $course->id,
-        ]))->assertOk();
+        ]));
 
-        $this->putJson('/api/v1/admin/home-banner', $this->payload([
+        $this->putJson("/api/v1/admin/home-banners/{$banner->id}", $this->payload([
             'link_type' => HomeBannerLink::Url->value,
             'link_url' => 'https://planbinternational.lk/intake',
         ]))
@@ -140,7 +208,9 @@ class HomeBannerManagementTest extends TestCase
         Storage::fake('public');
         $this->actingAsRole(RoleName::SuperAdmin);
 
-        $response = $this->post('/api/v1/admin/home-banner/image', [
+        $banner = HomeBanner::create($this->payload());
+
+        $response = $this->post("/api/v1/admin/home-banners/{$banner->id}/image", [
             'image' => UploadedFile::fake()->image('promo.png', 1600, 900),
         ]);
 
@@ -150,7 +220,7 @@ class HomeBannerManagementTest extends TestCase
         // Re-encoded to JPEG regardless of what was uploaded (CLAUDE.md §7.4).
         $this->assertStringEndsWith('.jpg', (string) $response->json('data.image_url'));
 
-        $this->deleteJson('/api/v1/admin/home-banner/image')
+        $this->deleteJson("/api/v1/admin/home-banners/{$banner->id}/image")
             ->assertOk()
             ->assertJsonPath('data.image_url', null);
     }
@@ -160,7 +230,9 @@ class HomeBannerManagementTest extends TestCase
         Storage::fake('public');
         $this->actingAsRole(RoleName::SuperAdmin);
 
-        $this->post('/api/v1/admin/home-banner/image', [
+        $banner = HomeBanner::create($this->payload());
+
+        $this->post("/api/v1/admin/home-banners/{$banner->id}/image", [
             'image' => UploadedFile::fake()->create('promo.pdf', 100, 'application/pdf'),
         ])->assertUnprocessable()->assertJsonValidationErrors('image');
     }
@@ -169,14 +241,21 @@ class HomeBannerManagementTest extends TestCase
     {
         $this->actingAsRole(RoleName::SupportAgent);
 
-        $this->getJson('/api/v1/admin/home-banner')->assertOk();
-        $this->putJson('/api/v1/admin/home-banner', $this->payload())->assertForbidden();
+        $banner = HomeBanner::create($this->payload());
+
+        $this->getJson('/api/v1/admin/home-banners')->assertOk();
+
+        $this->postJson('/api/v1/admin/home-banners', $this->payload())->assertForbidden();
+        $this->putJson("/api/v1/admin/home-banners/{$banner->id}", $this->payload())->assertForbidden();
+        $this->deleteJson("/api/v1/admin/home-banners/{$banner->id}")->assertForbidden();
+        $this->postJson('/api/v1/admin/home-banners/reorder', ['ids' => [$banner->id]])
+            ->assertForbidden();
     }
 
     public function test_a_content_manager_may_publish(): void
     {
         $this->actingAsRole(RoleName::ContentManager);
 
-        $this->putJson('/api/v1/admin/home-banner', $this->payload())->assertOk();
+        $this->postJson('/api/v1/admin/home-banners', $this->payload())->assertCreated();
     }
 }

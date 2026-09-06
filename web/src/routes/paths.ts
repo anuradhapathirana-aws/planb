@@ -18,6 +18,8 @@ export const paths = {
     servicePurchases: '/admin/service-purchases',
     orders: '/admin/orders',
     checklists: '/admin/checklists',
-    homeBanner: '/admin/settings/home-banner',
+    homeBanners: '/admin/mobile/home-banners',
+    homeBannerNew: '/admin/mobile/home-banners/new',
+    homeBannerEdit: (id: number | string) => `/admin/mobile/home-banners/${id}/edit`,
   },
 } as const;

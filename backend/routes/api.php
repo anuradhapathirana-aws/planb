@@ -131,14 +131,17 @@ Route::prefix('v1/admin')->group(function () {
          * edits the entire list in one tab.
          */
         /*
-         * Settings > Home banner. A singleton, so no index and no id in the
-         * path. The image is uploaded on its own endpoint so a multi-MB file
-         * does not ride along with every wording tweak.
+         * Mobile configuration > Home banners. The student app's Home carousel,
+         * an ordered collection. `reorder` is declared before the apiResource so
+         * `{home_banner}` never swallows it. The image is uploaded on its own
+         * endpoint so a multi-MB file does not ride along with every wording
+         * tweak - which also means a new slide must exist before it can be
+         * given artwork, since Media Library needs a saved model.
          */
-        Route::get('/home-banner', [HomeBannerController::class, 'show']);
-        Route::put('/home-banner', [HomeBannerController::class, 'update']);
-        Route::post('/home-banner/image', [HomeBannerController::class, 'uploadImage']);
-        Route::delete('/home-banner/image', [HomeBannerController::class, 'deleteImage']);
+        Route::post('/home-banners/reorder', [HomeBannerController::class, 'reorder']);
+        Route::post('/home-banners/{home_banner}/image', [HomeBannerController::class, 'uploadImage']);
+        Route::delete('/home-banners/{home_banner}/image', [HomeBannerController::class, 'deleteImage']);
+        Route::apiResource('home-banners', HomeBannerController::class);
 
         Route::get('/checklists/{phase}', [ChecklistItemController::class, 'index']);
         Route::put('/checklists/{phase}', [ChecklistItemController::class, 'update']);

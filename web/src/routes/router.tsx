@@ -43,8 +43,15 @@ const CoursePaperPage = lazy(() =>
 const ChecklistsPage = lazy(() =>
   import('@/features/admin/checklists/pages/ChecklistsPage').then((m) => ({ default: m.ChecklistsPage })),
 );
-const HomeBannerPage = lazy(() =>
-  import('@/features/admin/homeBanner/pages/HomeBannerPage').then((m) => ({ default: m.HomeBannerPage })),
+const HomeBannersPage = lazy(() =>
+  import('@/features/admin/homeBanner/pages/HomeBannersPage').then((m) => ({
+    default: m.HomeBannersPage,
+  })),
+);
+const HomeBannerFormPage = lazy(() =>
+  import('@/features/admin/homeBanner/pages/HomeBannerFormPage').then((m) => ({
+    default: m.HomeBannerFormPage,
+  })),
 );
 const OrdersListPage = lazy(() =>
   import('@/features/admin/orders/pages/OrdersListPage').then((m) => ({ default: m.OrdersListPage })),
@@ -110,7 +117,9 @@ export const router = createBrowserRouter([
       { path: 'service-purchases', element: page(<ServicePurchasesListPage />) },
       { path: 'orders', element: page(<OrdersListPage />) },
       { path: 'checklists', element: page(<ChecklistsPage />) },
-      { path: 'settings/home-banner', element: page(<HomeBannerPage />) },
+      { path: 'mobile/home-banners', element: page(<HomeBannersPage />) },
+      { path: 'mobile/home-banners/new', element: page(<HomeBannerFormPage />) },
+      { path: 'mobile/home-banners/:id/edit', element: page(<HomeBannerFormPage />) },
     ],
   },
   { path: '*', element: <Navigate to={paths.admin.dashboard} replace /> },

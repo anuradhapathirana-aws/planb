@@ -291,10 +291,17 @@ The promo across the top of the student app's Home screen. A **singleton**, so t
 
 | Method | Path | Auth / role | Notes |
 |---|---|---|---|
-| GET | `/admin/home-banner` | any admin role | The row, **created empty on first read** so the form always has a shape to bind to. |
-| PUT | `/admin/home-banner` | Super Admin, Content Manager | `{ title, subtitle, link_type, link_course_programme_id, link_url, is_active }`. |
-| POST | `/admin/home-banner/image` | Super Admin, Content Manager | `multipart/form-data`, field `image`. JPG/PNG, re-encoded to 1200×600 JPEG. |
-| DELETE | `/admin/home-banner/image` | Super Admin, Content Manager | Clears the image; wording and settings survive. |
+| GET | `/admin/home-banners` | any admin role | Every slide, in `sort_order`. An empty list is normal. |
+| GET | `/admin/home-banners/{id}` | any admin role | One slide. |
+| POST | `/admin/home-banners` | Super Admin, Content Manager | `{ title, subtitle, link_type, link_course_programme_id, link_url, is_active }`. Appended to the end of the carousel. 201. |
+| PUT | `/admin/home-banners/{id}` | Super Admin, Content Manager | Same body. |
+| DELETE | `/admin/home-banners/{id}` | Super Admin, Content Manager | 204. Media Library removes the image with the row. |
+| POST | `/admin/home-banners/reorder` | Super Admin, Content Manager | `{ ids: [...] }` — **position in the array is the order**. Must list every slide exactly once; a partial or duplicated list is a 422. Answers with the re-ordered collection. |
+| POST | `/admin/home-banners/{id}/image` | Super Admin, Content Manager | `multipart/form-data`, field `image`. JPG/PNG, re-encoded to 1280×720 JPEG. |
+| DELETE | `/admin/home-banners/{id}/image` | Super Admin, Content Manager | Clears the image; wording and settings survive. |
+
+- **A slide must be created before it can be given artwork.** Media Library needs a saved model with an id, so the admin panel saves a new slide first and uploads the staged file against the id that comes back.
+- **A slide with wording but no image is still live** — the app draws it as a branded card. Only a slide with neither is dropped.
 
 - **The image is uploaded on its own request**, not with the wording — a multi-MB file riding along with every typo fix would make saving slow, and a failed upload would take the text with it.
 - **A `course` link must name a published course.** A draft is a 422, because a student tapping through would land on a 404: the student route binds courses through a published-only scope.
