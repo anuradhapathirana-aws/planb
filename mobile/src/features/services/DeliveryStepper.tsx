@@ -7,7 +7,7 @@ import { formatDate } from '@shared/lib/formatters';
 import { Text } from '@/components/ui/Text';
 import { cn } from '@/lib/cn';
 
-interface Step {
+export interface DeliveryStep {
   labelKey: string;
   /** Null until this step has actually happened. */
   at: string | null;
@@ -17,25 +17,19 @@ interface Step {
 }
 
 /**
- * Paid → In progress → Completed, with the date each step happened.
+ * Paid → In progress → Completed (or Cancelled), derived once.
  *
- * The whole point is to make "nothing has happened yet" visible. A service is
- * work somebody has to do by hand, so the gap between paying and hearing back is
- * real and normal — a tracker turns it into a wait the student can see, rather
- * than a support call asking whether the payment went through.
- *
- * Cancelled replaces the last step rather than adding a fourth: the request is
- * closed, and drawing a "Completed" step that will never light up would be a lie
- * about what is still possible.
+ * Exported because the compact track on a "My services" row draws the same three
+ * steps in 6px of height. Two copies of "which step is it on?" would disagree
+ * the first time the rules change — and the row and the tracker sit one tap
+ * apart, so a student would see the disagreement.
  */
-export function DeliveryStepper({ purchase }: { purchase: StudentServicePurchase }) {
-  const { t } = useTranslation();
-
+export function deliverySteps(purchase: StudentServicePurchase): DeliveryStep[] {
   const isCancelled = purchase.status === 'cancelled';
   const isCompleted = purchase.status === 'completed';
   const isWorking = purchase.status === 'in_progress';
 
-  const steps: Step[] = [
+  return [
     {
       labelKey: 'services.stepPaid',
       at: purchase.purchased_at,
@@ -62,6 +56,25 @@ export function DeliveryStepper({ purchase }: { purchase: StudentServicePurchase
           current: isCompleted,
         },
   ];
+}
+
+/**
+ * Paid → In progress → Completed, with the date each step happened.
+ *
+ * The whole point is to make "nothing has happened yet" visible. A service is
+ * work somebody has to do by hand, so the gap between paying and hearing back is
+ * real and normal — a tracker turns it into a wait the student can see, rather
+ * than a support call asking whether the payment went through.
+ *
+ * Cancelled replaces the last step rather than adding a fourth: the request is
+ * closed, and drawing a "Completed" step that will never light up would be a lie
+ * about what is still possible.
+ */
+export function DeliveryStepper({ purchase }: { purchase: StudentServicePurchase }) {
+  const { t } = useTranslation();
+
+  const isCancelled = purchase.status === 'cancelled';
+  const steps = deliverySteps(purchase);
 
   return (
     <View>

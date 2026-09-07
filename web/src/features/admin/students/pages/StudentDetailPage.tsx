@@ -16,6 +16,7 @@ import {
   Loader2,
   Mail,
   MapPin,
+  NotebookPen,
   Pencil,
   Phone,
   ShieldCheck,
@@ -43,6 +44,7 @@ import {
 } from '@/features/admin/students/hooks/useStudents';
 import { StudentFormDialog } from '@/features/admin/students/components/StudentFormDialog';
 import { formatBytes, formatDate, formatDateTime, initials, labelizeVisaStatus } from '@/lib/formatters';
+import { cn } from '@/lib/utils';
 import { paths } from '@/routes/paths';
 import type { StudentDocument } from '@shared/types/student';
 
@@ -205,6 +207,13 @@ export function StudentDetailPage() {
                 label="Languages spoken"
                 value={student.languages_spoken.length > 0 ? student.languages_spoken.join(', ') : null}
               />
+              <InfoRow
+                icon={NotebookPen}
+                label="Bio"
+                value={student.bio}
+                className="sm:col-span-2"
+                multiline
+              />
 
               <Separator className="sm:col-span-2" />
 
@@ -339,19 +348,26 @@ function InfoRow({
   icon: Icon,
   label,
   value,
+  className,
+  multiline = false,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   value: string | null | undefined;
+  className?: string;
+  /** Wraps instead of truncating — for free text like the bio, not for a name. */
+  multiline?: boolean;
 }) {
   return (
-    <div className="flex items-start gap-3">
+    <div className={cn('flex items-start gap-3', className)}>
       <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-md bg-secondary text-secondary-foreground">
         <Icon className="size-4" />
       </div>
       <div className="min-w-0">
         <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="truncate text-sm font-medium">{value || '—'}</p>
+        <p className={cn('text-sm font-medium', multiline ? 'break-words whitespace-pre-line' : 'truncate')}>
+          {value || '—'}
+        </p>
       </div>
     </div>
   );

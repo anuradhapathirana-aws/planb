@@ -9,7 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { StudentCourseSummary } from '@shared/types/studentCourse';
 import { colors } from '@shared/theme/tokens';
 import { fetchCourses } from '@/api/courses.api';
-import { CourseGridCard } from '@/components/shared/CourseGridCard';
+import { CourseListRow } from '@/components/shared/CourseListRow';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { SearchField } from '@/components/ui/SearchField';
 import { SegmentedToggle } from '@/components/ui/SegmentedToggle';
@@ -103,36 +103,27 @@ export default function CoursesScreen() {
 
       {isLoading ? (
         <View className="gap-2.5 px-4">
-          <View className="flex-row gap-2.5">
-            <Skeleton className="h-[190px] flex-1 rounded-xl" />
-            <Skeleton className="h-[190px] flex-1 rounded-xl" />
-          </View>
-          <View className="flex-row gap-2.5">
-            <Skeleton className="h-[190px] flex-1 rounded-xl" />
-            <Skeleton className="h-[190px] flex-1 rounded-xl" />
-          </View>
+          {[0, 1, 2, 3, 4, 5].map((row) => (
+            <Skeleton key={row} className="h-[94px] w-full rounded-xl" />
+          ))}
         </View>
       ) : (
         <FlatList
           data={visible}
           keyExtractor={(course) => String(course.id)}
           /*
-           * Two to a row, matching Home's Recent strip. The tile carries a
-           * compact buy button beside its price — icon-only, so it fits at this
-           * width without crowding, where the wide card's labelled Enrol button
-           * would not.
+           * One to a row. The catalogue is scanned top to bottom for "how far
+           * am I?", and a ring answers that at a glance where a tile grid made
+           * the student read two columns of artwork to find it. Home keeps the
+           * two-up tiles — that strip is a browsing surface, this is a tracker.
            */
-          numColumns={2}
-          columnWrapperStyle={{ gap: 10 }}
           renderItem={({ item }) => (
-            <View className="w-[47%] grow">
-              <CourseGridCard
-                course={item}
-                onPress={() => openCourse(item)}
-                onEnrol={item.is_enrolled ? undefined : () => enrol(item.id)}
-                enrolling={pendingCourseId === item.id}
-              />
-            </View>
+            <CourseListRow
+              course={item}
+              onPress={() => openCourse(item)}
+              onEnrol={item.is_enrolled ? undefined : () => enrol(item.id)}
+              enrolling={pendingCourseId === item.id}
+            />
           )}
           contentContainerClassName="px-4 gap-2.5"
           contentContainerStyle={{ paddingBottom: 16, flexGrow: 1 }}

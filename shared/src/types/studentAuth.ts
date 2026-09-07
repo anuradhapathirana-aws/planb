@@ -18,6 +18,8 @@ export interface StudentProfile {
   address: string | null;
   date_of_birth: string | null;
   highest_qualification: string | null;
+  /** The student's own short "about me", plain text. Shown on the profile header. */
+  bio: string | null;
   industry: Industry | null;
   profession: Profession | null;
   visa_status: VisaStatus | null;
@@ -42,6 +44,7 @@ export interface StudentProfilePayload {
   address?: string | null;
   date_of_birth?: string | null;
   highest_qualification?: string | null;
+  bio?: string | null;
   industry_id?: number | null;
   profession_id?: number | null;
   languages_spoken?: string[];

@@ -33,6 +33,12 @@ export interface Student {
   address: string | null;
   date_of_birth: string | null;
   highest_qualification: string | null;
+  /**
+   * A short "about me", plain text, max 500 chars. Written by the student on
+   * their own profile and by an admin on the student form — last write wins,
+   * so an admin editing it overwrites the student's words.
+   */
+  bio: string | null;
   industry_id: number | null;
   profession_id: number | null;
   industry: Industry | null;
@@ -59,6 +65,7 @@ export interface StudentFormValues {
   address?: string | null;
   date_of_birth?: string | null;
   highest_qualification?: string | null;
+  bio?: string | null;
   industry_id?: number | null;
   profession_id?: number | null;
   visa_status?: VisaStatus | null;

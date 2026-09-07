@@ -34,6 +34,7 @@ class StudentProfileResource extends JsonResource
             'address' => $this->address,
             'date_of_birth' => $this->date_of_birth?->toDateString(),
             'highest_qualification' => $this->highest_qualification,
+            'bio' => $this->bio,
             'industry' => $this->industry ? new IndustryResource($this->industry) : null,
             'profession' => $this->profession ? new ProfessionResource($this->profession) : null,
             'visa_status' => $this->visa_status?->value,

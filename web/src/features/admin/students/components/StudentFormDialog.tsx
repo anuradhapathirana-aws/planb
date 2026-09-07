@@ -14,6 +14,7 @@ import {
   Loader2,
   Mail,
   MapPin,
+  NotebookPen,
   Paperclip,
   Phone,
   UploadCloud,
@@ -158,6 +159,7 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
               address: student.address ?? '',
               date_of_birth: student.date_of_birth ?? '',
               highest_qualification: student.highest_qualification ?? '',
+              bio: student.bio ?? '',
               industry_id: student.industry_id ?? undefined,
               profession_id: student.profession_id ?? undefined,
               visa_status: student.visa_status ?? 'visit',
@@ -277,10 +279,12 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
   const onSubmit = (values: StudentFormSchema) => {
     const payload = {
       ...values,
-      // Only email and highest qualification are optional — everything else is
-      // required, so the resolver guarantees those are already non-empty here.
+      // Only email, highest qualification and bio are optional — everything else
+      // is required, so the resolver guarantees those are already non-empty here.
       email: values.email || null,
       highest_qualification: values.highest_qualification || null,
+      // Empty means "no bio", not "leave it alone": clearing the box clears it.
+      bio: values.bio || null,
     };
 
     if (isEditing) {
@@ -595,6 +599,28 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
                   )}
                 />
                 <FieldError message={errors.profession_id?.message} />
+              </div>
+
+              {/*
+                The same field the student writes on their own profile in the app.
+                There is one value, not two, so saving here replaces whatever the
+                student wrote — hence the note under the box.
+              */}
+              <div className="space-y-1 sm:col-span-3">
+                <FieldLabel htmlFor="bio" icon={NotebookPen}>Bio</FieldLabel>
+                <Textarea
+                  id="bio"
+                  rows={3}
+                  maxLength={500}
+                  placeholder="A short summary of the student's experience, in their own words."
+                  aria-invalid={!!errors.bio}
+                  {...register('bio')}
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Shown on the student's profile in the app. The student can edit this too, so saving
+                  here replaces what they wrote. Up to 500 characters.
+                </p>
+                <FieldError message={errors.bio?.message} />
               </div>
             </FormSection>
 

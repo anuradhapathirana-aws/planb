@@ -7,12 +7,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { StudentServicePurchase, StudentServiceSummary } from '@shared/types/studentService';
 import { colors } from '@shared/theme/tokens';
-import { ServiceCard } from '@/components/shared/ServiceCard';
+import { ServiceListRow } from '@/components/shared/ServiceListRow';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { SegmentedToggle } from '@/components/ui/SegmentedToggle';
-import { CourseCardSkeleton, Skeleton } from '@/components/ui/Skeleton';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { Text } from '@/components/ui/Text';
-import { PurchasedServiceCard } from '@/features/services/PurchasedServiceCard';
+import { PurchasedServiceRow } from '@/features/services/PurchasedServiceRow';
 import { useServiceCatalogue, useServicePurchases } from '@/features/services/useServices';
 
 type Tab = 'all' | 'mine';
@@ -20,9 +20,13 @@ type Tab = 'all' | 'mine';
 /**
  * Services — the catalogue, and what the student has bought.
  *
- * Two tabs over two small lists, split the same way the Courses tab splits All /
- * My courses, so there is nothing new to learn. Both are fetched up front: a
- * student has a handful of each, and switching tabs should not cost a spinner.
+ * Laid out exactly like the Courses tab: title, tab toggle, one full-width row
+ * per item. The two are siblings in the tab bar and there is nothing new to
+ * learn moving between them. No search field, unlike Courses — a student has a
+ * handful of services, not a catalogue worth querying.
+ *
+ * Both lists are fetched up front. Each is small, and switching tabs should not
+ * cost a spinner.
  */
 export default function ServicesScreen() {
   const { t } = useTranslation();
@@ -45,11 +49,25 @@ export default function ServicesScreen() {
   const isError = tab === 'all' ? catalogue.isError : purchases.isError;
   const retry = tab === 'all' ? catalogue.refetch : purchases.refetch;
 
+  const errorState = (
+    <EmptyState
+      icon={WifiOff}
+      tone="danger"
+      title={t('services.loadFailedTitle')}
+      body={t('services.loadFailedBody')}
+      actionLabel={t('common.retry')}
+      onAction={() => void retry()}
+    />
+  );
+
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
-      <View className="gap-4 px-5 pb-4 pt-4">
+      <View className="gap-2.5 px-4 pb-3 pt-3">
         <View>
           <Text variant="display">{t('services.title')}</Text>
+          {/* Where Courses puts its search field. Premium services need saying
+              out loud — a student who has never bought one does not know what
+              is on this tab. */}
           <Text variant="caption" className="mt-1">
             {t('services.subtitle')}
           </Text>
@@ -66,37 +84,20 @@ export default function ServicesScreen() {
       </View>
 
       {isLoading ? (
-        <View className="gap-3 px-5">
-          {tab === 'all' ? (
-            <>
-              <CourseCardSkeleton />
-              <CourseCardSkeleton />
-            </>
-          ) : (
-            <>
-              <Skeleton className="h-48 w-full rounded-xl" />
-              <Skeleton className="h-48 w-full rounded-xl" />
-            </>
-          )}
+        <View className="gap-2.5 px-4">
+          {[0, 1, 2, 3, 4, 5].map((row) => (
+            <Skeleton key={row} className="h-[94px] w-full rounded-xl" />
+          ))}
         </View>
-      ) : isError ? (
-        <EmptyState
-          icon={WifiOff}
-          tone="danger"
-          title={t('services.loadFailedTitle')}
-          body={t('services.loadFailedBody')}
-          actionLabel={t('common.retry')}
-          onAction={() => void retry()}
-        />
       ) : tab === 'all' ? (
         <FlatList
           data={catalogue.data?.data ?? []}
           keyExtractor={(service: StudentServiceSummary) => String(service.id)}
           renderItem={({ item }) => (
-            <ServiceCard service={item} onPress={() => openService(item.id)} />
+            <ServiceListRow service={item} onPress={() => openService(item.id)} />
           )}
-          contentContainerClassName="px-5 gap-3"
-          contentContainerStyle={{ paddingBottom: 24, flexGrow: 1 }}
+          contentContainerClassName="px-4 gap-2.5"
+          contentContainerStyle={{ paddingBottom: 16, flexGrow: 1 }}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -106,11 +107,15 @@ export default function ServicesScreen() {
             />
           }
           ListEmptyComponent={
-            <EmptyState
-              icon={Sparkles}
-              title={t('services.emptyTitle')}
-              body={t('services.emptyBody')}
-            />
+            isError ? (
+              errorState
+            ) : (
+              <EmptyState
+                icon={Sparkles}
+                title={t('services.emptyTitle')}
+                body={t('services.emptyBody')}
+              />
+            )
           }
         />
       ) : (
@@ -118,7 +123,7 @@ export default function ServicesScreen() {
           data={purchases.data?.data ?? []}
           keyExtractor={(purchase: StudentServicePurchase) => String(purchase.id)}
           renderItem={({ item }) => (
-            <PurchasedServiceCard
+            <PurchasedServiceRow
               purchase={item}
               /*
                * Only linkable while the catalogue entry still resolves. A
@@ -128,8 +133,8 @@ export default function ServicesScreen() {
               onPress={item.service?.is_available ? () => openService(item.service!.id) : undefined}
             />
           )}
-          contentContainerClassName="px-5 gap-3"
-          contentContainerStyle={{ paddingBottom: 24, flexGrow: 1 }}
+          contentContainerClassName="px-4 gap-2.5"
+          contentContainerStyle={{ paddingBottom: 16, flexGrow: 1 }}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -139,15 +144,19 @@ export default function ServicesScreen() {
             />
           }
           ListEmptyComponent={
-            // Nothing bought is a different problem from nothing offered, and
-            // the fix is a tap away rather than a support call.
-            <EmptyState
-              icon={Sparkles}
-              title={t('services.noneBoughtTitle')}
-              body={t('services.noneBoughtBody')}
-              actionLabel={t('services.browseAll')}
-              onAction={() => setTab('all')}
-            />
+            isError ? (
+              errorState
+            ) : (
+              // Nothing bought is a different problem from nothing offered, and
+              // the fix is a tap away rather than a support call.
+              <EmptyState
+                icon={Sparkles}
+                title={t('services.noneBoughtTitle')}
+                body={t('services.noneBoughtBody')}
+                actionLabel={t('services.browseAll')}
+                onAction={() => setTab('all')}
+              />
+            )
           }
         />
       )}

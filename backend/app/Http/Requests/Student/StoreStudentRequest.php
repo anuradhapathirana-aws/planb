@@ -33,6 +33,9 @@ class StoreStudentRequest extends FormRequest
                 'before_or_equal:'.now()->subYears(self::MIN_AGE_YEARS)->toDateString(),
             ],
             'highest_qualification' => ['nullable', 'string', 'max:255'],
+            // The same field the student writes on their own profile, and the
+            // same cap. Plain text: it is rendered as text, never as markup.
+            'bio' => ['nullable', 'string', 'max:500'],
             'industry_id' => ['required', 'integer', 'exists:industries,id'],
             'profession_id' => [
                 'required',

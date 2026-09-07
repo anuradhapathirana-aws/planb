@@ -52,6 +52,7 @@ class Student extends Authenticatable implements HasMedia
         'address',
         'date_of_birth',
         'highest_qualification',
+        'bio',
         'industry_id',
         'profession_id',
         'visa_status',

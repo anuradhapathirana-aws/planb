@@ -116,6 +116,9 @@ export const studentFormSchema = z.object({
       }
     }),
   highest_qualification: z.string().max(255).nullish().or(z.literal('')),
+  // Mirrors the Form Request's `max:500`; the backend stays the enforcement
+  // point (CLAUDE.md §7.3). The same field the student edits on mobile.
+  bio: z.string().max(500, 'Keep the bio under 500 characters.').nullish().or(z.literal('')),
   industry_id: z.coerce.number({ message: 'Select an industry.' }).int().positive('Select an industry.'),
   profession_id: z.coerce.number({ message: 'Select a profession.' }).int().positive('Select a profession.'),
   visa_status: z.enum(['visit', 'employment'], { message: 'Select a visa status.' }),

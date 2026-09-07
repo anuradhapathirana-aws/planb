@@ -23,6 +23,9 @@ class StudentResource extends JsonResource
             'address' => $this->address,
             'date_of_birth' => $this->date_of_birth?->toDateString(),
             'highest_qualification' => $this->highest_qualification,
+            // Written by the student on their own profile, and by an admin on the
+            // student form — the same 500-character plain-text field either way.
+            'bio' => $this->bio,
             'industry_id' => $this->industry_id,
             'profession_id' => $this->profession_id,
             'industry' => $this->industry ? new IndustryResource($this->industry) : null,

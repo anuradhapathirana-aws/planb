@@ -207,6 +207,39 @@ class StudentManagementTest extends TestCase
         $response->assertOk()->assertJsonPath('data.full_name', 'Updated Name');
     }
 
+    public function test_admin_can_write_and_clear_a_student_bio(): void
+    {
+        $student = Student::factory()->create(['student_id' => 'PB-10004', 'bio' => null]);
+
+        $this->actingAs($this->superAdmin)->putJson(
+            "/api/v1/admin/students/{$student->id}",
+            $this->validStudentPayload([
+                'student_id' => 'PB-10004',
+                'bio' => 'Electrician with six years on commercial sites in Colombo.',
+            ]),
+        )
+            ->assertOk()
+            ->assertJsonPath('data.bio', 'Electrician with six years on commercial sites in Colombo.');
+
+        $this->actingAs($this->superAdmin)->putJson(
+            "/api/v1/admin/students/{$student->id}",
+            $this->validStudentPayload(['student_id' => 'PB-10004', 'bio' => null]),
+        )
+            ->assertOk()
+            ->assertJsonPath('data.bio', null);
+    }
+
+    /** The same 500-character cap the student's own profile endpoint enforces. */
+    public function test_a_student_bio_is_capped_on_the_admin_form(): void
+    {
+        $student = Student::factory()->create(['student_id' => 'PB-10005']);
+
+        $this->actingAs($this->superAdmin)->putJson(
+            "/api/v1/admin/students/{$student->id}",
+            $this->validStudentPayload(['student_id' => 'PB-10005', 'bio' => str_repeat('a', 501)]),
+        )->assertUnprocessable()->assertJsonValidationErrors('bio');
+    }
+
     public function test_admin_must_backfill_required_fields_to_update_a_pending_registration_student(): void
     {
         // Bulk-imported students start with only a student_id — everything else is null

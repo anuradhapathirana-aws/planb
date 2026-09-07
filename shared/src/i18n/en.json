@@ -241,7 +241,11 @@
     "unsavedTitle": "Discard your changes?",
     "unsavedBody": "You have edits that haven’t been saved.",
     "discard": "Discard",
-    "keepEditing": "Keep editing"
+    "keepEditing": "Keep editing",
+    "bio": "About you",
+    "bioPlaceholder": "A few lines about your experience and what you are looking for",
+    "bioHint": "Shown on your profile. Up to 500 characters.",
+    "addBio": "Add a short bio"
   },
   "enrol": {
     "action": "Enrol",

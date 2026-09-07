@@ -94,6 +94,7 @@ export default function EditProfileScreen() {
     address: student?.address ?? '',
     date_of_birth: student?.date_of_birth ?? null,
     highest_qualification: student?.highest_qualification ?? '',
+    bio: student?.bio ?? '',
     industry_id: student?.industry?.id ?? null,
     profession_id: student?.profession?.id ?? null,
   };
@@ -351,6 +352,19 @@ export default function EditProfileScreen() {
             onChange={(value) => set('date_of_birth', value)}
             error={errors.date_of_birth}
             maximumDate={maxDob}
+          />
+
+          {/* Directly under the name, because the two sit together on the
+              profile header the student is editing. */}
+          <Input
+            label={t('profile.bio')}
+            placeholder={t('profile.bioPlaceholder')}
+            value={values.bio ?? ''}
+            onChangeText={(text) => set('bio', text)}
+            error={errors.bio}
+            hint={t('profile.bioHint')}
+            multiline
+            maxLength={500}
           />
 
           <SegmentedToggle<VisaStatus>

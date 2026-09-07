@@ -116,6 +116,26 @@ class StudentProfileTest extends TestCase
         ])->assertStatus(422)->assertJsonValidationErrors('profession_id');
     }
 
+    public function test_a_student_can_write_and_clear_their_bio(): void
+    {
+        $this->putJson('/api/v1/student/profile', [
+            'bio' => 'Electrician with six years on commercial sites in Colombo.',
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.bio', 'Electrician with six years on commercial sites in Colombo.');
+
+        $this->putJson('/api/v1/student/profile', ['bio' => null])
+            ->assertOk()
+            ->assertJsonPath('data.bio', null);
+    }
+
+    public function test_a_bio_is_capped(): void
+    {
+        $this->putJson('/api/v1/student/profile', ['bio' => str_repeat('a', 501)])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('bio');
+    }
+
     public function test_the_minimum_age_rule_applies(): void
     {
         $this->putJson('/api/v1/student/profile', [

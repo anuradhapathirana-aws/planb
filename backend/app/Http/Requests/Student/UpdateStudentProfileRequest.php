@@ -45,6 +45,9 @@ class UpdateStudentProfileRequest extends FormRequest
             // Matches the admin form's minimum-age rule.
             'date_of_birth' => ['sometimes', 'nullable', 'date', 'before:-18 years'],
             'highest_qualification' => ['sometimes', 'nullable', 'string', 'max:255'],
+            // Plain text. It is rendered as a <Text>, never as markup, so there
+            // is nothing here for HtmlSanitizer to do.
+            'bio' => ['sometimes', 'nullable', 'string', 'max:500'],
             'industry_id' => ['sometimes', 'nullable', 'integer', 'exists:industries,id'],
             'profession_id' => ['sometimes', 'nullable', 'integer', 'exists:professions,id'],
             'languages_spoken' => ['sometimes', 'nullable', 'array', 'max:20'],

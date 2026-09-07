@@ -27,6 +27,7 @@ export function Input({
   hint,
   icon: Icon,
   required = false,
+  multiline = false,
   onFocus,
   onBlur,
   ...props
@@ -46,8 +47,10 @@ export function Input({
       <View
         className={cn(
           // minHeight, not height — the field grows with the system font size.
-          'w-full flex-row items-center gap-2 rounded-lg border bg-card px-3.5',
-          'min-h-[52px]',
+          'w-full flex-row gap-2 rounded-lg border bg-card px-3.5',
+          // A multiline field grows downwards, so its icon and its first line
+          // have to sit at the top rather than centred against four lines of text.
+          multiline ? 'items-start min-h-[104px] py-1' : 'items-center min-h-[52px]',
           hasError
             ? 'border-destructive'
             : focused
@@ -70,6 +73,9 @@ export function Input({
           accessibilityLabel={hasError ? `${label}, error: ${error}` : label}
           accessibilityHint={hint}
           placeholderTextColor={colors['muted-foreground']}
+          multiline={multiline}
+          // Android centres multiline text vertically without this; iOS ignores it.
+          textAlignVertical={multiline ? 'top' : undefined}
           className="flex-1 py-3 text-[15px] leading-6 text-foreground"
           onFocus={(event) => {
             setFocused(true);
