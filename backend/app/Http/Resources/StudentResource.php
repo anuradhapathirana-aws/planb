@@ -6,6 +6,7 @@ namespace App\Http\Resources;
 
 use App\Models\Student;
 use App\Support\DocumentSummary;
+use App\Support\PublicUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -35,7 +36,7 @@ class StudentResource extends JsonResource
             'is_blocked' => $this->is_blocked,
             'is_registered' => $this->isRegistered(),
             'registered_at' => $this->registered_at?->toIso8601String(),
-            'profile_photo_url' => $this->profile_photo_url,
+            'profile_photo_url' => PublicUrl::forRequest($this->profile_photo_url, $request),
             // Metadata only. Neither file has a URL here by design — reading one
             // needs a fresh signed link from /students/{id}/documents/{type}/link.
             'cv' => DocumentSummary::from($this->cvMedia()),

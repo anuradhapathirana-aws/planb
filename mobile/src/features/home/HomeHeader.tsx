@@ -29,8 +29,13 @@ export function HomeHeader({ student, onPress, onNotifications }: HomeHeaderProp
 
   const firstName = student?.full_name?.trim().split(/\s+/)[0];
 
+  /*
+   * `px-2.5` is Home's page gutter. The header is pinned outside the scroll view,
+   * so it has to repeat the number to stay aligned with the content below it.
+   * See the note on Home's scroll content.
+   */
   return (
-    <View className="flex-row items-center gap-3 px-4 pb-1 pt-2">
+    <View className="flex-row items-center gap-3 px-2.5 pb-1 pt-2">
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={t('profile.title')}

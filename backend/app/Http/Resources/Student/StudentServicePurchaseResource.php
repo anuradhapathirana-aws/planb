@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Resources\Student;
 
 use App\Models\ServicePurchase;
+use App\Support\PublicUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -33,7 +34,7 @@ class StudentServicePurchaseResource extends JsonResource
             'service' => $this->whenLoaded('service', fn () => $this->service ? [
                 'id' => $this->service->id,
                 'name' => $this->service->name,
-                'thumbnail_url' => $this->service->thumbnail_url,
+                'thumbnail_url' => PublicUrl::forRequest($this->service->thumbnail_url, $request),
                 /*
                  * Whether the catalogue entry can still be opened. A service the
                  * admin has since withdrawn or unpublished still has to appear

@@ -115,6 +115,21 @@ class StudentCourseTest extends TestCase
         $response->assertJsonPath('data.progress.percent_complete', 0);
     }
 
+    /**
+     * The detail payload has to carry the run time as well as the list one.
+     * `StudentCourseDetailResource` extends the summary resource, so a total
+     * left unloaded here reports 0 and the app hides the duration on the very
+     * screen a buyer reads it on.
+     */
+    public function test_detail_carries_the_total_run_time(): void
+    {
+        [$programme] = $this->publishedProgrammeWithTwoLessons();
+
+        $this->getJson("/api/v1/student/courses/{$programme->id}")
+            ->assertOk()
+            ->assertJsonPath('data.total_duration_seconds', 200);
+    }
+
     public function test_watching_a_lesson_unlocks_the_next(): void
     {
         [$programme, $first, $second] = $this->publishedProgrammeWithTwoLessons();

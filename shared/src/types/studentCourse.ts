@@ -82,13 +82,3 @@ export interface StudentCourseListFilters {
   per_page?: number;
   page?: number;
 }
-
-/**
- * The three filters the Home search dropdown offers over its results.
- *
- * `unfinished` is a SUBSET of `enrolled`, not a sibling — these are filters over
- * one result set, not a partition of it. `available` is everything not enrolled,
- * at any age; `is_new` is a badge on the row rather than a filter, so an older
- * course the student has not bought stays findable.
- */
-export type CourseSearchTab = 'available' | 'enrolled' | 'unfinished';

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Resources;
 
 use App\Models\CourseProgramme;
+use App\Support\PublicUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -23,7 +24,7 @@ class CourseProgrammeResource extends JsonResource
             'currency' => $this->currency,
             'is_free' => $this->isFree(),
             'enrolments_count' => $this->whenCounted('enrolments'),
-            'thumbnail_url' => $this->thumbnail_url,
+            'thumbnail_url' => PublicUrl::forRequest($this->thumbnail_url, $request),
             'sort_order' => $this->sort_order,
             'category' => $this->whenLoaded('category', fn () => new CourseCategoryResource($this->category)),
             'topics' => CourseTopicResource::collection($this->whenLoaded('topics')),

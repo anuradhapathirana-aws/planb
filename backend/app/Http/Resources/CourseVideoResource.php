@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Resources;
 
 use App\Models\CourseVideo;
+use App\Support\PublicUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -27,7 +28,7 @@ class CourseVideoResource extends JsonResource
             'has_file' => $media !== null,
             'file_name' => $media?->file_name,
             'file_size_bytes' => $media?->size,
-            'thumbnail_url' => $this->thumbnail_url,
+            'thumbnail_url' => PublicUrl::forRequest($this->thumbnail_url, $request),
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];

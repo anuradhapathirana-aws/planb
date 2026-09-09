@@ -12,7 +12,6 @@ import {
   Share2,
   ShieldCheck,
   Star,
-  User,
   WifiOff,
 } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
@@ -20,7 +19,8 @@ import { useTranslation } from 'react-i18next';
 import type { StudentCourseVideo } from '@shared/types/studentCourse';
 import { colors } from '@shared/theme/tokens';
 import { formatCourseLength, formatMoney } from '@shared/lib/formatters';
-import { fetchCourse } from '@/api/courses.api';
+import { fetchCourse, fetchLearnerAvatars } from '@/api/courses.api';
+import { BrandAvatar } from '@/components/shared/BrandAvatar';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -35,6 +35,7 @@ import { CourseHero } from '@/features/courses/CourseHero';
 import { CourseTopicCard } from '@/features/courses/CourseTopicCard';
 import { courseSocialProof, formatCompactCount } from '@/features/courses/courseSocialProof';
 import { useEnrol } from '@/features/enrolment/useEnrol';
+import { useAuthStore } from '@/stores/authStore';
 import { cn } from '@/lib/cn';
 
 type CourseTab = 'lessons' | 'about' | 'assessment';
@@ -227,7 +228,9 @@ export default function CourseDetailScreen() {
 
             <View className="mt-3 flex-row items-center justify-between gap-3 border-t border-border pt-3">
               <View className="flex-1 flex-row items-center gap-2">
-                <Avatar name={proof.instructor_name} size={28} />
+                {/* Plan B provides every course, so the slot a tutor's photo
+                    would fill carries the company badge rather than initials. */}
+                <BrandAvatar size={28} />
                 <Text variant="caption" className="flex-1 text-foreground" numberOfLines={1}>
                   {proof.instructor_name}
                 </Text>
@@ -393,18 +396,52 @@ function CircleButton({
  * The overlapping avatars beside the learner count. Decorative — we do not
  * publish who else is on a course, and would not want to.
  */
+/**
+ * The faces beside the learner count.
+ *
+ * The signed-in student's own photo leads — the one face that needs nobody's
+ * permission — followed by a couple of other registered learners. That endpoint
+ * returns photo URLs and nothing else, so there is no name to render and none
+ * is wanted: a stack does not identify anyone.
+ *
+ * The COUNT beside it is still sample data and stays that way, at Anuradha's
+ * request — a real number would read as "3 learners" for the first few months.
+ * Everything invented on this screen lives in `courseSocialProof`.
+ */
 function LearnerStack() {
+  const student = useAuthStore((state) => state.student);
+
+  const { data } = useQuery({
+    queryKey: ['learner-avatars'],
+    queryFn: fetchLearnerAvatars,
+    // Not per-course and barely changes, so one fetch serves every course
+    // screen. A failure costs nothing: the student's own photo still shows.
+    staleTime: 30 * 60 * 1000,
+    retry: 1,
+  });
+
+  const faces: Array<{ key: string; uri: string | null; name: string | null }> = [
+    { key: 'me', uri: student?.profile_photo_url ?? null, name: student?.full_name ?? null },
+    ...(data ?? [])
+      .slice(0, 2)
+      .map((learner, index) => ({ key: `learner-${index}`, uri: learner.photo_url, name: null })),
+  ];
+
   return (
-    <View className="flex-row items-center" pointerEvents="none">
-      {[0, 1, 2].map((index) => (
+    // Decorative: the count beside it already says what this means, and three
+    // "Profile photo" announcements in a row would only get in the way.
+    <View
+      className="flex-row items-center"
+      pointerEvents="none"
+      importantForAccessibility="no-hide-descendants"
+      accessibilityElementsHidden
+    >
+      {faces.map((face, index) => (
         <View
-          key={index}
-          className={cn(
-            'h-6 w-6 items-center justify-center rounded-full border-2 border-background bg-primary-soft',
-            index > 0 && '-ml-2',
-          )}
+          key={face.key}
+          className={cn('rounded-full border-2 border-background', index > 0 && '-ml-2')}
         >
-          <User size={11} color={colors.primary} />
+          <Avatar uri={face.uri} name={face.name} size={24} />
         </View>
       ))}
     </View>

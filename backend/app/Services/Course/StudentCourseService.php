@@ -14,6 +14,7 @@ use App\Models\StudentVideoProgress;
 use App\Services\Enrolment\EnrolmentService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
@@ -147,6 +148,13 @@ class StudentCourseService
             'paper.questions:id,course_paper_id',
         ]);
         $programme->loadCount(['topics', 'videos']);
+        /*
+         * The same total the list query sums, and it has to be loaded here too:
+         * `StudentCourseDetailResource` extends the summary resource, so without
+         * this the detail payload reports a total run time of 0 and the app
+         * hides the duration on the one screen where a buyer looks for it.
+         */
+        $programme->loadSum('videos as total_duration_seconds', 'duration_seconds');
 
         $progressByVideo = $this->progress->progressForProgramme($student, $programme);
 
@@ -206,6 +214,24 @@ class StudentCourseService
             'student_id' => $student->id,
             'course_video_id' => $video->id,
         ]);
+
+        /*
+         * Start the clock here, on a row that has never been seen.
+         *
+         * `CourseProgressService::allowance()` measures how much lesson the
+         * elapsed wall clock could account for, and with no `last_seen_at` to
+         * measure against it can only fall back to the 5-second grace window.
+         * That capped the FIRST flush of every lesson at 5 seconds of credit —
+         * so a student who watched a 90-second lesson straight through banked
+         * about 80, missed the 90% gate, and had to watch it again. Issuing a
+         * playback link is the moment we know they started, so it is the honest
+         * baseline. Only stamped when null: a returning student already has one,
+         * and overwriting it would shrink their allowance.
+         */
+        if ($progress->last_seen_at === null) {
+            $progress->last_seen_at = Carbon::now();
+            $progress->save();
+        }
 
         return $link + ['progress' => $progress];
     }

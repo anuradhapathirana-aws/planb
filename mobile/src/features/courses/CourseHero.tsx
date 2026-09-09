@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { Image } from 'expo-image';
-import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { BookOpen, CheckCircle2, Clock, Lock, Sparkles } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 
@@ -14,10 +13,10 @@ import { Text } from '@/components/ui/Text';
 /**
  * The banner at the top of Course Details.
  *
- * The course art carries a navy scrim so white text is legible over whatever the
- * admin uploaded — a photo we do not control cannot be trusted to have a dark
- * corner. The scrim is drawn with `react-native-svg` (already a dependency for
- * the progress ring) rather than pulling in `expo-linear-gradient` for one view.
+ * The art is shown untinted, at Anuradha's request — no wash over the whole
+ * image. Legibility is bought per-label instead: each chip sits on its own small
+ * dark pill, so a photo we do not control can be light, busy or both without the
+ * text on it disappearing. The badges along the top already carry solid fills.
  *
  * The course NAME is deliberately not in here. The reference design puts a short
  * marketing headline on the banner and the real title underneath; we only have
@@ -52,20 +51,6 @@ export function CourseHero({ course }: { course: StudentCourseDetail }) {
           <BookOpen size={40} color={colors['surface-muted']} />
         </View>
       )}
-
-      {/* Decorative: everything it makes readable is announced by the text itself. */}
-      <View className="absolute inset-0" pointerEvents="none">
-        <Svg width="100%" height="100%">
-          <Defs>
-            <LinearGradient id="courseHeroScrim" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0" stopColor={colors.primary} stopOpacity="0" />
-              <Stop offset="0.45" stopColor={colors.primary} stopOpacity="0.35" />
-              <Stop offset="1" stopColor={colors.primary} stopOpacity="0.92" />
-            </LinearGradient>
-          </Defs>
-          <Rect x="0" y="0" width="100%" height="100%" fill="url(#courseHeroScrim)" />
-        </Svg>
-      </View>
 
       <View className="absolute inset-0 justify-between p-3.5">
         <View className="flex-row items-start justify-between gap-2">
@@ -109,11 +94,15 @@ export function CourseHero({ course }: { course: StudentCourseDetail }) {
 
 /**
  * A fact on the banner. Not `Badge` — that one's tones are all light fills for a
- * white card, and every one of them disappears against the scrim.
+ * white card, and every one of them vanishes on a photo.
+ *
+ * The pill is `foreground` (near-black slate) rather than `primary`: with the
+ * navy wash gone, a navy pill would read as a leftover piece of it. Neutral
+ * darkness is what makes white text work, and it stays out of the brand's way.
  */
 function HeroChip({ label, icon: Icon }: { label: string; icon?: typeof Clock }) {
   return (
-    <View className="flex-row items-center gap-1.5 rounded-full bg-primary-foreground/20 px-2.5 py-1">
+    <View className="flex-row items-center gap-1.5 rounded-full bg-foreground/55 px-2.5 py-1">
       {Icon && <Icon size={12} color={colors['primary-foreground']} />}
       <Text className="text-[11px] font-semibold leading-4 text-primary-foreground">{label}</Text>
     </View>

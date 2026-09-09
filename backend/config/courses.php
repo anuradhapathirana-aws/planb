@@ -14,6 +14,9 @@ return [
     | and `max_execution_time` in php.ini all cap the request before Laravel
     | ever sees it, so raise those alongside this value.
     |
+    | Media Library's own `max_file_size` guard has to clear it too; it reads
+    | this same env var by default, so the two only drift if one is overridden.
+    |
     */
 
     'max_video_upload_mb' => (int) env('COURSE_MAX_VIDEO_UPLOAD_MB', 512),

@@ -5,8 +5,9 @@ import { fetchService, fetchServicePurchases, fetchServices } from '@/api/servic
 /**
  * The three service queries, with their keys in one place.
  *
- * Both Services tabs read these same two caches, so switching between them
- * costs no request.
+ * The catalogue and the student's purchases are separate caches on separate
+ * screens now — `/browse/services` and the My Services tab — but a purchase
+ * changes both, so anything that buys must invalidate the pair.
  */
 
 export const serviceKeys = {

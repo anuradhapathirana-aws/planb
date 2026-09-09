@@ -5,6 +5,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as ScreenCapture from 'expo-screen-capture';
+import * as ScreenOrientation from 'expo-screen-orientation';
 import * as SplashScreen from 'expo-splash-screen';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -61,6 +62,17 @@ export default function RootLayout() {
     return () => {
       void ScreenCapture.allowScreenCaptureAsync();
     };
+  }, []);
+
+  /*
+   * Portrait is the app's policy, not its manifest. `orientation` in
+   * app.config.ts is 'default' so the lesson player can turn (a native app
+   * cannot rotate into an orientation it never declared); everything else is
+   * held portrait from here, and `useRotationUnlocked` releases it for the one
+   * screen that wants it.
+   */
+  useEffect(() => {
+    void ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
   }, []);
 
   /* Restore the token from the Keychain/Keystore before the first render. */
@@ -127,7 +139,15 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <ToastProvider>
-            <StatusBar style="light" />
+            {/*
+              Dark glyphs, because nearly every screen is `bg-background` — a
+              light cream — behind the clock. This used to be `light`, which is
+              right on the navy sign-in screen and nowhere else: it painted the
+              system time, battery and signal white on cream everywhere else,
+              where they simply vanished. The few screens that really do put
+              navy under the status bar call `useStatusBarStyle('light')`.
+            */}
+            <StatusBar style="dark" />
             <Stack screenOptions={{ headerShown: false, animation: 'fade' }}>
               <Stack.Screen name="index" />
               <Stack.Screen name="sign-in" />

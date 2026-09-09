@@ -1,8 +1,8 @@
 import { useCallback, useMemo, useState } from 'react';
-import { FlatList, Keyboard, RefreshControl, View, type LayoutChangeEvent } from 'react-native';
+import { FlatList, Pressable, RefreshControl, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { GraduationCap, WifiOff } from '@/components/icons';
+import { GraduationCap, Plus, SearchX, WifiOff } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -12,41 +12,28 @@ import { fetchCourses } from '@/api/courses.api';
 import { CourseListRow } from '@/components/shared/CourseListRow';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { SearchField } from '@/components/ui/SearchField';
-import { SegmentedToggle } from '@/components/ui/SegmentedToggle';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Text } from '@/components/ui/Text';
-import { useEnrol } from '@/features/enrolment/useEnrol';
-import { CourseSearchResults } from '@/features/home/CourseSearchResults';
-import { useCourseSearch } from '@/features/home/useCourseSearch';
 
-type Tab = 'all' | 'enrolled';
-
+/**
+ * My Courses — the courses this student is enrolled in, and nothing else.
+ *
+ * The All / My-courses toggle went at the client's request, and the catalogue
+ * with it: everything not enrolled now lives on `/browse`, reached from Home's
+ * "View all" links and from this screen's own header and empty state. One tab,
+ * one question — "how far am I?" — which is what the progress ring on each row
+ * answers.
+ *
+ * The search box filters the enrolled list in place. It used to open the
+ * server-backed dropdown that searched the whole catalogue, which no longer
+ * belongs on a screen that only shows what the student owns; finding something
+ * new is `/browse`'s job, and it kept that dropdown's server search.
+ */
 export default function CoursesScreen() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const [tab, setTab] = useState<Tab>('all');
+  const [query, setQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-  const { enrol, pendingCourseId } = useEnrol();
-
-  const search = useCourseSearch();
-  const [searchOpen, setSearchOpen] = useState(false);
-  /*
-   * Where the dropdown starts. Measured rather than assumed: the header's
-   * height moves with the system font size, so the panel has to be told where
-   * the field actually ended up on this device.
-   */
-  const [searchAnchor, setSearchAnchor] = useState(0);
-
-  const closeSearch = useCallback(() => {
-    setSearchOpen(false);
-    Keyboard.dismiss();
-  }, []);
-
-  const onSearchAnchorLayout = useCallback((event: LayoutChangeEvent) => {
-    const { y, height } = event.nativeEvent.layout;
-
-    setSearchAnchor(y + height);
-  }, []);
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['courses'],
@@ -59,46 +46,61 @@ export default function CoursesScreen() {
     setRefreshing(false);
   }, [refetch]);
 
-  const courses = useMemo(() => data?.data ?? [], [data]);
+  const enrolled = useMemo(
+    () => (data?.data ?? []).filter((course) => course.is_enrolled),
+    [data],
+  );
 
   /*
-   * Both tabs are served from the same request. A student has a handful of
-   * courses, so a second round trip to filter server-side would cost a spinner
-   * and buy nothing — switching tabs is instant this way.
+   * Filtered here rather than on the server. A student owns a handful of
+   * courses and they are all already in hand, so a request per keystroke would
+   * buy a spinner and nothing else — and matching topic titles, the one thing
+   * the client genuinely cannot do, is a browsing concern that lives on
+   * `/browse`.
    */
-  const visible = useMemo(
-    () => (tab === 'enrolled' ? courses.filter((course) => course.is_enrolled) : courses),
-    [courses, tab],
-  );
+  const visible = useMemo(() => {
+    const term = query.trim().toLowerCase();
+
+    if (term === '') return enrolled;
+
+    return enrolled.filter((course) => course.name.toLowerCase().includes(term));
+  }, [enrolled, query]);
 
   const openCourse = (course: StudentCourseSummary) =>
     router.push({ pathname: '/course/[id]', params: { id: course.id } });
 
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
-      <View className="gap-2.5 px-4 pb-3 pt-3" onLayout={onSearchAnchorLayout}>
-        <Text variant="display">{t('courses.title')}</Text>
+      <View className="gap-2.5 px-4 pb-3 pt-3">
+        <View className="flex-row items-center justify-between gap-3">
+          <Text variant="display">{t('courses.myTitle')}</Text>
 
-        <SearchField
-          accessibilityLabel={t('search.label')}
-          placeholder={t('search.placeholder')}
-          value={search.query}
-          onChangeText={(value) => {
-            search.setQuery(value);
-            setSearchOpen(true);
-          }}
-          onFocus={() => setSearchOpen(true)}
-          onSubmitEditing={() => setSearchOpen(true)}
-        />
+          {/* The way to more courses from a screen that deliberately shows
+              none — a student with courses would otherwise have to go back to
+              Home to find the catalogue. */}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('courses.browseAll')}
+            hitSlop={8}
+            onPress={() => router.push('/browse/courses')}
+            className="min-h-[36px] flex-row items-center gap-1.5 rounded-full bg-primary-soft px-3 active:bg-border"
+          >
+            <Plus size={15} color={colors.primary} />
+            <Text className="text-[13px] font-semibold leading-5 text-primary">
+              {t('courses.browse')}
+            </Text>
+          </Pressable>
+        </View>
 
-        <SegmentedToggle<Tab>
-          value={tab}
-          onChange={setTab}
-          options={[
-            { value: 'all', label: t('courses.tabAll') },
-            { value: 'enrolled', label: t('courses.tabEnrolled') },
-          ]}
-        />
+        {/* Nothing to filter until there is more than one course. */}
+        {enrolled.length > 1 && (
+          <SearchField
+            accessibilityLabel={t('courses.mySearchLabel')}
+            placeholder={t('courses.mySearchPlaceholder')}
+            value={query}
+            onChangeText={setQuery}
+          />
+        )}
       </View>
 
       {isLoading ? (
@@ -112,22 +114,18 @@ export default function CoursesScreen() {
           data={visible}
           keyExtractor={(course) => String(course.id)}
           /*
-           * One to a row. The catalogue is scanned top to bottom for "how far
-           * am I?", and a ring answers that at a glance where a tile grid made
-           * the student read two columns of artwork to find it. Home keeps the
-           * two-up tiles — that strip is a browsing surface, this is a tracker.
+           * One to a row. This list is scanned top to bottom for "how far am
+           * I?", and a ring on each row answers that at a glance where a tile
+           * grid made the student read two columns of artwork to find it.
+           * `/browse` keeps the two-up tiles — it is a browsing surface.
            */
           renderItem={({ item }) => (
-            <CourseListRow
-              course={item}
-              onPress={() => openCourse(item)}
-              onEnrol={item.is_enrolled ? undefined : () => enrol(item.id)}
-              enrolling={pendingCourseId === item.id}
-            />
+            <CourseListRow course={item} onPress={() => openCourse(item)} />
           )}
           contentContainerClassName="px-4 gap-2.5"
           contentContainerStyle={{ paddingBottom: 16, flexGrow: 1 }}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -145,38 +143,24 @@ export default function CoursesScreen() {
                 actionLabel={t('common.retry')}
                 onAction={() => void refetch()}
               />
-            ) : tab === 'enrolled' ? (
-              // Nothing enrolled is a different problem from nothing published,
-              // and the fix is a tap away rather than a support call.
+            ) : query.trim() !== '' ? (
+              <EmptyState
+                icon={SearchX}
+                title={t('courses.noMatchTitle')}
+                body={t('courses.noMatchBody')}
+              />
+            ) : (
+              // Nothing enrolled is a fixable problem, and the fix is one tap
+              // away rather than a support call.
               <EmptyState
                 icon={GraduationCap}
                 title={t('courses.noneEnrolledTitle')}
                 body={t('courses.noneEnrolledBody')}
                 actionLabel={t('courses.browseAll')}
-                onAction={() => setTab('all')}
-              />
-            ) : (
-              <EmptyState
-                icon={GraduationCap}
-                title={t('courses.emptyTitle')}
-                body={t('courses.emptyBody')}
+                onAction={() => router.push('/browse/courses')}
               />
             )
           }
-        />
-      )}
-
-      {searchOpen && (
-        <CourseSearchResults
-          {...search}
-          anchorTop={searchAnchor}
-          onDismiss={closeSearch}
-          onSelect={(course) => {
-            closeSearch();
-            openCourse(course);
-          }}
-          onEnrol={(course) => enrol(course.id)}
-          enrollingCourseId={pendingCourseId}
         />
       )}
     </View>

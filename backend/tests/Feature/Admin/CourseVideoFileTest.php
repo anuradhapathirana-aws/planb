@@ -73,6 +73,25 @@ class CourseVideoFileTest extends TestCase
         $this->assertNotNull($this->video->fresh()->videoMedia());
     }
 
+    /**
+     * Regression: Media Library's blanket `max_file_size` guard sat at 10MB, well
+     * under the 512MB the upload rule accepts. A real lesson passed validation and
+     * then threw `FileIsTooBig` while being stored — the whole file was uploaded
+     * before it failed, and the admin was only told the video "did not upload".
+     */
+    public function test_a_lesson_larger_than_ten_megabytes_is_stored(): void
+    {
+        $this->actingAs($this->contentManager)
+            ->postJson("/api/v1/admin/course-videos/{$this->video->id}/file", [
+                'file' => $this->fakeMp4('long-lesson.mp4', 12 * 1024 * 1024),
+                'duration_seconds' => 1800,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.has_file', true);
+
+        $this->assertNotNull($this->video->fresh()->videoMedia());
+    }
+
     public function test_a_non_video_file_is_rejected(): void
     {
         $this->actingAs($this->contentManager)

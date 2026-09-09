@@ -8,6 +8,7 @@ use App\Http\Controllers\Student\ChecklistController;
 use App\Http\Controllers\Student\CourseController;
 use App\Http\Controllers\Student\EnrolmentController;
 use App\Http\Controllers\Student\HomeController;
+use App\Http\Controllers\Student\LearnerController;
 use App\Http\Controllers\Student\PaperController;
 use App\Http\Controllers\Student\PaymentController;
 use App\Http\Controllers\Student\ProfileController;
@@ -88,6 +89,12 @@ Route::middleware(['auth:student', 'student.actor', 'student.active'])->group(fu
      * caches rather than duplicating their data.
      */
     Route::get('home-banners', [HomeController::class, 'banners']);
+
+    /*
+     * The faces on Course Details' "N learners" row. Not nested under a course
+     * on purpose — see LearnerAvatarService for why it is not course-scoped.
+     */
+    Route::get('learner-avatars', LearnerController::class);
 
     // Courses
     Route::get('courses', [CourseController::class, 'index']);

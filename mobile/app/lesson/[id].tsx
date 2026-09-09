@@ -22,6 +22,7 @@ import { colors } from '@shared/theme/tokens';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Text } from '@/components/ui/Text';
 import { useNoSkipPlayer } from '@/features/player/useNoSkipPlayer';
+import { useRotationUnlocked } from '@/lib/useRotationUnlocked';
 
 /**
  * The lesson player.
@@ -33,7 +34,8 @@ import { useNoSkipPlayer } from '@/features/player/useNoSkipPlayer';
  * Note there is no call to `player.enterFullscreen()` either — expo-video
  * re-enables native controls in fullscreen on every platform, which would hand
  * the student the same scrubber. Landscape is handled as an in-app layout
- * change instead.
+ * change instead: this screen is the only one in the app that follows the
+ * phone's rotation, and the video simply fills whatever shape it lands in.
  */
 export default function LessonScreen() {
   const { t } = useTranslation();
@@ -61,6 +63,10 @@ export default function LessonScreen() {
   // A lesson is 5–10 minutes of not touching the screen; without this the
   // device dims and locks mid-sentence.
   useKeepAwake();
+
+  // Turn the phone, turn the video. Portrait is restored on the way out, so the
+  // course page behind this screen is never left sideways.
+  useRotationUnlocked();
 
   /* Auto-hide the controls while playing, the way every video app behaves. */
   useEffect(() => {
@@ -170,8 +176,11 @@ export default function LessonScreen() {
           <>
             {/* Top bar */}
             <View
-              className="absolute left-0 right-0 flex-row items-center px-2"
-              style={{ top: insets.top }}
+              className="absolute left-0 right-0 flex-row items-center"
+              // In landscape the notch is beside the screen, not above it, so the
+              // back button has to clear `insets.left` — `px-2` alone would put it
+              // under the cutout on the phones that have one.
+              style={{ top: insets.top, paddingLeft: insets.left + 8, paddingRight: insets.right + 8 }}
             >
               <Pressable
                 accessibilityRole="button"
@@ -228,8 +237,12 @@ export default function LessonScreen() {
 
             {/* Seek bar */}
             <View
-              className="absolute left-0 right-0 px-4"
-              style={{ bottom: insets.bottom + 12 }}
+              className="absolute left-0 right-0"
+              style={{
+                bottom: insets.bottom + 12,
+                paddingLeft: insets.left + 16,
+                paddingRight: insets.right + 16,
+              }}
             >
               <SeekBar
                 playedPercent={playedPercent}

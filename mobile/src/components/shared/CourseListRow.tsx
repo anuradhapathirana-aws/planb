@@ -1,58 +1,45 @@
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { Image } from 'expo-image';
-import { BookOpen, Clock, Lock, ShoppingCart } from '@/components/icons';
+import { BookOpen, Clock } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 
 import type { StudentCourseSummary } from '@shared/types/studentCourse';
 import { colors } from '@shared/theme/tokens';
-import { formatCourseLength, formatMoney } from '@shared/lib/formatters';
+import { formatCourseLength } from '@shared/lib/formatters';
 import { PressableCard } from '@/components/ui/Card';
 import { ProgressRing } from '@/components/ui/ProgressRing';
 import { Text } from '@/components/ui/Text';
 
 export interface CourseListRowProps {
+  /** An ENROLLED course. The row is progress, so there is nothing to draw without one. */
   course: StudentCourseSummary;
   onPress: () => void;
-  /**
-   * Buy straight from the row. Omitted for a course the student already has —
-   * an owned row shows its progress ring in the same place instead.
-   */
-  onEnrol?: () => void;
-  enrolling?: boolean;
 }
 
 /**
- * A course as one full-width row: artwork chip, title, run time, and a right
- * rail that answers "where am I with this?" — a progress ring once enrolled, a
- * price and a buy button while it is still locked.
+ * An enrolled course as one full-width row: artwork chip, title, run time, and
+ * the progress ring that answers "how far am I?".
  *
- * The Courses tab's row, deliberately taller and heavier than
- * `CourseResultRow`: that one is a *result* inside a dropdown, where a dozen
- * rows have to fit under a search field. This is the catalogue itself, so the
- * artwork gets enough size to be recognisable and progress reads as a ring
- * rather than a hairline bar.
+ * The My Courses row. There is no price and no buy button on purpose — a course
+ * the student does not own never reaches this list; `/browse` sells, using the
+ * tiles, and this screen only tracks.
+ *
+ * Deliberately taller and heavier than `CourseResultRow`: that one is a *result*
+ * inside a dropdown, where a dozen rows have to fit under a search field. This
+ * is the student's own shelf, so the artwork gets enough size to be
+ * recognisable and progress reads as a ring rather than a hairline bar.
  */
-export function CourseListRow({
-  course,
-  onPress,
-  onEnrol,
-  enrolling = false,
-}: CourseListRowProps) {
+export function CourseListRow({ course, onPress }: CourseListRowProps) {
   const { t } = useTranslation();
   const [thumbnailFailed, setThumbnailFailed] = useState(false);
 
   const { progress } = course;
-  const locked = !course.is_enrolled;
 
   // A thumbnail can be absent, or fail for reasons the student cannot fix. A
   // branded panel reads as deliberate where a broken-image glyph reads as a
   // broken app.
   const showThumbnail = Boolean(course.thumbnail_url) && !thumbnailFailed;
-
-  const price = course.is_free
-    ? t('courses.free')
-    : formatMoney(course.price_cents, course.currency);
 
   // '' when no lesson carries a duration — the lesson count stands in rather
   // than printing "Duration 0m".
@@ -61,14 +48,10 @@ export function CourseListRow({
   return (
     <PressableCard
       onPress={onPress}
-      accessibilityLabel={
-        locked
-          ? `${course.name}. ${t('courses.lockedBadge')}. ${price}`
-          : `${course.name}. ${t('courses.progress', {
-              watched: progress.videos_watched,
-              total: progress.videos_total,
-            })}`
-      }
+      accessibilityLabel={`${course.name}. ${t('courses.progress', {
+        watched: progress.videos_watched,
+        total: progress.videos_total,
+      })}`}
       className="flex-row items-center gap-3 p-3"
     >
       <View className="h-[68px] w-[68px] shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted">
@@ -88,13 +71,6 @@ export function CourseListRow({
         ) : (
           <BookOpen size={24} color={colors['muted-foreground']} />
         )}
-
-        {/* Decorative — the row's own accessibility label already says it. */}
-        {locked && (
-          <View className="absolute right-1 top-1 h-5 w-5 items-center justify-center rounded-full bg-card">
-            <Lock size={11} color={colors['muted-foreground']} />
-          </View>
-        )}
       </View>
 
       <View className="flex-1 gap-1.5">
@@ -112,45 +88,12 @@ export function CourseListRow({
         </View>
       </View>
 
-      {locked ? (
-        <View className="shrink-0 items-end gap-1.5">
-          <Text className="text-[14px] font-bold leading-5 text-primary" numberOfLines={1}>
-            {price}
-          </Text>
-
-          {onEnrol !== undefined && (
-            /*
-             * Nested inside the card's own Pressable: React Native gives the
-             * press to the innermost responder, so this does not also open the
-             * course. 36px of paint with hitSlop past 44 — mobile/CLAUDE.md §4
-             * requires the touchable to clear 44, not the pixels you can see,
-             * and a 44px block would crowd the title at phone width.
-             */
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`${t('enrol.action')}. ${course.name}. ${price}`}
-              accessibilityState={{ disabled: enrolling, busy: enrolling }}
-              disabled={enrolling}
-              onPress={onEnrol}
-              hitSlop={8}
-              className="h-9 w-9 items-center justify-center rounded-lg bg-primary active:opacity-80"
-            >
-              {enrolling ? (
-                <ActivityIndicator size="small" color={colors['primary-foreground']} />
-              ) : (
-                <ShoppingCart size={16} color={colors['primary-foreground']} />
-              )}
-            </Pressable>
-          )}
-        </View>
-      ) : (
-        <ProgressRing
-          percent={progress.percent_complete}
-          size={56}
-          strokeWidth={6}
-          label={`${course.name} ${progress.percent_complete} percent complete`}
-        />
-      )}
+      <ProgressRing
+        percent={progress.percent_complete}
+        size={56}
+        strokeWidth={6}
+        label={`${course.name} ${progress.percent_complete} percent complete`}
+      />
     </PressableCard>
   );
 }

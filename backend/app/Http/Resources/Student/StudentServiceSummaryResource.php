@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Resources\Student;
 
 use App\Models\Service;
+use App\Support\PublicUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -25,7 +26,7 @@ class StudentServiceSummaryResource extends JsonResource
             'price_cents' => (int) $this->price_cents,
             'currency' => $this->currency,
             'delivery_time' => $this->delivery_time,
-            'thumbnail_url' => $this->thumbnail_url,
+            'thumbnail_url' => PublicUrl::forRequest($this->thumbnail_url, $request),
 
             /*
              * Presentation, not a control. The buy endpoint refuses a repeat

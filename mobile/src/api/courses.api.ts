@@ -1,4 +1,5 @@
 import type { ApiResource, PaginatedResponse } from '@shared/types/api';
+import type { LearnerAvatar } from '@shared/types/learner';
 import type { VideoPlayback } from '@shared/types/course';
 import type { VideoProgress, VideoProgressPayload } from '@shared/types/progress';
 import type {
@@ -74,6 +75,19 @@ export async function recordLessonProgress(
     `/student/lessons/${lessonId}/progress`,
     payload,
   );
+
+  return data.data;
+}
+
+/**
+ * A few other learners' photos, for the stack on Course Details.
+ *
+ * Not per-course and not per-student, so one cached copy serves every course
+ * screen. An empty array is normal on a fresh install — the student's own photo
+ * leads the stack either way.
+ */
+export async function fetchLearnerAvatars(): Promise<LearnerAvatar[]> {
+  const { data } = await apiClient.get<{ data: LearnerAvatar[] }>('/student/learner-avatars');
 
   return data.data;
 }

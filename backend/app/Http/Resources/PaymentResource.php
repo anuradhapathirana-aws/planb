@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Resources;
 
 use App\Models\Payment;
+use App\Support\PublicUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -30,7 +31,7 @@ class PaymentResource extends JsonResource
             'currency' => $this->currency,
             'status' => $this->status->value,
             'reference_number' => $this->reference_number,
-            'receipt_url' => $this->receipt_url,
+            'receipt_url' => PublicUrl::forRequest($this->receipt_url, $request),
             'is_awaiting_review' => $this->isAwaitingReview(),
             'review_remark' => $this->review_remark,
             'reviewed_at' => $this->reviewed_at?->toIso8601String(),

@@ -1,5 +1,5 @@
 import { Pressable, View } from 'react-native';
-import { CheckCircle2, ChevronDown, ChevronUp, Lock, Play } from '@/components/icons';
+import { CheckCircle2, ChevronDown, ChevronUp, Lock, Play, Video } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 
 import type { StudentCourseTopic, StudentCourseVideo } from '@shared/types/studentCourse';
@@ -141,7 +141,11 @@ function LessonRow({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={
-        lesson.is_locked ? `${lesson.title}. ${t('courses.locked')}` : lesson.title
+        lesson.is_locked
+          ? `${lesson.title}. ${t('courses.locked')}`
+          : watched
+            ? `${lesson.title}. ${t('courses.watched')}`
+            : lesson.title
       }
       accessibilityState={{ disabled: lesson.is_locked }}
       onPress={onPress}
@@ -156,8 +160,13 @@ function LessonRow({
           watched ? 'bg-success-soft' : lesson.is_locked ? 'bg-muted' : 'bg-primary-soft',
         )}
       >
+        {/*
+          A watched lesson shows a video icon, not a tick — these rows are
+          videos, and the row already says "Watched" in words on the right, so
+          the green fill is reinforcement rather than the only signal.
+        */}
         {watched ? (
-          <CheckCircle2 size={15} color={colors.success} />
+          <Video size={14} color={colors.success} />
         ) : lesson.is_locked ? (
           <Lock size={13} color={colors['muted-foreground']} />
         ) : (
@@ -173,9 +182,14 @@ function LessonRow({
         {lesson.title}
       </Text>
 
-      <Text variant="caption">
-        {watched ? t('courses.watched') : formatDuration(lesson.duration_seconds)}
-      </Text>
+      {/* A tick, not the word "Watched" — it reads at a glance down a list of
+          forty rows, and it does not grow when the label is translated. The
+          state is still announced: it is on the row's accessibility label. */}
+      {watched ? (
+        <CheckCircle2 size={16} color={colors.success} />
+      ) : (
+        <Text variant="caption">{formatDuration(lesson.duration_seconds)}</Text>
+      )}
     </Pressable>
   );
 }

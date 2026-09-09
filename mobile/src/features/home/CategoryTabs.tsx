@@ -40,9 +40,10 @@ export function CategoryTabs({ categories, value, onChange, allLabel }: Category
       horizontal
       showsHorizontalScrollIndicator={false}
       // Breaks the page gutter so chips can scroll edge to edge, then re-adds it
-      // so the first chip still lines up with the heading above.
-      className="-mx-4"
-      contentContainerStyle={{ paddingHorizontal: 16, gap: 4 }}
+      // so the first chip still lines up with the heading above. Both numbers are
+      // Home's 10px gutter — see the note on its scroll content.
+      className="-mx-2.5"
+      contentContainerStyle={{ paddingHorizontal: 10, gap: 4 }}
     >
       <Chip label={allLabel} selected={value === ALL_CATEGORIES} onPress={() => onChange(null)} />
 

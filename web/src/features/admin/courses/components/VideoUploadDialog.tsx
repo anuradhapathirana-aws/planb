@@ -9,6 +9,8 @@ export interface VideoUploadItem {
   sizeBytes: number;
   percent: number;
   status: 'pending' | 'uploading' | 'done' | 'error';
+  /** Why this one was rejected, when the server said — "under 512 MB", "MP4 or MOV". */
+  error?: string;
 }
 
 /**
@@ -61,6 +63,8 @@ export function VideoUploadDialog({ items, open }: { items: VideoUploadItem[]; o
                   }}
                 />
               </div>
+
+              {item.status === 'error' && item.error && <p className="text-[11px] text-destructive">{item.error}</p>}
             </div>
           ))}
         </div>

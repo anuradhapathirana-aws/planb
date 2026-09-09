@@ -113,7 +113,7 @@ Course art, uploaded against a saved programme rather than inside the course for
 
 Uploaded one at a time against an already-saved video row — a course can hold hundreds of megabytes of video, which no single form post survives. The admin UI saves the course first, then uploads each staged file against the returned video ids.
 
-Server cap: `config('courses.max_video_upload_mb')` (default 512, `COURSE_MAX_VIDEO_UPLOAD_MB`). **PHP's own `upload_max_filesize`, `post_max_size` and `max_execution_time` must be raised to match** — they reject the request before Laravel sees it.
+Server cap: `config('courses.max_video_upload_mb')` (default 512, `COURSE_MAX_VIDEO_UPLOAD_MB`). **PHP's own `upload_max_filesize`, `post_max_size` and `max_execution_time` must be raised to match** — they reject the request before Laravel sees it. Media Library's blanket `max_file_size` guard has to clear it too; it follows `COURSE_MAX_VIDEO_UPLOAD_MB` by default (override with `MEDIA_MAX_FILE_SIZE_MB`), because it throws *after* validation has accepted the file — a mismatch fails the upload only once the whole file has been sent.
 
 | Method | Path | Auth / role | Notes |
 |---|---|---|---|
@@ -264,6 +264,17 @@ Playback bytes are still served by the existing `GET /api/v1/course-videos/{vide
 - **The link arrives resolved.** `StudentHomeBannerResource` returns one `link` object — `{ type }`, `{ type: 'course', course_id }` or `{ type: 'url', url }` — rather than the three columns the admin resource exposes. The client switches on a discriminated union instead of re-implementing "which column applies".
 - **A course link whose course has been deleted degrades to `{ type: 'none' }`** rather than sending the student to a 404.
 - **There is no `/student/home` aggregate endpoint, deliberately.** Home's checklist and course progress tiles are computed from the *same* cached `GET /student/checklists` and `GET /student/courses` responses their tabs use, so opening Home warms both. A combined endpoint would be one round trip instead of three, and would buy a screen whose numbers could disagree with the screens they link to.
+
+## Student Learners
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/student/learner-avatars` | Up to 4 photo URLs, for the avatar stack on Course Details. **`{ "data": [] }`** is a normal answer. |
+
+- **`LearnerAvatarResource` carries `photo_url` and nothing else** — no id, no name, no initials. This is the one student endpoint that returns data about *other* students, so it stays at the minimum that renders a circle. Do not widen it.
+- **It is not scoped to a course, on purpose.** Returning the faces of the students enrolled in a particular course would tell the viewer who is taking it, and a face identifies a person with or without a name attached. The broader query is the less leaky one.
+- **Only registered, unblocked students who actually have a photo** are returned; soft-deleted ones are excluded by the model's `SoftDeletes`. A student with no photo would render as an empty circle, which reads as a broken image rather than a person.
+- **The signed-in student's own photo is added by the client**, at the head of the stack — it is never in this payload.
 
 ## Student Assessments
 

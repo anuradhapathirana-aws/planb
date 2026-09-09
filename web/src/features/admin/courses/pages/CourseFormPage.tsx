@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Controller, useFieldArray, useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -52,7 +52,7 @@ import { useActiveCourseCategories } from '@/features/admin/courseCategories/hoo
 import { uploadCourseProgrammeThumbnail, uploadCourseVideoFile } from '@/api/courses.api';
 import { fromCents, toCents } from '@shared/lib/formatters';
 import { newClientKey } from '@shared/lib/clientKey';
-import { applyServerValidationErrors } from '@shared/lib/serverErrors';
+import { applyServerValidationErrors, getValidationErrors } from '@shared/lib/serverErrors';
 import { paths } from '@/routes/paths';
 import type { CourseProgramme, CourseProgrammePayload, CourseVideo } from '@shared/types/course';
 
@@ -102,6 +102,16 @@ function toFormValues(programme: CourseProgramme): CourseFormSchema {
   };
 }
 
+/**
+ * The reason the server gave for rejecting a lesson file — "under 512 MB",
+ * "MP4 or MOV". Anything that isn't a 422 (a dropped connection, a 500) has no
+ * message worth showing an admin, so the caller falls back to a generic one.
+ */
+function uploadFailureReason(error: unknown): string | null {
+  const errors = getValidationErrors(error);
+  return errors ? (Object.values(errors)[0]?.[0] ?? null) : null;
+}
+
 function indexVideos(programme: CourseProgramme): Record<number, CourseVideo> {
   const index: Record<number, CourseVideo> = {};
   for (const topic of programme.topics ?? []) {
@@ -118,6 +128,18 @@ export function CourseFormPage() {
 
   const { data: programme, isLoading: programmeLoading } = useCourseProgramme(programmeId);
   const { data: categories, isLoading: categoriesLoading } = useActiveCourseCategories();
+
+  /**
+   * The select offers active categories, plus the one this course already sits
+   * in when that is missing from the list — a category can be deactivated after
+   * courses were filed under it, and dropping its option would show the field as
+   * empty and quietly force a category change on the next save.
+   */
+  const categoryOptions = useMemo(() => {
+    const options = categories ?? [];
+    const current = programme?.category;
+    return current && !options.some((option) => option.id === current.id) ? [...options, current] : options;
+  }, [categories, programme?.category]);
 
   const createCourse = useCreateCourseProgramme();
   const updateCourse = useUpdateCourseProgramme(programmeId ?? 0);
@@ -167,6 +189,10 @@ export function CourseFormPage() {
 
   useEffect(() => {
     if (!programme || hydratedProgrammeId.current === programme.id) return;
+    // Wait for the category list too: a Select handed a value before its options
+    // exist has nothing to render the label from, so the field would read empty
+    // even though the form holds the right id.
+    if (categoriesLoading) return;
     hydratedProgrammeId.current = programme.id;
 
     reset(toFormValues(programme));
@@ -176,7 +202,7 @@ export function CourseFormPage() {
     // Long courses open collapsed apart from the first topic, so the page starts
     // scannable instead of several screens tall.
     setCollapsedTopics(Object.fromEntries((programme.topics ?? []).map((_topic, index) => [index, index !== 0])));
-  }, [programme, reset]);
+  }, [programme, categoriesLoading, reset]);
 
   // Object URLs are revoked on replace/unmount so a long editing session doesn't leak them.
   useEffect(() => {
@@ -271,7 +297,9 @@ export function CourseFormPage() {
       }),
     );
 
-  const runUploads = async (queue: ReturnType<typeof pendingUploads>): Promise<number> => {
+  const runUploads = async (
+    queue: ReturnType<typeof pendingUploads>,
+  ): Promise<{ failed: number; reason: string | null }> => {
     setUploads(
       queue.map((item) => ({
         key: item.clientKey,
@@ -284,6 +312,7 @@ export function CourseFormPage() {
     setIsUploading(true);
 
     let failed = 0;
+    let reason: string | null = null;
 
     // Sequential: parallel large uploads on a slow connection just starve each other.
     for (const item of queue) {
@@ -301,14 +330,16 @@ export function CourseFormPage() {
         setVideoMeta((current) => ({ ...current, [uploaded.id]: uploaded }));
         stageFile(item.clientKey, null);
         patch({ status: 'done', percent: 100 });
-      } catch {
+      } catch (error) {
         failed += 1;
-        patch({ status: 'error' });
+        const message = uploadFailureReason(error);
+        reason ??= message;
+        patch({ status: 'error', error: message ?? undefined });
       }
     }
 
     setIsUploading(false);
-    return failed;
+    return { failed, reason };
   };
 
   const onSubmit = async (values: CourseFormSchema) => {
@@ -343,12 +374,14 @@ export function CourseFormPage() {
     }
 
     const queue = pendingUploads(values, saved);
-    const failed = queue.length > 0 ? await runUploads(queue) : 0;
+    const { failed, reason } = queue.length > 0 ? await runUploads(queue) : { failed: 0, reason: null };
     setUploads([]);
 
     if (failed > 0) {
+      // The reason, when the server gave one: "did not upload" alone leaves the
+      // admin retrying the same too-large file with nothing to change.
       toast.error(
-        `Course saved, but ${failed} ${failed === 1 ? 'video' : 'videos'} did not upload. Try those again below.`,
+        `Course saved, but ${failed} ${failed === 1 ? 'video' : 'videos'} did not upload${reason ? `: ${reason}` : ''}. Try again below.`,
       );
       // Land on the edit page so the saved rows (and their ids) are reloaded and
       // the failed uploads can be retried without re-creating anything.
@@ -360,7 +393,9 @@ export function CourseFormPage() {
     navigate(paths.admin.courses);
   };
 
-  if (isEditing && programmeLoading) return <PageLoader />;
+  // Both queries, so the edit form is never painted with fields it is about to
+  // fill in a moment later.
+  if (isEditing && (programmeLoading || categoriesLoading)) return <PageLoader />;
 
   return (
     <div className="space-y-3">
@@ -411,7 +446,10 @@ export function CourseFormPage() {
                     name="course_category_id"
                     render={({ field }) => (
                       <Select
-                        value={field.value ? String(field.value) : undefined}
+                        // Empty string, never undefined: Radix reads undefined as
+                        // uncontrolled, and a select that switches to controlled once
+                        // the course loads keeps showing the placeholder.
+                        value={field.value ? String(field.value) : ''}
                         onValueChange={(value) => field.onChange(Number(value))}
                         disabled={categoriesLoading || busy}
                       >
@@ -419,7 +457,7 @@ export function CourseFormPage() {
                           <SelectValue placeholder={categoriesLoading ? 'Loading…' : 'Select a category'} />
                         </SelectTrigger>
                         <SelectContent>
-                          {categories?.map((category) => (
+                          {categoryOptions.map((category) => (
                             <SelectItem key={category.id} value={String(category.id)}>
                               {category.name}
                             </SelectItem>
@@ -429,7 +467,7 @@ export function CourseFormPage() {
                     )}
                   />
                   <FieldError message={errors.course_category_id?.message} />
-                  {!categoriesLoading && (categories?.length ?? 0) === 0 && (
+                  {!categoriesLoading && categoryOptions.length === 0 && (
                     <p className="text-xs text-muted-foreground">
                       No active categories yet — add one under Courses ▸ Categories first.
                     </p>

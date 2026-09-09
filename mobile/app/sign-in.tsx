@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Text } from '@/components/ui/Text';
 import { useToast } from '@/components/ui/Toast';
+import { useStatusBarStyle } from '@/lib/useStatusBarStyle';
 
 /**
  * Sign in.
@@ -26,6 +27,9 @@ export default function SignInScreen() {
   const { t } = useTranslation();
   const toast = useToast();
   const insets = useSafeAreaInsets();
+
+  // The navy panel runs under the clock on this screen, so the glyphs go white.
+  useStatusBarStyle('light');
 
   const [email, setEmail] = useState('');
   const [error, setError] = useState<string | undefined>();

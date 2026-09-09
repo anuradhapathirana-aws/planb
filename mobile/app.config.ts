@@ -30,7 +30,17 @@ const config: ExpoConfig = {
   slug: 'planb-academy',
   scheme: 'planb',
   version: '1.0.0',
-  orientation: 'portrait',
+  /*
+   * 'default', not 'portrait' — and the app is still portrait everywhere but the
+   * player. A native app can only rotate into orientations its manifest/plist
+   * declares, so pinning portrait here makes `ScreenOrientation` a no-op at
+   * runtime and the lesson video can never go landscape. The declaration is
+   * widened here and the lock is applied in JS instead: `app/_layout.tsx` locks
+   * portrait on startup and `useRotationUnlocked` releases it for the one screen
+   * that wants it (`expo-screen-orientation`'s `initialOrientation` below covers
+   * the moment before the bundle runs).
+   */
+  orientation: 'default',
   icon: './assets/icon.png',
   // Light-only for v1. The brand is a light navy-on-cream identity, and dark
   // mode doubles the design and QA surface for no student-facing requirement.
@@ -91,6 +101,17 @@ const config: ExpoConfig = {
      * out of this app entirely — see the PaymentGateway contract.
      */
     'expo-web-browser',
+    /*
+     * `initialOrientation` is what the app launches in, before any JS has run.
+     * Without it a phone held sideways would open the splash and the sign-in
+     * screen in landscape, since the plist now permits it.
+     */
+    [
+      'expo-screen-orientation',
+      {
+        initialOrientation: 'PORTRAIT',
+      },
+    ],
     /*
      * Declared so the permission prompts carry Plan B's own wording. Apple
      * rejects a build whose usage strings are the library defaults, and Android

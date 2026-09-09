@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Resources;
 
 use App\Models\Service;
+use App\Support\PublicUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -34,7 +35,7 @@ class ServiceResource extends JsonResource
             'delivery_time' => $this->delivery_time,
             'status' => $this->status->value,
             'sort_order' => $this->sort_order,
-            'thumbnail_url' => $this->thumbnail_url,
+            'thumbnail_url' => PublicUrl::forRequest($this->thumbnail_url, $request),
             'purchases_count' => $this->whenCounted('purchases'),
             // How many are still waiting on somebody — the number that decides
             // whether an admin needs to open the delivery queue today.

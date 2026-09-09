@@ -27,10 +27,21 @@ export interface CourseGridCardProps {
 /**
  * A course as a tile, two to a row.
  *
- * The narrow sibling of `CourseCard`: same data, but at ~46% of a 390px screen
- * the category and rating ride on the artwork and the block below carries only
- * a title, a price and a buy button — the chevron, description, review count and
- * progress bar the full-width card shows are cut rather than squeezed.
+ * The narrow sibling of `CourseCard`, and the same 16:9 artwork: same data, but
+ * at ~46% of a 390px screen
+ * the block below the artwork carries only a category label, a title, a price
+ * and a buy button — the chevron, description, review count and progress bar
+ * the full-width card shows are cut rather than squeezed.
+ *
+ * **The tile has no card chrome.** Only the artwork is a surface: it is the
+ * rounded, filled rectangle, and the text below sits directly on the page with
+ * no border, no background and no padding of its own, so every line starts on
+ * the image's left edge. Two tiles side by side then read as two pieces of
+ * content rather than two boxes.
+ *
+ * The rating stays ON the artwork, over its scrim — it is a mark on the thing
+ * being rated. The category came off it and reads as a small label under the
+ * title, qualifying the course rather than competing with the image.
  *
  * Progress is deliberately absent even for an enrolled course. These tiles are
  * a browsing surface answering "what could I learn?"; "how far am I?" is
@@ -64,7 +75,14 @@ export function CourseGridCard({
   /* SAMPLE DATA until the backend carries ratings — see courseSocialProof.ts. */
   const proof = courseSocialProof(course.id);
 
-  const hasCategory = course.category_name !== null && course.category_name !== '';
+  /*
+   * A space, not nothing, when a course is uncategorised: the label row has to
+   * occupy its line either way, or an uncategorised tile pulls its price row up
+   * out of line with its neighbour's. `''` is as likely as `null` off the API,
+   * so both fall back.
+   */
+  const categoryLabel =
+    course.category_name === null || course.category_name === '' ? ' ' : course.category_name;
 
   /*
    * Unique per tile. `react-native-svg` resolves `url(#id)` against a shared
@@ -82,7 +100,14 @@ export function CourseGridCard({
           ? `${course.name}. ${t('courses.lockedBadge')}. ${price}`
           : `${course.name}. ${t('courses.tabEnrolled')}. ${price}`
       }
-      className="overflow-hidden"
+      /*
+       * Chromeless: the border, the card fill and the pressed-fill all come off,
+       * because the artwork below is the only surface this tile has. `cn` is a
+       * plain join and the later class wins under NativeWind, so these override
+       * the primitive's defaults without needing a variant on it. Press feedback
+       * becomes opacity — a background tint is invisible with no background.
+       */
+      className="border-0 bg-transparent active:bg-transparent active:opacity-70"
       /*
        * `flexGrow` with an AUTO basis, never `flex-1` — the same trap
        * `CourseCard` documents: NativeWind's `flex-1` sets `flexBasis: 0%`, and
@@ -92,7 +117,17 @@ export function CourseGridCard({
        */
       style={{ flexGrow: 1, flexBasis: 'auto' }}
     >
-      <View className="aspect-[4/3] w-full items-center justify-center bg-muted">
+      {/*
+        16:9, because that is the shape the admin panel crops thumbnails to and
+        tells the admin to supply ("cropped to 16:9" on the course form). This
+        box used to be 4:3, which is taller than what gets uploaded — `cover`
+        then scaled the art until it filled the height and threw away about a
+        quarter of its width off both edges. Match the source and nothing is lost.
+
+        Rounded and clipped here rather than on the card: the card no longer
+        paints anything, so the artwork has to round its own four corners.
+      */}
+      <View className="aspect-video w-full items-center justify-center overflow-hidden rounded-xl bg-muted">
         {showThumbnail ? (
           // Layout classes never go on the expo-image element — it is not
           // registered with NativeWind, so a `className` there is silently dropped.
@@ -111,7 +146,7 @@ export function CourseGridCard({
         )}
 
         {/*
-          The gradient the category and rating sit on.
+          The gradient the rating sits on.
 
           Drawn with `react-native-svg` — already a dependency for the progress
           ring and `CourseHero`, which uses this same technique — rather than
@@ -141,44 +176,48 @@ export function CourseGridCard({
           </View>
         )}
 
-        <View className="absolute inset-x-0 bottom-0 flex-row items-center justify-between gap-1.5 px-2.5 pb-2">
-          {hasCategory ? (
-            <Text
-              className="shrink text-[10px] font-semibold uppercase tracking-wide text-white"
-              numberOfLines={1}
-            >
-              {course.category_name}
-            </Text>
-          ) : (
-            // Keeps the rating hard right when there is no category to push it.
-            <View />
-          )}
+        {/*
+          Unchanged, and deliberately still on the artwork now that the category
+          has moved below it: a rating is a mark on the thing it rates.
 
-          {/*
-            Gold as a filled glyph, never as text — it is ~2.5:1 on white and
-            fails AA (mobile/CLAUDE.md §4). The number beside it is white.
-          */}
-          <View className="shrink-0 flex-row items-center gap-1">
-            <Star size={10} color={colors.accent} fill={colors.accent} />
-            <Text className="text-[10px] font-semibold leading-4 text-white">
-              {proof.rating.toFixed(1)}
-            </Text>
-          </View>
+          Gold as a filled glyph, never as text — it is ~2.5:1 on white and
+          fails AA (mobile/CLAUDE.md §4). The number beside it is white.
+        */}
+        <View className="absolute bottom-0 right-0 flex-row items-center gap-1 px-2.5 pb-2">
+          <Star size={10} color={colors.accent} fill={colors.accent} />
+          <Text className="text-[10px] font-semibold leading-4 text-white">
+            {proof.rating.toFixed(1)}
+          </Text>
         </View>
       </View>
 
       {/*
-        `justify-between` with a grown basis keeps the footers of adjacent tiles
-        on the same line: the title takes what it needs at the top, and the price
-        row pins to the bottom of whichever tile is taller.
+        No horizontal padding: every line lands on the image's left edge, which
+        is the whole point of dropping the card fill. `justify-between` with a
+        grown basis still keeps the footers of adjacent tiles on the same line —
+        the label and title take what they need at the top, and the price row
+        pins to the bottom of whichever tile is taller.
       */}
       <View
-        className="gap-1.5 p-2.5"
+        className="gap-1.5 px-0 pb-0.5 pt-2"
         style={{ flexGrow: 1, flexBasis: 'auto', justifyContent: 'space-between' }}
       >
-        <Text className="text-[13px] font-semibold leading-[18px] text-primary" numberOfLines={2}>
-          {course.name}
-        </Text>
+        <View className="gap-0.5">
+          <Text className="text-[13px] font-semibold leading-[18px] text-primary" numberOfLines={2}>
+            {course.name}
+          </Text>
+
+          {/*
+            Under the name, not over it: the course is what the student is
+            picking, and the category qualifies it. Two steps below the `label`
+            variant's 11px — at tile width this is a tag on the title, not a
+            section header over a list. `leading-4` keeps the 1.6× line height
+            Sinhala needs (mobile/CLAUDE.md §4) at this size and then some.
+          */}
+          <Text variant="label" className="text-[9px] leading-4 tracking-wide" numberOfLines={1}>
+            {categoryLabel}
+          </Text>
+        </View>
 
         <View className="flex-row items-center justify-between gap-1.5">
           <Text className="shrink text-[15px] font-bold leading-5 text-primary" numberOfLines={1}>

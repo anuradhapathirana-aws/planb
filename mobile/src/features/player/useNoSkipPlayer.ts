@@ -120,6 +120,18 @@ export function useNoSkipPlayer(lessonId: number): NoSkipPlayerState {
         position_seconds: Math.round(payload.position),
         watched_delta_seconds: Math.round(payload.delta),
       }),
+    onError: (_error, variables) => {
+      /*
+       * Put the seconds back.
+       *
+       * `flush` clears the pending counter BEFORE the request goes out, so
+       * without this a single failed write — a dropped connection, a 429 from
+       * the progress limiter — permanently erases that stretch of watching.
+       * Lose enough of them and a lesson watched right through never reaches
+       * the 90% time gate, which is the "I had to watch it again" bug.
+       */
+      pendingWatched.current += variables.delta;
+    },
     onSuccess: (serverProgress) => {
       setProgress(serverProgress);
 
@@ -146,17 +158,44 @@ export function useNoSkipPlayer(lessonId: number): NoSkipPlayerState {
     },
   });
 
-  /** Sends whatever playback has accumulated. Safe to call at any time. */
-  const flush = useCallback(() => {
+  /**
+   * Sends whatever playback has accumulated. Safe to call at any time.
+   *
+   * `force` also sends when less than a second is pending, provided the
+   * high-water mark has moved past what the server last confirmed. That is the
+   * end-of-lesson case: the final stretch is usually under a second, and
+   * dropping it meant the position that crosses the 95% gate was never
+   * reported at all.
+   */
+  const flushImpl = (force: boolean) => {
     const delta = pendingWatched.current;
+    const position = maxReached.current;
+    const confirmed = progress?.max_position_seconds ?? 0;
 
     // Nothing new to say — don't spend the student's data on an empty write.
-    if (delta < 1) return;
+    if (delta < 1 && !(force && position > confirmed + 1)) return;
 
     pendingWatched.current = 0;
 
-    report.mutate({ position: maxReached.current, delta });
-  }, [report]);
+    report.mutate({ position, delta });
+  };
+
+  /*
+   * `flush` has to be identity-stable, and this ref is how.
+   *
+   * It used to be `useCallback(..., [report])`, and `useMutation` hands back a
+   * new object on every render — while `timeUpdate` re-renders this hook twice a
+   * second. So the 15-second interval below was torn down and rebuilt every
+   * ~500ms and never once fired, and the unmount effect ran its cleanup on every
+   * render instead of on unmount. Between them that produced a progress POST
+   * roughly every second, which sits exactly on the `student-progress` limiter
+   * (60/minute) and starts collecting 429s — and each rejected write threw away
+   * the seconds it was carrying. Keep this stable.
+   */
+  const flushImplRef = useRef(flushImpl);
+  flushImplRef.current = flushImpl;
+
+  const flush = useCallback((force = false) => flushImplRef.current(force), []);
 
   /* Load the source once the signed URL arrives, and seed the high-water mark. */
   useEffect(() => {
@@ -239,12 +278,29 @@ export function useNoSkipPlayer(lessonId: number): NoSkipPlayerState {
     if (!playing) {
       lastTick.current = null;
       // Pausing is a natural checkpoint — bank the progress now.
-      flush();
+      flush(true);
     }
   });
 
   useEventListener(player, 'sourceLoad', ({ duration }) => {
     setDurationSeconds(duration);
+  });
+
+  /*
+   * Reaching the end is the one flush that must not be missed, and it is the
+   * one most likely to be: `timeUpdate` stops firing a fraction before the
+   * last frame, so the mark can sit just under the 95% gate with nothing left
+   * to push it over. Take the duration from the player itself and report it.
+   */
+  useEventListener(player, 'playToEnd', () => {
+    const total = player.duration;
+
+    if (Number.isFinite(total) && total > 0) {
+      maxReached.current = Math.max(maxReached.current, total);
+    }
+
+    lastTick.current = null;
+    flush(true);
   });
 
   /* Periodic flush while playing. */
@@ -259,7 +315,7 @@ export function useNoSkipPlayer(lessonId: number): NoSkipPlayerState {
     const subscription = AppState.addEventListener('change', (state) => {
       if (state !== 'active') {
         lastTick.current = null;
-        flush();
+        flush(true);
       }
     });
 
@@ -272,7 +328,7 @@ export function useNoSkipPlayer(lessonId: number): NoSkipPlayerState {
    */
   useEffect(
     () => () => {
-      flush();
+      flush(true);
       void queryClient.invalidateQueries({ queryKey: ['course'] });
       void queryClient.invalidateQueries({ queryKey: ['courses'] });
     },

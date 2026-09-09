@@ -17,11 +17,16 @@ import { ContinueLearningCard } from '@/features/profile/ContinueLearningCard';
 import { ProfileHeader } from '@/features/profile/ProfileHeader';
 import { ProgressTiles } from '@/features/profile/ProgressTiles';
 import { queryClient } from '@/lib/queryClient';
+import { useStatusBarStyle } from '@/lib/useStatusBarStyle';
 import { useAuthStore } from '@/stores/authStore';
 
 export default function ProfileScreen() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+
+  // `ProfileHeader`'s navy panel carries its own top inset so it runs under the
+  // clock, which is the one place on a tab screen white glyphs are correct.
+  useStatusBarStyle('light');
   const signOutLocal = useAuthStore((state) => state.signOut);
   const setStudent = useAuthStore((state) => state.setStudent);
   const cached = useAuthStore((state) => state.student);

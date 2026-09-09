@@ -61,7 +61,13 @@ The full contract is server-side (`backend/CLAUDE.md` §5); the client's job is 
 - **Signed playback URLs expire after 30 minutes and lessons are longer than that** — a timer must
   re-fetch the stream URL 5 minutes before `expires_at`, `player.replaceAsync()`, and restore
   `currentTime`. Handle it reactively on a playback error too, for clock drift.
-- Fullscreen: `expo-screen-orientation` → landscape, status bar hidden, `expo-keep-awake` active.
+- **The lesson screen is the one screen in the app that rotates.** It is already full-bleed, so there
+  is no separate fullscreen mode to enter — `useRotationUnlocked` (`src/lib/useRotationUnlocked.ts`)
+  releases the portrait lock while the route is focused and restores it on the way out, and the video
+  fills whatever shape it lands in. `expo-keep-awake` is active and the status bar hides with the
+  controls. **`orientation` in `app.config.ts` must stay `'default'`** — set it back to `'portrait'`
+  and the native app stops declaring landscape at all, which makes every `ScreenOrientation` call a
+  silent no-op. Portrait everywhere else is a JS lock applied in `app/_layout.tsx`.
 
 ## 4. UI primitives
 

@@ -119,7 +119,13 @@ export default function HomeScreen() {
 
       <ScrollView
         className="flex-1"
-        contentContainerClassName="px-4 gap-3"
+        /*
+         * Home's page gutter, 10px. Three other places hard-code it to break out
+         * of it and reach the screen edge — `HomeHeader`'s own padding,
+         * `CategoryTabs`'s negative margin, and `HomeCarousel.PAGE_GUTTER`.
+         * Change this and you change those.
+         */
+        contentContainerClassName="px-2.5 gap-3"
         contentContainerStyle={{ paddingTop: 8, paddingBottom: insets.bottom + 12 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -143,7 +149,12 @@ export default function HomeScreen() {
         <Section
           title={t('home.recentTitle')}
           actionLabel={t('home.viewAll')}
-          onAction={() => router.push('/(tabs)/courses')}
+          /*
+           * The catalogue, not the Courses tab — that tab is "my courses" now
+           * and shows only what the student is already enrolled in, which is
+           * the opposite of what "view all" beside the newest courses promises.
+           */
+          onAction={() => router.push('/browse/courses')}
         >
           {courses.isLoading ? (
             <View className="flex-row gap-2.5">
@@ -171,7 +182,11 @@ export default function HomeScreen() {
           )}
         </Section>
 
-        <Section title={t('courses.title')}>
+        <Section
+          title={t('courses.title')}
+          actionLabel={t('home.viewAll')}
+          onAction={() => router.push('/browse/courses')}
+        >
           <CategoryTabs
             categories={categories}
             value={category}

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Resources;
 
 use App\Models\HomeBanner;
+use App\Support\PublicUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -32,7 +33,7 @@ class HomeBannerResource extends JsonResource
             'link_url' => $this->link_url,
             'is_active' => $this->is_active,
             'sort_order' => $this->sort_order,
-            'image_url' => $this->image_url,
+            'image_url' => PublicUrl::forRequest($this->image_url, $request),
             // Lets the admin screen warn "switched on, but students see nothing".
             'is_live' => $this->isPublishable(),
             'updated_at' => $this->updated_at?->toIso8601String(),

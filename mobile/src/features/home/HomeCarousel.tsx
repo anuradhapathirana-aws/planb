@@ -1,5 +1,6 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  AppState,
   FlatList,
   Pressable,
   useWindowDimensions,
@@ -19,21 +20,43 @@ import { Text } from '@/components/ui/Text';
 import { cn } from '@/lib/cn';
 import { openExternalUrl } from '@/lib/webBrowser';
 
-/** Home's page gutter, which the carousel breaks out of to reach the screen edge. */
-const PAGE_GUTTER = 16;
-
 /**
- * How much of the neighbouring slide stays visible either side of the centred
- * one. The peek is what tells a student there is more to swipe to — dots alone
- * are easy to miss, and a slide that fills the width looks like a static banner.
+ * Home's page gutter, which the carousel breaks out of to reach the screen edge.
+ * Must match the `px-2.5` on Home's scroll content — see the note there.
  */
-const PEEK = 16;
+const PAGE_GUTTER = 10;
 
 /** Space between two slides. */
 const GAP = 12;
 
-/** Inset from the screen edge to the centred slide. Peek + gap, by definition. */
-const SIDE = PEEK + GAP;
+/**
+ * How much of the next slide shows past the right edge — the cue that says this
+ * scrolls. Dots alone are easy to miss.
+ *
+ * The peek is deliberately ONE-SIDED. Insetting both edges to make room for it,
+ * which is the usual way, is exactly what used to push the banner out of line
+ * with the rest of Home. Taking it out of the right only keeps the resting
+ * slide's left edge on the page gutter, so it still lines up with the header
+ * and the course tiles while a student can see there is more to swipe to.
+ */
+const PEEK = 20;
+
+/**
+ * Inset from the screen edge to the resting slide: the page gutter, exactly.
+ * That alignment is the whole point of the one-sided peek above.
+ */
+const SIDE = PAGE_GUTTER;
+
+/**
+ * Trailing content padding.
+ *
+ * `GAP + PEEK` is the value that lets the LAST slide scroll to the same resting
+ * position as every other one — left edge on the gutter — instead of stopping
+ * short with its right edge against the screen. Anything else and the final
+ * slide sits somewhere the dots, which are positioned against that resting
+ * place, do not follow it to.
+ */
+const END_PAD = GAP + PEEK;
 
 /**
  * The slide's own inner padding. Must match the `p-4` on the slide cards below —
@@ -47,6 +70,20 @@ const SLIDE_PADDING = 16;
  * shared centre line without hand-tuning an offset.
  */
 const CTA_HEIGHT = 28;
+
+/** How long a banner holds before the carousel moves itself on. */
+const AUTOPLAY_MS = 5_000;
+
+/**
+ * How long to let a self-driven scroll settle before swapping the duplicated
+ * first slide out for the real one.
+ *
+ * `scrollToOffset` has no completion callback, and `onMomentumScrollEnd` does
+ * not fire reliably for programmatic scrolls on Android — so this is a
+ * deliberate over-estimate of the animation. The swap it triggers checks the
+ * current offset first, so arriving late, or twice, costs nothing.
+ */
+const SETTLE_MS = 600;
 
 export interface HomeCarouselProps {
   slides: StudentHomeBanner[] | undefined;
@@ -69,16 +106,51 @@ export interface HomeCarouselProps {
  */
 export function HomeCarousel({ slides, loading = false }: HomeCarouselProps) {
   const { width } = useWindowDimensions();
-  /*
-   * Null until the student scrolls, so the dots can follow `initialIndex`
-   * without a `useEffect`. `initialScrollIndex` positions the list without
-   * emitting a scroll event, so a `useState(0)` here would light the first dot
-   * while the middle slide is the one on screen.
-   */
-  const [page, setPage] = useState<number | null>(null);
+  const listRef = useRef<FlatList<CarouselItem>>(null);
 
-  const slideWidth = width - SIDE * 2;
+  /*
+   * The list opens on the first slide, so 0 is honestly the state on mount —
+   * no `initialScrollIndex` to reconcile, and the first dot is lit under the
+   * banner that is actually on screen.
+   */
+  const [page, setPage] = useState(0);
+
+  /*
+   * Autoplay stops for good the first time a student drags the list themselves.
+   * A carousel that keeps yanking itself along under someone's thumb is worse
+   * than one that never moved at all.
+   */
+  const [autoplay, setAutoplay] = useState(true);
+  const [appActive, setAppActive] = useState(true);
+
+  // Gutter on the left, gap + peek on the right — the slide takes what is left.
+  const slideWidth = width - SIDE - GAP - PEEK;
   const stride = slideWidth + GAP;
+
+  const live = slides ?? [];
+  const banners: CarouselItem[] = live.length > 0 ? live : BUILT_IN_SLIDES;
+
+  /*
+   * How the rotation works: the first banner is rendered a SECOND time at the
+   * end of the list. That is what puts banner 1 in the peek past the last real
+   * banner instead of blank space. Land on the duplicate and the list is jumped
+   * back to offset 0 with no animation — the same picture is already on screen,
+   * so the swap is invisible, and forwards never runs out.
+   *
+   * Only forwards. Swiping back off banner 1 stops there, which the one-sided
+   * peek already implies: nothing peeks on the left, so it reads as the start.
+   */
+  const loops = banners.length > 1;
+  const items = loops ? banners.concat(banners.slice(0, 1)) : banners;
+  const cloneIndex = banners.length;
+
+  /*
+   * Mirrors of the scroll position for the autoplay timer to read. State would
+   * restart the interval on every frame of every scroll; a ref lets the timer be
+   * created once and still know where the list is.
+   */
+  const offsetRef = useRef(0);
+  const pageRef = useRef(0);
 
   /*
    * Which page the dots highlight. Derived from the scroll offset rather than
@@ -88,67 +160,143 @@ export function HomeCarousel({ slides, loading = false }: HomeCarouselProps) {
    */
   const onScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const next = Math.round(event.nativeEvent.contentOffset.x / stride);
+      const offset = event.nativeEvent.contentOffset.x;
+      const next = Math.round(offset / stride);
 
+      offsetRef.current = offset;
+      pageRef.current = next;
       setPage((current) => (current === next ? current : next));
     },
     [stride],
   );
 
-  if (loading) return <Skeleton className="aspect-[16/9] w-full rounded-2xl" />;
-
-  const live = slides ?? [];
-  const data: CarouselItem[] = live.length > 0 ? live : BUILT_IN_SLIDES;
-
-  /*
-   * Open on the middle slide, not the first.
+  /**
+   * Swaps the duplicated first slide for the real one. A no-op anywhere else.
    *
-   * With the peek layout, landing on slide 0 shows a sliver on the right and
-   * flush edge on the left — which reads as a banner that happens to be inset,
-   * not as a carousel. Starting in the middle puts a neighbour either side, so
-   * the first thing a student sees is that this thing scrolls both ways.
+   * Prefers the scroll event's own offset over the ref: `onScroll` is throttled,
+   * so the ref can still hold a frame from mid-swipe when momentum ends.
    */
-  const initialIndex = Math.floor((data.length - 1) / 2);
-  const activePage = page ?? initialIndex;
+  const rewind = useCallback(
+    (event?: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const offset = event?.nativeEvent.contentOffset.x ?? offsetRef.current;
+
+      if (!loops || Math.round(offset / stride) < cloneIndex) return;
+
+      listRef.current?.scrollToOffset({ offset: 0, animated: false });
+      offsetRef.current = 0;
+      pageRef.current = 0;
+      setPage(0);
+    },
+    [loops, stride, cloneIndex],
+  );
+
+  /* Animating a list nobody can see is pure battery. */
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) =>
+      setAppActive(state === 'active'),
+    );
+
+    return () => subscription.remove();
+  }, []);
+
+  useEffect(() => {
+    if (loading || !loops || !autoplay || !appActive) return;
+
+    let settle: ReturnType<typeof setTimeout> | undefined;
+
+    const timer = setInterval(() => {
+      const next = pageRef.current + 1;
+
+      listRef.current?.scrollToOffset({ offset: next * stride, animated: true });
+
+      // Sliding onto the duplicate: let it land, then swap in the real banner 1.
+      if (next >= cloneIndex) settle = setTimeout(rewind, SETTLE_MS);
+    }, AUTOPLAY_MS);
+
+    return () => {
+      clearInterval(timer);
+      if (settle !== undefined) clearTimeout(settle);
+    };
+  }, [loading, loops, autoplay, appActive, stride, cloneIndex, rewind]);
+
+  // Sized to the slide, not to the page, so nothing jumps sideways when the real
+  // banners arrive — the slide is narrower than the content column by the peek.
+  if (loading) {
+    return (
+      <View style={{ width: slideWidth }}>
+        <Skeleton className="aspect-[16/9] w-full rounded-2xl" />
+      </View>
+    );
+  }
 
   /*
    * The dots sit on the slide now, so they have to read against whatever is
    * under them. Everything is dark — navy card, or a photo behind a scrim —
    * except the gold built-in slide, which needs navy dots instead of white.
    */
-  const activeItem = data[activePage];
+  const activeItem = items[page];
   const onGold = activeItem !== undefined && isBuiltIn(activeItem) && activeItem.tone === 'accent';
 
   return (
-    <View>
+    /*
+     * The break-out lives HERE, on the wrapper, not on the list.
+     *
+     * Both give the list the full screen width, but with the margin on the list
+     * itself the list was wider than its own parent — and a child that overflows
+     * its parent is exactly what Android is entitled to clip, peek included.
+     * Widening the wrapper instead means nothing overflows anything.
+     */
+    <View style={{ marginHorizontal: -PAGE_GUTTER }}>
       <FlatList<CarouselItem>
-        data={data}
+        ref={listRef}
+        data={items}
         horizontal
         /*
          * `snapToInterval`, NOT `pagingEnabled`. Paging snaps by the full screen
-         * width, which is wider than a slide once the peek is subtracted — every
-         * stop would drift further out of alignment. Snapping to the slide's own
-         * stride keeps each one centred no matter how many there are.
+         * width, which is wider than a slide once the gutter and the inter-slide
+         * gap are subtracted — every stop would drift further out of alignment.
+         * Snapping to the slide's own stride keeps each one aligned no matter
+         * how many there are.
          */
         snapToInterval={stride}
         snapToAlignment="start"
         decelerationRate="fast"
         disableIntervalMomentum
         showsHorizontalScrollIndicator={false}
+        /*
+         * OFF, and it matters — this defaults to TRUE on Android.
+         *
+         * It detaches cells judged to be outside the visible bounds, and the
+         * peeking slide, 20px of which is on screen, is exactly the marginal
+         * case it gets wrong on a horizontal list. A dropped peek is why nothing
+         * appeared past the last banner. There is nothing to gain from it here
+         * either: a promo carousel is a handful of cells, not a long feed.
+         */
+        removeClippedSubviews={false}
         onScroll={onScroll}
         scrollEventThrottle={16}
-        // Breaks the page gutter so the peeking slides run to the screen edge.
-        style={{ marginHorizontal: -PAGE_GUTTER }}
-        contentContainerStyle={{ paddingHorizontal: SIDE }}
+        // The student is driving now. Autoplay does not come back.
+        onScrollBeginDrag={() => setAutoplay(false)}
+        onMomentumScrollEnd={rewind}
+        // The wrapper already reaches the screen edge; this re-adds the gutter on
+        // the left, which is what lands the resting slide exactly on it.
+        contentContainerStyle={{ paddingLeft: SIDE, paddingRight: END_PAD }}
         ItemSeparatorComponent={() => <View style={{ width: GAP }} />}
-        initialScrollIndex={initialIndex}
-        keyExtractor={(item, index) => (isBuiltIn(item) ? item.key : `slide-${index}`)}
+        // Position, not identity: the first banner appears twice, so anything
+        // derived from the item itself would collide on the duplicate.
+        keyExtractor={(_, index) => `slide-${index}`}
         renderItem={({ item, index }) => (
           <View style={{ width: slideWidth }}>
             {isBuiltIn(item) ? (
               <BuiltInCard slide={item} />
             ) : (
-              <SlideCard slide={item} index={index} reserveDots={data.length > 1} />
+              // The LOGICAL index, so the duplicate is drawn exactly as banner 1
+              // is — `SlideCard` alternates its fallback tone on this number.
+              <SlideCard
+                slide={item}
+                index={index % banners.length}
+                reserveDots={loops}
+              />
             )}
           </View>
         )}
@@ -161,29 +309,34 @@ export function HomeCarousel({ slides, loading = false }: HomeCarouselProps) {
         })}
       />
 
-      {data.length > 1 && (
+      {loops && (
         /*
-         * Inside the centred slide, bottom-right, sharing the CTA pill's centre
-         * line. `right` walks out from the slide's edge rather than the screen's:
-         * the list is full-bleed, so the centred slide sits `SIDE` in from the
-         * screen while this wrapper sits `PAGE_GUTTER` in — the difference plus
-         * the slide's own padding is where its content actually starts.
+         * Inside the resting slide, bottom-right, sharing the CTA pill's centre
+         * line. `right` walks in from this wrapper's edge, which now reaches the
+         * screen edge, and the resting slide's right edge sits `END_PAD` in from
+         * there — so that plus the slide's own padding is where its content
+         * actually starts.
          */
         <View
           pointerEvents="none"
           className="absolute flex-row items-center gap-1.5"
           style={{
             bottom: SLIDE_PADDING,
-            right: SIDE - PAGE_GUTTER + SLIDE_PADDING,
+            right: END_PAD + SLIDE_PADDING,
             height: CTA_HEIGHT,
           }}
         >
-          {data.map((item, index) => (
+          {/*
+            One dot per REAL banner — the duplicate at the end must not add a
+            spare. `page` wraps onto it for the moment before the swap, and the
+            modulo puts that moment on the first dot, which is where it belongs.
+          */}
+          {banners.map((item, index) => (
             <View
               key={isBuiltIn(item) ? item.key : `dot-${index}`}
               className={cn(
                 'h-1.5 rounded-full',
-                index === activePage
+                index === page % banners.length
                   ? onGold
                     ? 'w-5 bg-primary'
                     : 'w-5 bg-white'
@@ -208,11 +361,17 @@ function isBuiltIn(item: CarouselItem): item is BuiltInSlide {
 /** Sends a student wherever a slide's resolved link points. */
 function openLink(link: StudentHomeBannerLink): void {
   switch (link.type) {
+    /*
+     * The catalogues, not the tabs. A slide is a promotion — "Find your course",
+     * "Let us handle the paperwork" — and both tabs now show only what the
+     * student already has, so landing there from an advert would answer the ad
+     * with "Nothing bought yet".
+     */
     case 'courses':
-      router.push('/(tabs)/courses');
+      router.push('/browse/courses');
       break;
     case 'services':
-      router.push('/(tabs)/services');
+      router.push('/browse/services');
       break;
     case 'checklists':
       router.push('/(tabs)/checklist');

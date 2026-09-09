@@ -81,7 +81,7 @@ export default function ServiceDetailScreen() {
           title={t('services.loadFailedTitle')}
           body={t('services.loadFailedBody')}
           actionLabel={t('services.browseAll')}
-          onAction={() => router.replace('/(tabs)/services')}
+          onAction={() => router.replace('/browse/services')}
         />
       )}
 

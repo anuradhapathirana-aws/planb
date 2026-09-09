@@ -11,6 +11,7 @@ use App\Models\CourseTopic;
 use App\Models\CourseVideo;
 use App\Models\Enrolment;
 use App\Models\Student;
+use App\Models\StudentVideoProgress;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Testing\TestResponse;
@@ -133,6 +134,69 @@ class StudentVideoProgressTest extends TestCase
         $response->assertOk();
         $this->assertTrue($response->json('data.is_watched'), 'Watching honestly must complete the lesson.');
         $this->assertGreaterThanOrEqual(570, $response->json('data.max_position_seconds'));
+
+        Carbon::setTestNow();
+    }
+
+    /**
+     * The regression this pair of tests exists for.
+     *
+     * `allowance()` has no `last_seen_at` to measure against on a brand-new row,
+     * so it falls back to the 5-second grace window — which capped the FIRST
+     * flush of every lesson at 5 seconds of credit and threw the rest away.
+     * With the 90% time gate that made completion impossible in one pass for
+     * anything shorter than about 100 seconds, however honestly it was watched.
+     *
+     * Opening the lesson is now what starts the clock (see
+     * `StudentCourseService::playback()`), which is what this row stands in for.
+     */
+    public function test_a_short_lesson_completes_in_a_single_honest_pass(): void
+    {
+        Carbon::setTestNow(now());
+
+        $short = CourseVideo::factory()->for($this->video->topic, 'topic')
+            ->create(['duration_seconds' => 90]);
+
+        // What requesting the playback link leaves behind.
+        StudentVideoProgress::create([
+            'student_id' => $this->student->id,
+            'course_video_id' => $short->id,
+            'last_seen_at' => now(),
+        ]);
+
+        for ($elapsed = 15; $elapsed <= 90; $elapsed += 15) {
+            Carbon::setTestNow(now()->addSeconds(15));
+
+            $response = $this->postJson("/api/v1/student/lessons/{$short->id}/progress", [
+                'position_seconds' => $elapsed,
+                'watched_delta_seconds' => 15,
+            ]);
+        }
+
+        $response->assertOk();
+        $this->assertTrue(
+            $response->json('data.is_watched'),
+            'A 90-second lesson watched straight through must complete on the first pass.',
+        );
+
+        Carbon::setTestNow();
+    }
+
+    /** Without that baseline the first flush is still held to the grace window. */
+    public function test_the_grace_window_still_applies_without_a_baseline(): void
+    {
+        Carbon::setTestNow(now());
+
+        $short = CourseVideo::factory()->for($this->video->topic, 'topic')
+            ->create(['duration_seconds' => 90]);
+
+        $response = $this->postJson("/api/v1/student/lessons/{$short->id}/progress", [
+            'position_seconds' => 90,
+            'watched_delta_seconds' => 90,
+        ])->assertOk();
+
+        $this->assertLessThanOrEqual(10, $response->json('data.max_position_seconds'));
+        $this->assertFalse($response->json('data.is_watched'));
 
         Carbon::setTestNow();
     }

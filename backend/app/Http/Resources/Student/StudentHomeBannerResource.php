@@ -6,6 +6,7 @@ namespace App\Http\Resources\Student;
 
 use App\Enums\HomeBannerLink;
 use App\Models\HomeBanner;
+use App\Support\PublicUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -26,7 +27,7 @@ class StudentHomeBannerResource extends JsonResource
         return [
             // Null is normal: a slide may carry wording and no artwork yet, and
             // the app draws a branded card for it rather than an empty box.
-            'image_url' => $this->image_url,
+            'image_url' => PublicUrl::forRequest($this->image_url, $request),
             'title' => $this->title,
             'subtitle' => $this->subtitle,
             'link' => $this->resolveLink(),

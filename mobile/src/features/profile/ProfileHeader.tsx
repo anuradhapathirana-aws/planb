@@ -22,9 +22,9 @@ export interface ProfileHeaderProps {
  * Who the student is, on a navy panel with their photo straddling its edge.
  *
  * The panel carries its own top inset instead of letting `Screen` pad the page,
- * so the navy runs behind the status bar. The app sets `StatusBar style="light"`
- * globally, so white glyphs land on navy here — the one place on a tab screen
- * where that pairing is actually right.
+ * so the navy runs behind the status bar. That is why the Profile screen calls
+ * `useStatusBarStyle('light')` — it is the one tab screen where white system
+ * glyphs are correct, and the app-wide default is dark for all the rest.
  *
  * The chips are `profession` and `industry`: the two fields on a student record
  * that read as "what I do", which is what the reference design's skill tags were
