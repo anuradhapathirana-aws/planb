@@ -292,11 +292,7 @@ export function HomeCarousel({ slides, loading = false }: HomeCarouselProps) {
             ) : (
               // The LOGICAL index, so the duplicate is drawn exactly as banner 1
               // is — `SlideCard` alternates its fallback tone on this number.
-              <SlideCard
-                slide={item}
-                index={index % banners.length}
-                reserveDots={loops}
-              />
+              <SlideCard slide={item} index={index % banners.length} reserveDots={loops} />
             )}
           </View>
         )}
@@ -358,6 +354,28 @@ function isBuiltIn(item: CarouselItem): item is BuiltInSlide {
   return 'key' in item;
 }
 
+/**
+ * What the slide's button says, per link target.
+ *
+ * The banner carries no CTA text field, and deriving the wording from where the
+ * slide actually goes is better than adding one: an admin cannot then ship a
+ * button whose words disagree with its destination, and there is no second
+ * string to translate per slide. `none` gets no button at all — a slide that
+ * goes nowhere must not look tappable.
+ *
+ * Keyed by the union's own `type`, so adding a case to `HomeBannerLink` on the
+ * backend fails this object at compile time rather than silently rendering a
+ * blank pill.
+ */
+const CTA_KEY: Record<StudentHomeBannerLink['type'], string | null> = {
+  none: null,
+  courses: 'home.ctaCourses',
+  services: 'home.ctaServices',
+  checklists: 'home.ctaChecklists',
+  course: 'home.ctaCourse',
+  url: 'home.ctaMore',
+};
+
 /** Sends a student wherever a slide's resolved link points. */
 function openLink(link: StudentHomeBannerLink): void {
   switch (link.type) {
@@ -401,8 +419,20 @@ function SlideCard({
   const { t } = useTranslation();
   const [imageFailed, setImageFailed] = useState(false);
 
-  const hasText = (slide.title ?? '') !== '' || (slide.subtitle ?? '') !== '';
+  const title = slide.title ?? '';
   const tappable = slide.link.type !== 'none';
+
+  /*
+   * The button replaces the subtitle the slide used to carry, at the client's
+   * request. `subtitle` is deliberately still in the API and the admin form —
+   * the data is the client's and the design may want it back — it simply is not
+   * drawn here any more.
+   */
+  const ctaKey = CTA_KEY[slide.link.type];
+  const cta = ctaKey === null ? null : t(ctaKey);
+
+  /** Only the pill-less slide has to keep its own corner clear of the dots. */
+  const clearOfDots = reserveDots && cta === null;
 
   /*
    * No artwork, or artwork that will not load. Either way the overlaid text
@@ -413,9 +443,8 @@ function SlideCard({
   if (slide.image_url === null || imageFailed) {
     return (
       <BrandedCard
-        title={slide.title ?? t('common.appName')}
-        body={slide.subtitle ?? ''}
-        cta={tappable ? t('home.viewAll') : null}
+        title={title === '' ? t('common.appName') : title}
+        cta={cta}
         tone={index % 2 === 0 ? 'primary' : 'accent'}
         onPress={tappable ? () => openLink(slide.link) : null}
         reserveDots={reserveDots}
@@ -447,18 +476,25 @@ function SlideCard({
       */}
       <View className="absolute inset-0 bg-black/40" />
 
-      {hasText && (
-        <View className={cn('absolute inset-x-0 bottom-0 p-4', reserveDots && 'pr-16')}>
-          {slide.title !== null && slide.title !== '' && (
+      {(title !== '' || cta !== null) && (
+        // Only pad clear of the dots when there is no pill. With one, the pill
+        // owns the bottom band and the dots share its centre line to the right.
+        <View className={cn('absolute inset-x-0 bottom-0 p-4', clearOfDots && 'pr-16')}>
+          {title !== '' && (
             <Text className="text-[20px] font-bold leading-7 text-white" numberOfLines={2}>
-              {slide.title}
+              {title}
             </Text>
           )}
 
-          {slide.subtitle !== null && slide.subtitle !== '' && (
-            <Text className="mt-0.5 text-[13px] leading-5 text-white/85" numberOfLines={2}>
-              {slide.subtitle}
-            </Text>
+          {cta !== null && (
+            /*
+              A View, not a Pressable. The whole slide is already the button, and
+              nesting a second tap target with the same outcome inside it makes a
+              screen reader announce two controls that do one thing.
+            */
+            <View className="mt-3 self-start rounded-full bg-accent px-3.5 py-1.5">
+              <Text className="text-[12px] font-semibold text-primary-foreground">{cta}</Text>
+            </View>
           )}
         </View>
       )}
@@ -488,8 +524,6 @@ function SlideCard({
 interface BuiltInSlide {
   key: string;
   titleKey: string;
-  bodyKey: string;
-  ctaKey: string;
   link: StudentHomeBannerLink;
   /** Two slides swiped past each other have to read as different cards. */
   tone: 'primary' | 'accent';
@@ -506,8 +540,6 @@ interface BuiltInSlide {
 const COURSES_SLIDE: BuiltInSlide = {
   key: 'built-in-courses',
   titleKey: 'home.slideCoursesTitle',
-  bodyKey: 'home.slideCoursesBody',
-  ctaKey: 'home.slideCoursesCta',
   link: { type: 'courses' },
   tone: 'primary',
 };
@@ -517,8 +549,6 @@ const BUILT_IN_SLIDES: BuiltInSlide[] = [
   {
     key: 'built-in-services',
     titleKey: 'home.slideServicesTitle',
-    bodyKey: 'home.slideServicesBody',
-    ctaKey: 'home.slideServicesCta',
     link: { type: 'services' },
     tone: 'accent',
   },
@@ -527,11 +557,14 @@ const BUILT_IN_SLIDES: BuiltInSlide[] = [
 function BuiltInCard({ slide }: { slide: BuiltInSlide }) {
   const { t } = useTranslation();
 
+  // Same derivation an admin slide gets, rather than a hardcoded key per slide:
+  // one place decides what a button pointing at Courses says.
+  const ctaKey = CTA_KEY[slide.link.type];
+
   return (
     <BrandedCard
       title={t(slide.titleKey)}
-      body={t(slide.bodyKey)}
-      cta={t(slide.ctaKey)}
+      cta={ctaKey === null ? null : t(ctaKey)}
       tone={slide.tone}
       onPress={() => openLink(slide.link)}
     />
@@ -540,7 +573,6 @@ function BuiltInCard({ slide }: { slide: BuiltInSlide }) {
 
 interface BrandedCardProps {
   title: string;
-  body: string;
   /** Null renders no pill — a slide that goes nowhere must not look tappable. */
   cta: string | null;
   tone: 'primary' | 'accent';
@@ -554,7 +586,7 @@ interface BrandedCardProps {
 }
 
 /** The house-colours slide: no photograph, drawn entirely from brand tokens. */
-function BrandedCard({ title, body, cta, tone, onPress, reserveDots = false }: BrandedCardProps) {
+function BrandedCard({ title, cta, tone, onPress, reserveDots = false }: BrandedCardProps) {
   const onAccent = tone === 'accent';
   const clearOfDots = reserveDots && cta === null;
 
@@ -604,19 +636,6 @@ function BrandedCard({ title, body, cta, tone, onPress, reserveDots = false }: B
         {title}
       </Text>
 
-      {body !== '' && (
-        <Text
-          className={cn(
-            'mt-1 text-[13px] leading-5',
-            onAccent ? 'text-primary/75' : 'text-surface-muted',
-            clearOfDots && 'pr-14',
-          )}
-          numberOfLines={2}
-        >
-          {body}
-        </Text>
-      )}
-
       {cta !== null && (
         <View
           className={cn(
@@ -624,14 +643,17 @@ function BrandedCard({ title, body, cta, tone, onPress, reserveDots = false }: B
             onAccent ? 'bg-primary' : 'bg-accent',
           )}
         >
-          <Text
-            className={cn(
-              'text-[12px] font-semibold',
-              onAccent ? 'text-primary-foreground' : 'text-primary',
-            )}
-          >
-            {cta}
-          </Text>
+          {/*
+            White on both pill fills, at the client's request.
+
+            NOTE: white on the gold pill (the navy card's variant) is ~2.5:1 and
+            does NOT meet WCAG AA for text — `@shared/theme/tokens` calls out this
+            exact pairing. It is a short, large-weight label rather than body
+            copy, and the client asked for it explicitly. Swapping that pill's
+            fill to `bg-primary-tint` would keep the white and pass; it is a
+            one-class change if this is ever revisited.
+          */}
+          <Text className="text-[12px] font-semibold text-primary-foreground">{cta}</Text>
         </View>
       )}
     </Container>

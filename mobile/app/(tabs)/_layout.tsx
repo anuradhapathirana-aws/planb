@@ -2,9 +2,8 @@ import { Tabs } from 'expo-router';
 import { GraduationCap, Home, ListChecks, Sparkles, User } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 import { Platform } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { colors, MIN_TOUCH_TARGET } from '@shared/theme/tokens';
+import { TabBar } from '@/components/shared/TabBar';
 
 /**
  * Five tabs, which is the cap root CLAUDE.md §8 sets — Home, Courses, Services,
@@ -18,37 +17,21 @@ import { colors, MIN_TOUCH_TARGET } from '@shared/theme/tokens';
  * Services sits directly after Courses because the two are the same kind of
  * thing to a student — something Plan B sells them — and grouping them keeps
  * the bar's left half "what I can buy" and its right half "my own stuff".
+ *
+ * The bar itself is ours (`@/components/shared/TabBar`), so the styling options
+ * React Navigation's bar reads — `tabBarStyle`, `tabBarLabelStyle`,
+ * `tabBarActiveTintColor` — are gone from here. Only `title` and `tabBarIcon`
+ * still matter, and `TabBar` reads both: the icon to draw, and the title as the
+ * `accessibilityLabel` that stands in for the labels the bar no longer shows.
  */
 export default function TabsLayout() {
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
 
   return (
     <Tabs
+      tabBar={(props) => <TabBar {...props} />}
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors['muted-foreground'],
-        tabBarStyle: {
-          backgroundColor: colors.card,
-          borderTopColor: colors.border,
-          // The gesture bar on modern Android and the home indicator on iOS both
-          // sit where the tab labels would otherwise be.
-          height: MIN_TOUCH_TARGET + 16 + insets.bottom,
-          paddingBottom: insets.bottom + 6,
-          paddingTop: 6,
-        },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '600',
-          // Sinhala tab labels clip at the default line height.
-          lineHeight: 16,
-        },
-        tabBarItemStyle: {
-          minHeight: MIN_TOUCH_TARGET,
-        },
-        // Android's ripple is the platform-correct press affordance.
-        tabBarButtonTestID: undefined,
         ...(Platform.OS === 'android' ? { tabBarHideOnKeyboard: true } : {}),
       }}
     >

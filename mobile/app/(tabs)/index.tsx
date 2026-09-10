@@ -11,29 +11,37 @@ import { colors } from '@shared/theme/tokens';
 import { fetchCourses } from '@/api/courses.api';
 import { fetchHomeBanners } from '@/api/home.api';
 import { CourseGridCard } from '@/components/shared/CourseGridCard';
-import { CourseResultRow } from '@/components/shared/CourseResultRow';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Text } from '@/components/ui/Text';
-import { useEnrol } from '@/features/enrolment/useEnrol';
-import { CategoryTabs } from '@/features/home/CategoryTabs';
 import { HomeCarousel } from '@/features/home/HomeCarousel';
 import { HomeHeader } from '@/features/home/HomeHeader';
 import { ProfileCompletionCard } from '@/features/home/ProfileCompletionCard';
 import { useProfileCompletion } from '@/features/home/useProfileCompletion';
 import { useAuthStore } from '@/stores/authStore';
 
-/** How many courses the Recent strip shows before "See all" takes over. */
-const RECENT_LIMIT = 4;
+/** How many tiles the Explore strip shows before "View all" takes over. */
+const EXPLORE_LIMIT = 10;
 
 /**
- * Home — the catalogue.
+ * Home — the shop window.
  *
- * Greeting, a nudge to finish the profile, the promo carousel, the newest
- * courses as tiles, then the whole catalogue filtered by category. Progress
- * lives on Profile, deliberately: this screen answers "what could I learn?",
- * and mixing "how far along am I?" into it made both questions harder to read.
+ * Greeting, a nudge to finish the profile, the promo carousel, then the newest
+ * courses the student could buy. Progress lives on Profile, deliberately: this
+ * screen answers "what could I learn?", and mixing "how far along am I?" into it
+ * made both questions harder to read.
+ *
+ * **The strip excludes courses the student is already enrolled in**, and that is
+ * load-bearing rather than cosmetic: "View all" opens `/browse/courses`, which is
+ * explicitly the shop window, so a Home showing owned courses would send a
+ * student who tapped one into a list it is missing from. Owned courses have their
+ * own screen — the Courses tab — where they carry progress instead of a price.
+ *
+ * The full catalogue with its category chips used to sit below this strip. It was
+ * removed: `/browse/courses` renders the same set with search, categories and its
+ * own empty states, both "View all" links already pointed there, and carrying a
+ * worse copy of it cost Home about two extra screens of scroll.
  *
  * Search is NOT here — it moved to the Courses tab. Home is a browsing surface
  * and a pinned search field cost the carousel its space above the fold; a
@@ -53,9 +61,6 @@ export default function HomeScreen() {
   const student = useAuthStore((state) => state.student);
 
   const [refreshing, setRefreshing] = useState(false);
-  const [category, setCategory] = useState<string | null>(null);
-
-  const { enrol, pendingCourseId } = useEnrol({ navigateToCourse: false });
 
   const courses = useQuery({ queryKey: ['courses'], queryFn: () => fetchCourses() });
   const banners = useQuery({ queryKey: ['home-banners'], queryFn: fetchHomeBanners });
@@ -71,38 +76,19 @@ export default function HomeScreen() {
   const all = useMemo(() => courses.data?.data ?? [], [courses.data]);
 
   /*
-   * Read off the courses in hand rather than fetched separately, so the strip
-   * can never offer a filter that returns nothing. Order follows the API's,
-   * which is the admin's own `sort_order`.
+   * The same filter and order `useBrowseCourses` applies, so the screen "View
+   * all" opens is this list continued rather than a different one: not enrolled,
+   * newest first. A course with no `published_at` sorts last rather than being
+   * dropped — an unpublished course should not reach a student at all, so if one
+   * does, showing it beats silently hiding a bug.
    */
-  const categories = useMemo(() => {
-    const seen: string[] = [];
-
-    for (const course of all) {
-      if (course.category_name && !seen.includes(course.category_name)) {
-        seen.push(course.category_name);
-      }
-    }
-
-    return seen;
-  }, [all]);
-
-  /*
-   * Newest first, by publication date. Courses with no `published_at` sort last
-   * rather than being dropped — an unpublished course should not reach a
-   * student at all, so if one does, showing it beats silently hiding a bug.
-   */
-  const recent = useMemo(
+  const explore = useMemo(
     () =>
-      [...all]
+      all
+        .filter((course) => !course.is_enrolled)
         .sort((a, b) => (b.published_at ?? '').localeCompare(a.published_at ?? ''))
-        .slice(0, RECENT_LIMIT),
+        .slice(0, EXPLORE_LIMIT),
     [all],
-  );
-
-  const visible = useMemo(
-    () => (category === null ? all : all.filter((course) => course.category_name === category)),
-    [all, category],
   );
 
   const openCourse = (course: StudentCourseSummary) =>
@@ -120,16 +106,21 @@ export default function HomeScreen() {
       <ScrollView
         className="flex-1"
         /*
-         * Home's page gutter, 10px. Three other places hard-code it to break out
-         * of it and reach the screen edge — `HomeHeader`'s own padding,
-         * `CategoryTabs`'s negative margin, and `HomeCarousel.PAGE_GUTTER`.
-         * Change this and you change those.
+         * Home's page gutter, 10px. Two other places hard-code it to break out
+         * of it and reach the screen edge — `HomeHeader`'s own padding and
+         * `HomeCarousel.PAGE_GUTTER`. Change this and you change those.
+         * (`CategoryTabs` is coupled to it too, but only inside
+         * `/browse/courses` now that Home no longer renders the chip strip.)
          */
         contentContainerClassName="px-2.5 gap-3"
         contentContainerStyle={{ paddingTop: 8, paddingBottom: insets.bottom + 12 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+          />
         }
       >
         {/*
@@ -147,58 +138,27 @@ export default function HomeScreen() {
         <HomeCarousel slides={banners.data} loading={banners.isLoading} />
 
         <Section
-          title={t('home.recentTitle')}
+          title={t('home.exploreTitle')}
           actionLabel={t('home.viewAll')}
           /*
-           * The catalogue, not the Courses tab — that tab is "my courses" now
-           * and shows only what the student is already enrolled in, which is
-           * the opposite of what "view all" beside the newest courses promises.
+           * The catalogue, not the Courses tab — that tab is "my courses" and
+           * shows only what the student is already enrolled in, which is the
+           * opposite of what this strip is offering.
            */
           onAction={() => router.push('/browse/courses')}
         >
           {courses.isLoading ? (
-            <View className="flex-row gap-2.5">
-              <Skeleton className="h-[190px] flex-1 rounded-xl" />
-              <Skeleton className="h-[190px] flex-1 rounded-xl" />
-            </View>
-          ) : recent.length === 0 ? null : (
-            /*
-              A wrapping flex row, not a nested FlatList: this sits inside a
-              ScrollView, where a VirtualizedList of the same orientation warns
-              and breaks measurement. Four tiles never need virtualising anyway.
-            */
-            <View className="flex-row flex-wrap gap-2.5">
-              {recent.map((course) => (
-                <View key={course.id} className="w-[47%] grow">
-                  <CourseGridCard
-                    course={course}
-                    onPress={() => openCourse(course)}
-                    onEnrol={course.is_enrolled ? undefined : () => enrol(course.id)}
-                    enrolling={pendingCourseId === course.id}
-                  />
-                </View>
-              ))}
-            </View>
-          )}
-        </Section>
-
-        <Section
-          title={t('courses.title')}
-          actionLabel={t('home.viewAll')}
-          onAction={() => router.push('/browse/courses')}
-        >
-          <CategoryTabs
-            categories={categories}
-            value={category}
-            onChange={setCategory}
-            allLabel={t('home.categoryAll')}
-          />
-
-          {courses.isLoading ? (
-            <View className="gap-2">
-              <Skeleton className="h-[86px] rounded-xl" />
-              <Skeleton className="h-[86px] rounded-xl" />
-              <Skeleton className="h-[86px] rounded-xl" />
+            // Two rows, not one: a half-height grid popping to full height on
+            // arrival reads as a layout bug rather than as loading.
+            <View className="gap-2.5">
+              <View className="flex-row gap-2.5">
+                <Skeleton className="h-[190px] flex-1 rounded-xl" />
+                <Skeleton className="h-[190px] flex-1 rounded-xl" />
+              </View>
+              <View className="flex-row gap-2.5">
+                <Skeleton className="h-[190px] flex-1 rounded-xl" />
+                <Skeleton className="h-[190px] flex-1 rounded-xl" />
+              </View>
             </View>
           ) : courses.isError ? (
             <EmptyState
@@ -209,24 +169,35 @@ export default function HomeScreen() {
               actionLabel={t('common.retry')}
               onAction={() => void courses.refetch()}
             />
-          ) : visible.length === 0 ? (
+          ) : explore.length === 0 ? (
+            // Owning everything Plan B sells is a good outcome, not a failure —
+            // the same wording `/browse/courses` uses, since it is the same state.
             <EmptyState
               icon={GraduationCap}
-              title={category === null ? t('courses.emptyTitle') : t('home.categoryEmptyTitle')}
-              body={category === null ? t('courses.emptyBody') : t('home.categoryEmptyBody')}
-              actionLabel={category === null ? undefined : t('home.categoryAll')}
-              onAction={category === null ? undefined : () => setCategory(null)}
+              title={t('browse.emptyTitle')}
+              body={t('browse.emptyBody')}
             />
           ) : (
-            <View className="gap-2">
-              {visible.map((course) => (
-                <CourseResultRow
-                  key={course.id}
-                  course={course}
-                  onPress={() => openCourse(course)}
-                  onEnrol={course.is_enrolled ? undefined : () => enrol(course.id)}
-                  enrolling={pendingCourseId === course.id}
-                />
+            /*
+              A wrapping flex row, not a nested FlatList: this sits inside a
+              ScrollView, where a VirtualizedList of the same orientation warns
+              and breaks measurement. Ten tiles never need virtualising anyway.
+            */
+            <View className="flex-row flex-wrap gap-2.5">
+              {explore.map((course) => (
+                <View key={course.id} className="w-[47%] grow">
+                  {/*
+                    No price and no buy button here, at the client's request:
+                    Home is a browsing surface, so a tap opens the course and
+                    buying happens on its own screen. `/browse/courses` is the
+                    shop window and keeps both.
+                  */}
+                  <CourseGridCard
+                    course={course}
+                    onPress={() => openCourse(course)}
+                    showPurchase={false}
+                  />
+                </View>
               ))}
             </View>
           )}
@@ -236,7 +207,7 @@ export default function HomeScreen() {
   );
 }
 
-/** A titled block with an optional trailing link. Home has three of them. */
+/** A titled block with an optional trailing link. */
 function Section({
   title,
   actionLabel,

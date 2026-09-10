@@ -8,7 +8,6 @@ import { useTranslation } from 'react-i18next';
 import type { StudentCourseSummary } from '@shared/types/studentCourse';
 import { colors } from '@shared/theme/tokens';
 import { formatMoney } from '@shared/lib/formatters';
-import { Badge } from '@/components/ui/Badge';
 import { PressableCard } from '@/components/ui/Card';
 import { Text } from '@/components/ui/Text';
 import { courseSocialProof } from '@/features/courses/courseSocialProof';
@@ -22,16 +21,27 @@ export interface CourseGridCardProps {
    */
   onEnrol?: () => void;
   enrolling?: boolean;
+  /**
+   * The price and the buy button — the tile's whole purchase row.
+   *
+   * On by default, and off only on Home, at the client's request: that strip is
+   * a browsing surface, and a tap there is meant to open the course rather than
+   * start a purchase from a tile. `/browse/courses` is the shop window and keeps
+   * both. When this is off, `onEnrol` has nothing to render and the price stays
+   * out of the accessibility label too — announcing a price nobody can see would
+   * describe a different card than the one on screen.
+   */
+  showPurchase?: boolean;
 }
 
 /**
  * A course as a tile, two to a row.
  *
  * The narrow sibling of `CourseCard`, and the same 16:9 artwork: same data, but
- * at ~46% of a 390px screen
- * the block below the artwork carries only a category label, a title, a price
- * and a buy button — the chevron, description, review count and progress bar
- * the full-width card shows are cut rather than squeezed.
+ * at ~46% of a 390px screen the block below the artwork carries only a category
+ * label, a title, and — where `showPurchase` allows it — a price and a buy
+ * button. The chevron, description, review count and progress bar the
+ * full-width card shows are cut rather than squeezed.
  *
  * **The tile has no card chrome.** Only the artwork is a surface: it is the
  * rounded, filled rectangle, and the text below sits directly on the page with
@@ -57,6 +67,7 @@ export function CourseGridCard({
   onPress,
   onEnrol,
   enrolling = false,
+  showPurchase = true,
 }: CourseGridCardProps) {
   const { t } = useTranslation();
   const [thumbnailFailed, setThumbnailFailed] = useState(false);
@@ -96,9 +107,12 @@ export function CourseGridCard({
     <PressableCard
       onPress={onPress}
       accessibilityLabel={
-        locked
-          ? `${course.name}. ${t('courses.lockedBadge')}. ${price}`
-          : `${course.name}. ${t('courses.tabEnrolled')}. ${price}`
+        // The price is announced only when it is also drawn — see `showPurchase`.
+        [
+          course.name,
+          locked ? t('courses.lockedBadge') : t('courses.tabEnrolled'),
+          ...(showPurchase ? [price] : []),
+        ].join('. ')
       }
       /*
        * Chromeless: the border, the card fill and the pressed-fill all come off,
@@ -169,10 +183,22 @@ export function CourseGridCard({
           </Svg>
         </View>
 
-        {/* Decorative — the card's own accessibility label already carries it. */}
+        {/*
+          The glyph alone, not the `Badge` primitive with its "Locked" wording.
+
+          Every tile this component draws is a course the student does not own —
+          both Home's Explore strip and `/browse/courses` filter to exactly that
+          — so the word appeared on every tile in the grid and told nobody
+          anything. The lock reads at a glance and gives the artwork its width
+          back. `Badge` itself is untouched: it always renders its label, and
+          making that optional would change every badge in the app for one case.
+
+          Decorative — the card's own accessibility label still says "Locked",
+          so a screen reader is not relying on the icon.
+        */}
         {locked && (
-          <View className="absolute right-2 top-2">
-            <Badge label={t('courses.lockedBadge')} tone="locked" icon={Lock} className="bg-card" />
+          <View className="absolute right-2 top-2 h-6 w-6 items-center justify-center rounded-full bg-card">
+            <Lock size={12} color={colors['muted-foreground']} />
           </View>
         )}
 
@@ -219,36 +245,38 @@ export function CourseGridCard({
           </Text>
         </View>
 
-        <View className="flex-row items-center justify-between gap-1.5">
-          <Text className="shrink text-[15px] font-bold leading-5 text-primary" numberOfLines={1}>
-            {price}
-          </Text>
+        {showPurchase && (
+          <View className="flex-row items-center justify-between gap-1.5">
+            <Text className="shrink text-[15px] font-bold leading-5 text-primary" numberOfLines={1}>
+              {price}
+            </Text>
 
-          {onEnrol !== undefined && (
-            /*
-             * Nested inside the card's own Pressable: React Native gives the
-             * press to the innermost responder, so this does not also open the
-             * course. 34px of paint with hitSlop past 44 — mobile/CLAUDE.md §4
-             * requires the touchable to clear 44, not the pixels you can see,
-             * and a 44px block would crowd the price at tile width.
-             */
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`${t('enrol.action')}. ${course.name}. ${price}`}
-              accessibilityState={{ disabled: enrolling, busy: enrolling }}
-              disabled={enrolling}
-              onPress={onEnrol}
-              hitSlop={8}
-              className="h-[34px] w-[34px] shrink-0 items-center justify-center rounded-lg bg-primary active:opacity-80"
-            >
-              {enrolling ? (
-                <ActivityIndicator size="small" color={colors['primary-foreground']} />
-              ) : (
-                <ShoppingCart size={16} color={colors['primary-foreground']} />
-              )}
-            </Pressable>
-          )}
-        </View>
+            {onEnrol !== undefined && (
+              /*
+               * Nested inside the card's own Pressable: React Native gives the
+               * press to the innermost responder, so this does not also open the
+               * course. 34px of paint with hitSlop past 44 — mobile/CLAUDE.md §4
+               * requires the touchable to clear 44, not the pixels you can see,
+               * and a 44px block would crowd the price at tile width.
+               */
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`${t('enrol.action')}. ${course.name}. ${price}`}
+                accessibilityState={{ disabled: enrolling, busy: enrolling }}
+                disabled={enrolling}
+                onPress={onEnrol}
+                hitSlop={8}
+                className="h-[34px] w-[34px] shrink-0 items-center justify-center rounded-lg bg-primary active:opacity-80"
+              >
+                {enrolling ? (
+                  <ActivityIndicator size="small" color={colors['primary-foreground']} />
+                ) : (
+                  <ShoppingCart size={16} color={colors['primary-foreground']} />
+                )}
+              </Pressable>
+            )}
+          </View>
+        )}
       </View>
     </PressableCard>
   );

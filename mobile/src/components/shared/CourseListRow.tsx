@@ -25,10 +25,9 @@ export interface CourseListRowProps {
  * the student does not own never reaches this list; `/browse` sells, using the
  * tiles, and this screen only tracks.
  *
- * Deliberately taller and heavier than `CourseResultRow`: that one is a *result*
- * inside a dropdown, where a dozen rows have to fit under a search field. This
- * is the student's own shelf, so the artwork gets enough size to be
- * recognisable and progress reads as a ring rather than a hairline bar.
+ * Deliberately taller and heavier than the selling tiles: this is the student's
+ * own shelf, so the artwork gets enough size to be recognisable and progress
+ * reads as a ring rather than a hairline bar.
  */
 export function CourseListRow({ course, onPress }: CourseListRowProps) {
   const { t } = useTranslation();
