@@ -10,11 +10,11 @@ import type { StudentCourseSummary } from '@shared/types/studentCourse';
 import { colors } from '@shared/theme/tokens';
 import { fetchCourses } from '@/api/courses.api';
 import { fetchHomeBanners } from '@/api/home.api';
-import { CourseGridCard } from '@/components/shared/CourseGridCard';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Text } from '@/components/ui/Text';
+import { ExploreStrip } from '@/features/home/ExploreStrip';
 import { HomeCarousel } from '@/features/home/HomeCarousel';
 import { HomeHeader } from '@/features/home/HomeHeader';
 import { ProfileCompletionCard } from '@/features/home/ProfileCompletionCard';
@@ -148,17 +148,10 @@ export default function HomeScreen() {
           onAction={() => router.push('/browse/courses')}
         >
           {courses.isLoading ? (
-            // Two rows, not one: a half-height grid popping to full height on
-            // arrival reads as a layout bug rather than as loading.
-            <View className="gap-2.5">
-              <View className="flex-row gap-2.5">
-                <Skeleton className="h-[190px] flex-1 rounded-xl" />
-                <Skeleton className="h-[190px] flex-1 rounded-xl" />
-              </View>
-              <View className="flex-row gap-2.5">
-                <Skeleton className="h-[190px] flex-1 rounded-xl" />
-                <Skeleton className="h-[190px] flex-1 rounded-xl" />
-              </View>
+            // One row, matching the strip that replaces it.
+            <View className="flex-row gap-2.5">
+              <Skeleton className="h-[190px] flex-1 rounded-xl" />
+              <Skeleton className="h-[190px] flex-1 rounded-xl" />
             </View>
           ) : courses.isError ? (
             <EmptyState
@@ -178,28 +171,7 @@ export default function HomeScreen() {
               body={t('browse.emptyBody')}
             />
           ) : (
-            /*
-              A wrapping flex row, not a nested FlatList: this sits inside a
-              ScrollView, where a VirtualizedList of the same orientation warns
-              and breaks measurement. Ten tiles never need virtualising anyway.
-            */
-            <View className="flex-row flex-wrap gap-2.5">
-              {explore.map((course) => (
-                <View key={course.id} className="w-[47%] grow">
-                  {/*
-                    No price and no buy button here, at the client's request:
-                    Home is a browsing surface, so a tap opens the course and
-                    buying happens on its own screen. `/browse/courses` is the
-                    shop window and keeps both.
-                  */}
-                  <CourseGridCard
-                    course={course}
-                    onPress={() => openCourse(course)}
-                    showPurchase={false}
-                  />
-                </View>
-              ))}
-            </View>
+            <ExploreStrip courses={explore} onSelect={openCourse} />
           )}
         </Section>
       </ScrollView>
