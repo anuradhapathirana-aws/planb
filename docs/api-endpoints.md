@@ -178,8 +178,8 @@ Students never register. An admin creates or CSV-imports the record first, and t
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | POST | `/student/auth/request-code` | guest, throttled | `{ email }` → **always** `200 { data: { expires_in_seconds, resend_after_seconds } }` |
-| POST | `/student/auth/verify-code` | guest, throttled | `{ email, code, device_name? }` → `{ data: { token, expires_at, student } }` |
-| POST | `/student/auth/google` | guest, throttled | `{ id_token, device_name? }` → same shape |
+| POST | `/student/auth/verify-code` | guest, throttled | `{ email, code, device_name? }` → `{ data: { token, expires_at, is_new_student, student } }`. Claims an existing record only — never registers, and `is_new_student` is always false here. |
+| POST | `/student/auth/google` | guest, throttled | `{ id_token, device_name? }` → same shape, plus `is_new_student`. **Signs up as well as in**: a verified Google account with no student record creates one (auto `PB-####`, `registered_at` and `email_verified_at` set, everything else null). Matches on `google_sub` first, then email. Set `STUDENT_GOOGLE_SIGNUP_ENABLED=false` to make it sign-in only. |
 | POST | `/student/auth/refresh` | bearer | → `{ data: { token, expires_at } }` |
 | POST | `/student/auth/logout` | bearer | Revokes the **current** token only; other devices stay signed in. |
 | GET | `/student/me` | bearer | `{ data: StudentProfile }` |

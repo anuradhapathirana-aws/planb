@@ -19,16 +19,58 @@ const isProduction = variant === 'production';
 const idSuffix = isProduction ? '' : `.${variant}`;
 
 /*
+ * The app's own identifiers, hoisted because they are also URL schemes below.
+ * Android strips the dot (a package segment may not start with one); iOS keeps
+ * it.
+ */
+const androidPackage = `lk.planbinternational.academy${idSuffix.replace(/\./g, '')}`;
+const iosBundleId = `lk.planbinternational.academy${idSuffix}`;
+
+/*
  * Read at runtime through expo-constants. NOTHING SECRET GOES HERE — `extra`
  * ships inside the app bundle and is trivially extractable with a zip tool
  * (mobile/CLAUDE.md §5). The API base URL is not a secret; an API key would be.
  */
 const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:8001/api/v1';
 
+/*
+ * Google Sign-In OAuth clients — one per platform, all under the same Google
+ * Cloud project, which is what lets the API accept any of them as an audience.
+ *
+ * These are public by design: an OAuth *client id* identifies the app, it does
+ * not authorise anything, and Google publishes it in the authorisation URL
+ * regardless. There is no client secret here and there must never be one — a
+ * mobile app cannot keep it (mobile/CLAUDE.md §5), which is exactly why the
+ * flow below is PKCE and why the ID token is verified on our own server.
+ *
+ * Android additionally matches on the signing certificate's SHA-1, and EAS dev,
+ * EAS preview and Play App Signing are three different fingerprints. Every one
+ * of them needs registering, or sign-in works in development and fails in
+ * release (mobile/CLAUDE.md §5).
+ */
+const googleClientIds = {
+  web: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? '',
+  android: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ?? '',
+  ios: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? '',
+};
+
 const config: ExpoConfig = {
   name: isProduction ? 'Plan B Academy' : `Plan B (${variant})`,
   slug: 'planb-academy',
-  scheme: 'planb',
+  /*
+   * `planb` is the app's own deep-link scheme (payment returns, notifications).
+   *
+   * The other two are Google Sign-In's, and are not optional. expo-auth-session
+   * builds its redirect as `<applicationId>:/oauthredirect`, and Google's
+   * Android OAuth client only accepts a custom scheme matching the package name
+   * (or the reverse client id) — `planb://` would be rejected as a redirect_uri
+   * mismatch. If the scheme is not declared here, Google redirects at the end of
+   * sign-in to a URL no activity handles, and the student is left in a browser
+   * tab that never returns to the app.
+   *
+   * Both platforms' ids are listed so a single build config serves either.
+   */
+  scheme: ['planb', androidPackage, iosBundleId],
   version: '1.0.0',
   /*
    * 'default', not 'portrait' — and the app is still portrait everywhere but the
@@ -54,7 +96,7 @@ const config: ExpoConfig = {
    */
 
   ios: {
-    bundleIdentifier: `lk.planbinternational.academy${idSuffix}`,
+    bundleIdentifier: iosBundleId,
     supportsTablet: true,
     infoPlist: {
       /*
@@ -69,7 +111,7 @@ const config: ExpoConfig = {
   },
 
   android: {
-    package: `lk.planbinternational.academy${idSuffix.replace(/\./g, '')}`,
+    package: androidPackage,
     adaptiveIcon: {
       backgroundColor: '#14224b',
       foregroundImage: './assets/android-icon-foreground.png',
@@ -151,6 +193,17 @@ const config: ExpoConfig = {
         android: {
           enableProguardInReleaseBuilds: true,
           enableShrinkResourcesInReleaseBuilds: true,
+          /*
+           * Plaintext HTTP, for non-production builds only.
+           *
+           * Android has defaulted `usesCleartextTraffic` to false since API 28,
+           * so a standalone APK silently refuses every request to the Laragon
+           * backend over `http://<lan-ip>:8001`. A dev client gets an exception
+           * for the dev server but not for arbitrary hosts, so the API calls
+           * fail there too. Production stays false and is additionally held to
+           * HTTPS by `src/lib/env.ts`, which refuses to start otherwise.
+           */
+          usesCleartextTraffic: !isProduction,
         },
       },
     ],
@@ -166,6 +219,7 @@ const config: ExpoConfig = {
   extra: {
     apiBaseUrl,
     variant,
+    googleClientIds,
 
     /*
      * Links this project to EAS. Written by hand because `eas init` cannot

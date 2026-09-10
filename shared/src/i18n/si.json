@@ -13,6 +13,9 @@
   },
   "auth": {
     "signInTitle": "පිවිසෙන්න",
+    "continueWithGoogle": "Google සමඟ ඉදිරියට",
+    "or": "හෝ",
+    "finishingSignIn": "ඇතුළහි වූදින්...",
     "emailLabel": "විද්‍යුත් තැපැල් ලිපිනය",
     "verify": "තහවුරු කරන්න",
     "signOut": "පිටවෙන්න"

@@ -13,6 +13,8 @@ use Intervention\Image\ImageManager;
 
 class StudentManagementService
 {
+    public function __construct(private readonly StudentIdGenerator $studentIds) {}
+
     /**
      * @param  array{search?: string, status?: string, visa_status?: string, sort?: string, direction?: string, per_page?: int}  $filters
      */
@@ -54,50 +56,15 @@ class StudentManagementService
 
     public function create(array $data): Student
     {
-        $data['student_id'] = $this->nextStudentId();
+        $data['student_id'] = $this->studentIds->next();
 
         return Student::create($data)->load(['industry', 'profession', 'media']);
     }
 
-    /**
-     * Generates the next sequential Plan B student ID (PB-10001, PB-10002, ...).
-     * Locks matching rows for the duration of the transaction so two concurrent
-     * "Add student" submissions can't be handed the same number.
-     */
-    private function nextStudentId(): string
-    {
-        return DB::transaction(function () {
-            return $this->formatStudentId($this->nextStudentNumber(lock: true));
-        });
-    }
-
-    /**
-     * Read-only preview of the ID the next "Add student" submission would get,
-     * so the admin can see it before saving. Not reserved — a concurrent create
-     * (or CSV import landing on the same number) can still take it first, in
-     * which case the create form simply shows a different, still-unused ID.
-     */
+    /** @see StudentIdGenerator::preview() — a preview, not a reservation. */
     public function previewNextStudentId(): string
     {
-        return $this->formatStudentId($this->nextStudentNumber(lock: false));
-    }
-
-    private function nextStudentNumber(bool $lock): int
-    {
-        $query = Student::withTrashed()->where('student_id', 'like', 'PB-%');
-
-        if ($lock) {
-            $query->lockForUpdate();
-        }
-
-        $last = $query->orderByRaw('CAST(SUBSTRING(student_id, 4) AS UNSIGNED) DESC')->value('student_id');
-
-        return $last ? ((int) substr($last, 3)) + 1 : 10001;
-    }
-
-    private function formatStudentId(int $number): string
-    {
-        return "PB-{$number}";
+        return $this->studentIds->preview();
     }
 
     public function update(Student $student, array $data): Student

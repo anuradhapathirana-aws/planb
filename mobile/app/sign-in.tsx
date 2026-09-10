@@ -14,14 +14,46 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Text } from '@/components/ui/Text';
 import { useToast } from '@/components/ui/Toast';
+import { GOOGLE_SIGN_IN_AVAILABLE } from '@/lib/googleAuth';
 import { useStatusBarStyle } from '@/lib/useStatusBarStyle';
 
+/*
+ * Required, not imported — and only when Google is actually usable in this
+ * build. A static import is hoisted and evaluated at startup, which would drag
+ * expo-auth-session (and the native modules behind it) into the launch path of
+ * every build, configured or not. expo-router eagerly requires every file under
+ * `app/` to assemble its route tree, so "this screen is never opened" is not
+ * protection: this module is evaluated on launch regardless.
+ *
+ * Resolved once, at module scope, so the component identity is stable across
+ * renders — a `require` inside the render body would remount the button on
+ * every keystroke in the email field.
+ */
+const GoogleSignInButton: typeof import('@/components/shared/GoogleSignInButton').GoogleSignInButton | null =
+  GOOGLE_SIGN_IN_AVAILABLE
+    ? // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require('@/components/shared/GoogleSignInButton').GoogleSignInButton
+    : null;
+
 /**
- * Sign in.
+ * Sign in — and, by way of Google, sign up.
  *
  * Navy above, white sheet below — the logo's own contrast, and it puts the
  * brand in the top third where the eye lands first while keeping the form in
  * the thumb zone.
+ *
+ * Google sits above the email field rather than below it, and is the only
+ * control on this screen that can create an account. That is also the order of
+ * effort: one tap and a chooser, against typing an address, leaving for a mail
+ * app and coming back with a code. The screen does not ask which the student
+ * is here to do — the server decides whether the Google account it verified is
+ * an existing student or a new one, and either way they end up signed in.
+ *
+ * `GOOGLE_SIGN_IN_AVAILABLE` is false in a build with no OAuth client ids, and
+ * on a development build too old to load the native module behind them. The
+ * screen then falls back to the emailed code alone, which is exactly what it
+ * was before Google existed — see `lib/googleAuth.ts` for why that check has to
+ * gate an element rather than a hook.
  */
 export default function SignInScreen() {
   const { t } = useTranslation();
@@ -89,6 +121,18 @@ export default function SignInScreen() {
 
         {/* Form sheet */}
         <View className="flex-1 rounded-t-[16px] bg-background px-6 pt-8">
+          {GoogleSignInButton ? (
+            <>
+              <GoogleSignInButton disabled={mutation.isPending} />
+
+              <View className="my-6 flex-row items-center gap-3">
+                <View className="h-px flex-1 bg-border" />
+                <Text variant="caption">{t('auth.or')}</Text>
+                <View className="h-px flex-1 bg-border" />
+              </View>
+            </>
+          ) : null}
+
           <Input
             label={t('auth.emailLabel')}
             placeholder={t('auth.emailPlaceholder')}
@@ -114,6 +158,7 @@ export default function SignInScreen() {
 
           <Button
             label={t('auth.sendCode')}
+            variant={GOOGLE_SIGN_IN_AVAILABLE ? 'outline' : 'primary'}
             size="lg"
             fullWidth
             className="mt-5"
@@ -122,7 +167,7 @@ export default function SignInScreen() {
           />
 
           <Text variant="caption" className="mt-6 text-center leading-5">
-            {t('auth.noAccount')}
+            {GOOGLE_SIGN_IN_AVAILABLE ? t('auth.signUpHint') : t('auth.noAccount')}
           </Text>
         </View>
       </ScrollView>

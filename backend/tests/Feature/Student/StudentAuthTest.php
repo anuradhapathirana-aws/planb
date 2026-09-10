@@ -7,12 +7,14 @@ namespace Tests\Feature\Student;
 use App\Models\Student;
 use App\Models\StudentLoginCode;
 use App\Notifications\StudentLoginCodeNotification;
+use App\Services\Auth\GoogleIdTokenVerifier;
 use App\Services\Student\StudentManagementService;
 use Database\Factories\StudentLoginCodeFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Testing\TestResponse;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -46,6 +48,38 @@ class StudentAuthTest extends TestCase
         $this->app['auth']->forgetGuards();
 
         return $this->withHeader('Authorization', 'Bearer '.$token);
+    }
+
+    /**
+     * Stand in for Google.
+     *
+     * `GoogleIdTokenVerifier` is covered by its own cases below (bad audience,
+     * malformed token, no client id). Everything past it — matching, claiming,
+     * registering — needs a *valid* payload, and minting a real RS256 JWT signed
+     * by a key Google will vouch for is not something a test can do. So the
+     * verifier is swapped out and the token string becomes a label.
+     */
+    private function fakeGoogle(string $sub, string $email, ?string $name = 'Nimal Perera'): void
+    {
+        config(['students.google.client_ids' => ['test-client.apps.googleusercontent.com']]);
+
+        $verifier = $this->createMock(GoogleIdTokenVerifier::class);
+        $verifier->method('verify')->willReturn([
+            'sub' => $sub,
+            'email' => $email,
+            'email_verified' => true,
+            'name' => $name,
+        ]);
+
+        $this->instance(GoogleIdTokenVerifier::class, $verifier);
+    }
+
+    private function googleSignIn(): TestResponse
+    {
+        return $this->postJson('/api/v1/student/auth/google', [
+            'id_token' => str_repeat('a', 40),
+            'device_name' => 'Pixel 7',
+        ]);
     }
 
     private function studentWithEmail(string $email, array $attributes = []): Student
@@ -367,6 +401,113 @@ class StudentAuthTest extends TestCase
         $this->postJson('/api/v1/student/auth/google', ['id_token' => 'not-a-jwt-at-all'])
             ->assertStatus(422)
             ->assertJsonValidationErrors('id_token');
+    }
+
+    public function test_google_sign_in_registers_a_student_who_has_no_record_yet(): void
+    {
+        $this->fakeGoogle('google-sub-1', 'newcomer@example.com');
+
+        $response = $this->googleSignIn()
+            ->assertOk()
+            ->assertJsonPath('data.is_new_student', true)
+            ->assertJsonPath('data.student.email', 'newcomer@example.com')
+            ->assertJsonPath('data.student.full_name', 'Nimal Perera');
+
+        $student = Student::where('email', 'newcomer@example.com')->firstOrFail();
+
+        // A full student, not a stub: real ID, registered, email already proven
+        // by Google so there is nothing left to verify.
+        $this->assertMatchesRegularExpression('/^PB-\d+$/', $student->student_id);
+        $this->assertNotNull($student->registered_at);
+        $this->assertNotNull($student->email_verified_at);
+        $this->assertSame('google-sub-1', $student->google_sub);
+        $this->assertFalse($student->is_blocked);
+        // Self-registered, so no importing admin — this is how the two intakes
+        // are told apart in the admin panel.
+        $this->assertNull($student->imported_by);
+
+        $this->assertNotEmpty($response->json('data.token'));
+    }
+
+    public function test_a_second_google_sign_in_reuses_the_same_record(): void
+    {
+        $this->fakeGoogle('google-sub-1', 'newcomer@example.com');
+
+        $this->googleSignIn()->assertOk()->assertJsonPath('data.is_new_student', true);
+        $this->googleSignIn()->assertOk()->assertJsonPath('data.is_new_student', false);
+
+        $this->assertSame(1, Student::where('email', 'newcomer@example.com')->count());
+    }
+
+    /**
+     * The imported-record path. An admin loaded this student months ago; Google
+     * must claim that row rather than open a second one beside it.
+     */
+    public function test_google_sign_in_claims_an_existing_record_by_email_instead_of_registering(): void
+    {
+        $student = $this->studentWithEmail('nimal@example.com', ['full_name' => 'Nimal P.']);
+
+        $this->fakeGoogle('google-sub-2', 'nimal@example.com');
+
+        $this->googleSignIn()
+            ->assertOk()
+            ->assertJsonPath('data.is_new_student', false)
+            ->assertJsonPath('data.student.id', $student->id)
+            // The name on the record wins: an admin typed it, Google guessed it.
+            ->assertJsonPath('data.student.full_name', 'Nimal P.');
+
+        $this->assertSame(1, Student::count());
+        $this->assertSame('google-sub-2', $student->fresh()->google_sub);
+    }
+
+    /**
+     * The reason `google_sub` is preferred over the address: a student who
+     * changes the email on their Google account keeps their record.
+     */
+    public function test_google_sign_in_matches_on_subject_id_after_the_address_changes(): void
+    {
+        $student = $this->studentWithEmail('old@example.com', ['google_sub' => 'google-sub-3']);
+
+        $this->fakeGoogle('google-sub-3', 'new-address@example.com');
+
+        $this->googleSignIn()
+            ->assertOk()
+            ->assertJsonPath('data.is_new_student', false)
+            ->assertJsonPath('data.student.id', $student->id);
+
+        $this->assertSame(1, Student::count());
+    }
+
+    public function test_google_sign_in_does_not_register_when_signup_is_disabled(): void
+    {
+        config(['students.google.allow_registration' => false]);
+
+        $this->fakeGoogle('google-sub-4', 'newcomer@example.com');
+
+        $this->googleSignIn()
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('id_token');
+
+        $this->assertSame(0, Student::count());
+    }
+
+    /** A block survives signup: it must not be shakeable by signing in again. */
+    public function test_a_blocked_student_cannot_sign_in_with_google(): void
+    {
+        $this->studentWithEmail('blocked@example.com', ['is_blocked' => true]);
+
+        $this->fakeGoogle('google-sub-5', 'blocked@example.com');
+
+        $this->googleSignIn()->assertForbidden();
+    }
+
+    /** The emailed-code path stays claim-only — it must never create a record. */
+    public function test_requesting_a_code_for_an_unknown_address_does_not_register_anyone(): void
+    {
+        $this->postJson('/api/v1/student/auth/request-code', ['email' => 'stranger@example.com'])
+            ->assertOk();
+
+        $this->assertSame(0, Student::count());
     }
 
     // ---------------------------------------------------------------- validation

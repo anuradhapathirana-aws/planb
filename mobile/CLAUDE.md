@@ -101,3 +101,21 @@ so patterns transfer between the two codebases.
 - Google Sign-In needs a separate OAuth client per platform, and Android needs the **SHA-1 of every
   signing key** (EAS dev, EAS preview, and Play App Signing are three different fingerprints). This
   is the most common cause of a working-in-dev, broken-in-release sign-in.
+- **`overrides` in `package.json` pins `expo-linking` and `expo-constants`, and removing them breaks
+  the app.** Both are native modules on the startup path — `expo-router` resolves routes through
+  `expo-linking` — so their JS must match the native code compiled into the installed dev client.
+  Installing anything that depends on a *newer* patch of them makes npm silently upgrade the shared
+  top-level copy and nest a second one, and the JS then no longer matches the binary. That is exactly
+  what `npx expo install expo-auth-session` did: it wanted `expo-linking@~57.0.9`, npm bumped the
+  shared `57.0.8` and nested an `expo-constants@57.0.17` beside the project's `57.0.16`. **The symptom
+  was a 100%-loaded bundle and a white screen** — no red box, nothing in the logs, because the failure
+  is in route resolution rather than in any of our own code. The `"$expo-linking"` / `"$expo-constants"`
+  override syntax means "whatever this project declares", so it keeps itself correct as the SDK moves.
+  **Adding a package that wants a newer patch of either is a dev-client rebuild, not an npm install.**
+- **Adding a native module makes every installed dev client stale — rebuild it** (`npm run build:dev`,
+  or `npx expo run:android`). `npm start` runs `--dev-client`, so the JS reloads but the binary does
+  not, and a module the old binary lacks throws from `requireNativeModule(...)` at *module scope*.
+  expo-router eagerly requires every file under `app/`, so such a throw lands during bundle evaluation,
+  before React mounts and before any error boundary exists — another white screen with nothing to read.
+  When a native module is optional (as `expo-crypto` is for Google Sign-In), defer and guard the
+  require so the app still starts without it — `src/lib/googleAuth.ts` is the worked example.

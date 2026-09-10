@@ -74,6 +74,22 @@ return [
 
         'issuers' => ['https://accounts.google.com', 'accounts.google.com'],
 
+        /*
+         * Self-registration. When true, a verified Google account with no
+         * matching student record creates one and signs straight in; when
+         * false, Google is sign-in only for records an admin already loaded.
+         *
+         * A switch rather than a hardcoded policy because it is the one setting
+         * Plan B may want to close in a hurry — during an intake window, or if
+         * signup ever attracts junk — and closing it must not need a deploy.
+         *
+         * The emailed-code path never registers anyone regardless: it answers
+         * identically for known and unknown addresses on purpose, and creating
+         * a record for whatever is typed in would both destroy that property
+         * and hand anyone a way to fill the table.
+         */
+        'allow_registration' => (bool) env('STUDENT_GOOGLE_SIGNUP_ENABLED', true),
+
         'certs_url' => 'https://www.googleapis.com/oauth2/v3/certs',
 
         // Google rotates signing keys roughly daily; caching avoids a network

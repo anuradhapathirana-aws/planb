@@ -1,8 +1,9 @@
 import '../global.css';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { ScrollView, Text as RNText, View } from 'react-native';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { Stack, router } from 'expo-router';
+import { Stack, router, type ErrorBoundaryProps } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as ScreenCapture from 'expo-screen-capture';
 import * as ScreenOrientation from 'expo-screen-orientation';
@@ -35,6 +36,96 @@ void SplashScreen.preventAutoHideAsync();
 // was native and happened before the bundle executed. `warn`, not `log`:
 // only warnings and errors are forwarded to the Metro terminal.
 if (__DEV__) console.warn('[startup] root layout evaluated');
+
+/**
+ * Shown when the app is still on the splash long after it should have lifted.
+ *
+ * Names the gate that is still closed, because the two have completely
+ * different causes: fonts stuck on "pending" means Metro is not serving assets
+ * (wrong LAN address, firewall, dev server not running), while a session stuck
+ * on "pending" means the SecureStore read never resolved.
+ *
+ * Bare `react-native` primitives and inline styles on purpose — it must not
+ * depend on the fonts, NativeWind or i18n, since any of those may be the thing
+ * that failed.
+ */
+function StartupStalled({ fonts, session }: { fonts: string; session: string }) {
+  return (
+    <View style={{ flex: 1, backgroundColor: '#14224b', justifyContent: 'center', padding: 32 }}>
+      <RNText style={{ color: '#ffffff', fontSize: 18, fontWeight: '700', marginBottom: 10 }}>
+        Still starting up
+      </RNText>
+      <RNText style={{ color: '#c7d2e5', fontSize: 14, lineHeight: 20, marginBottom: 20 }}>
+        The app has been waiting longer than expected. This is what it is waiting for:
+      </RNText>
+
+      <View style={{ backgroundColor: '#0b1533', borderRadius: 12, padding: 16 }}>
+        <RNText style={{ color: '#8fa3c4', fontSize: 13, lineHeight: 20 }}>
+          Fonts: <RNText style={{ color: '#ffffff' }}>{fonts}</RNText>
+        </RNText>
+        <RNText style={{ color: '#8fa3c4', fontSize: 13, lineHeight: 20 }}>
+          Session: <RNText style={{ color: '#ffffff' }}>{session}</RNText>
+        </RNText>
+      </View>
+    </View>
+  );
+}
+
+/**
+ * What the student sees when a screen throws, instead of nothing.
+ *
+ * expo-router renders this in place of the tree when any descendant throws
+ * during render. Without it a render error in a route leaves a plain white
+ * screen — the error goes to the Metro terminal, which nobody is looking at on
+ * a phone, and the app looks broken rather than broken *for a reason*.
+ *
+ * Deliberately built from bare `react-native` primitives with inline styles: no
+ * NativeWind, no `Text` variant, no i18n, no fonts. Everything this component
+ * touches is a thing that could itself be the failure, and an error screen that
+ * can throw is worse than no error screen at all.
+ */
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  return (
+    <ScrollView
+      style={{ flex: 1, backgroundColor: '#14224b' }}
+      contentContainerStyle={{ padding: 24, paddingTop: 72 }}
+    >
+      <RNText style={{ color: '#ffffff', fontSize: 20, fontWeight: '700', marginBottom: 8 }}>
+        Something went wrong
+      </RNText>
+      <RNText style={{ color: '#c7d2e5', fontSize: 14, lineHeight: 20, marginBottom: 20 }}>
+        The app hit an error it could not recover from. The details below are for the
+        development team.
+      </RNText>
+
+      <View style={{ backgroundColor: '#0b1533', borderRadius: 12, padding: 16, marginBottom: 20 }}>
+        <RNText style={{ color: '#ff9b9b', fontSize: 13, fontWeight: '600', marginBottom: 8 }}>
+          {error.name}: {error.message}
+        </RNText>
+        {error.stack ? (
+          <RNText style={{ color: '#8fa3c4', fontSize: 11, lineHeight: 16 }}>{error.stack}</RNText>
+        ) : null}
+      </View>
+
+      <RNText
+        onPress={retry}
+        style={{
+          color: '#14224b',
+          backgroundColor: '#ffffff',
+          borderRadius: 10,
+          fontSize: 15,
+          fontWeight: '600',
+          overflow: 'hidden',
+          paddingHorizontal: 20,
+          paddingVertical: 14,
+          textAlign: 'center',
+        }}
+      >
+        Try again
+      </RNText>
+    </ScrollView>
+  );
+}
 
 export default function RootLayout() {
   const bootstrap = useAuthStore((state) => state.bootstrap);
@@ -95,44 +186,85 @@ export default function RootLayout() {
   }, []);
 
   /*
-   * A failed font load must not gate the app.
+   * A font load must not gate the app — and the wait is capped, not merely
+   * error-handled.
    *
-   * `useFonts` leaves `fontsLoaded` false forever when a face fails to fetch —
-   * which happens on every cold start in development if Metro isn't serving the
-   * assets. Ignoring the error meant the app rendered `null` indefinitely: a
-   * white screen, no message, nothing in the logs to point at. Inter and Noto
-   * Sans Sinhala are worth waiting for, not worth blocking on; the system font
-   * is a fine fallback for the seconds before a reload.
+   * `useFonts` leaves `fontsLoaded` false forever when a face fails to fetch,
+   * which happens on any cold start where Metro isn't serving assets. Checking
+   * `fontError` covers the case where the fetch *reports* a failure. It does not
+   * cover the more common one: when the device cannot reach Metro at all — a
+   * firewall with no rule for port 8081, a stale LAN address, a phone on another
+   * network — the six requests simply hang. `fontsLoaded` stays false, and
+   * `fontError` stays null, for as long as the app is open. `ready` never flips,
+   * this component returns `null` indefinitely, and the result is an unexplained
+   * white screen: precisely the failure the `fontError` check was added to
+   * prevent, arriving by the one route it does not cover.
+   *
+   * So: five seconds, then render in the system font. Inter and Noto Sans
+   * Sinhala are worth waiting for; they are not worth never starting for.
    */
-  const ready = (fontsLoaded || fontError !== null) && isInitialized;
+  const [fontWaitElapsed, setFontWaitElapsed] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setFontWaitElapsed(true), 5_000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  const ready = (fontsLoaded || fontError !== null || fontWaitElapsed) && isInitialized;
+
+  const fontsGate = fontsLoaded
+    ? 'loaded'
+    : fontError
+      ? 'failed (using system font)'
+      : fontWaitElapsed
+        ? 'timed out — Metro is not serving assets (using system font)'
+        : 'pending';
+  const sessionGate = isInitialized ? 'restored' : 'pending';
 
   /*
    * A splash that never lifts is the hardest failure in this app to diagnose:
    * the screen is blank and nothing reaches the logs. Expo Go cannot apply the
    * splash plugin either, so there it is plain white with nothing to suggest
    * the app even started. Name whichever gate is still closed.
+   *
+   * The report goes **on screen**, not only to the Metro terminal. A white
+   * screen is usually discovered on a phone, by someone who has no terminal in
+   * front of them and no way to tell "still loading" from "hung forever" — and
+   * a diagnostic nobody reads is not a diagnostic.
    */
+  const [stalled, setStalled] = useState(false);
+
   useEffect(() => {
-    if (!__DEV__ || ready) return;
+    if (ready) {
+      setStalled(false);
+      return;
+    }
 
     const timer = setTimeout(() => {
-      const fonts = fontsLoaded ? 'loaded' : fontError ? 'failed' : 'pending';
+      setStalled(true);
 
-      console.warn(
-        `[startup] Still on the splash after 8s — fonts: ${fonts}, ` +
-          `session: ${isInitialized ? 'restored' : 'pending'}.`,
-      );
+      if (__DEV__) {
+        console.warn(
+          `[startup] Still on the splash after 8s — fonts: ${fontsGate}, ` +
+            `session: ${sessionGate}.`,
+        );
+      }
     }, 8_000);
 
     return () => clearTimeout(timer);
-  }, [ready, fontsLoaded, fontError, isInitialized]);
+  }, [ready, fontsGate, sessionGate]);
 
   useEffect(() => {
     if (ready) void SplashScreen.hideAsync();
   }, [ready]);
 
-  // Holding the splash screen avoids a flash of unstyled, unauthenticated UI.
-  if (!ready) return null;
+  /*
+   * Holding the splash screen avoids a flash of unstyled, unauthenticated UI —
+   * but only for as long as the wait is plausibly normal. Past eight seconds
+   * something is wrong, and saying so beats an indefinite blank screen.
+   */
+  if (!ready) return stalled ? <StartupStalled fonts={fontsGate} session={sessionGate} /> : null;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

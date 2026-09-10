@@ -40,6 +40,12 @@ class AuthController extends Controller
         return $this->sessionResponse($session);
     }
 
+    /**
+     * Sign in with Google — and sign *up*, for a verified Google account with no
+     * student record yet. The two are one endpoint because the client cannot
+     * tell them apart in advance and should not have to; the response says which
+     * happened via `is_new_student`.
+     */
     public function google(GoogleSignInRequest $request): JsonResponse
     {
         $session = $this->auth->signInWithGoogle(
@@ -81,7 +87,7 @@ class AuthController extends Controller
     }
 
     /**
-     * @param  array{token: string, expires_at: ?string, student: Student}  $session
+     * @param  array{token: string, expires_at: ?string, student: Student, is_new_student: bool}  $session
      */
     private function sessionResponse(array $session): JsonResponse
     {
@@ -89,6 +95,9 @@ class AuthController extends Controller
             'data' => [
                 'token' => $session['token'],
                 'expires_at' => $session['expires_at'],
+                // Only ever true on the Google path, which is the only one that
+                // can register anyone. See StudentAuthService's class docblock.
+                'is_new_student' => $session['is_new_student'],
                 'student' => new StudentProfileResource($session['student']),
             ],
         ]);

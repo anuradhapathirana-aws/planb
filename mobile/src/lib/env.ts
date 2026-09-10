@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
 /**
@@ -11,9 +12,16 @@ import Constants from 'expo-constants';
 
 type Variant = 'development' | 'preview' | 'production';
 
+interface GoogleClientIds {
+  web?: string;
+  android?: string;
+  ios?: string;
+}
+
 interface AppExtra {
   apiBaseUrl?: string;
   variant?: Variant;
+  googleClientIds?: GoogleClientIds;
 }
 
 const extra = (Constants.expoConfig?.extra ?? {}) as AppExtra;
@@ -89,3 +97,60 @@ if (IS_PRODUCTION && !API_BASE_URL.startsWith('https://')) {
       + 'Bearer tokens must never travel over plaintext.',
   );
 }
+
+/**
+ * Google Sign-In client ids, per platform.
+ *
+ * Not `required()`: a missing id must not stop the app booting. Google is one
+ * of two ways in, and a build with the ids unset should still sign people in by
+ * emailed code rather than crash on the splash screen. `GOOGLE_SIGN_IN_ENABLED`
+ * is what the UI checks before offering the button.
+ *
+ * The app uses the id matching the platform it is running on, and that id ends
+ * up as the `aud` claim on the ID token the backend verifies. So an Android
+ * build needs the Android id; the web id matters for the student web area
+ * later. See `useGoogleSignIn` for why this differs from Google's native SDK.
+ */
+/**
+ * Read from `process.env` first, `extra` only as a fallback.
+ *
+ * Both carry the same values — `app.config.ts` copies them into `extra` — but
+ * they reach the app by different routes, and one of them goes stale. `extra`
+ * arrives in the **manifest**, which a development client fetches when it opens
+ * the project and then keeps; reloading the JS re-runs the bundle against that
+ * same manifest, so an edited `.env` appears to have no effect no matter how
+ * many times you reload or restart Metro, until the app is closed and the
+ * project re-opened from the launcher.
+ *
+ * `EXPO_PUBLIC_*` names are inlined into the bundle by Babel at build time, so
+ * they travel with the JS and are current after any reload. That makes them the
+ * better source here, and the fallback keeps a standalone build working if the
+ * inlining is ever absent.
+ *
+ * The names must be written out literally. Babel substitutes textual matches on
+ * `process.env.EXPO_PUBLIC_…`; a computed lookup is left as-is and reads
+ * undefined at runtime.
+ */
+export const GOOGLE_CLIENT_IDS: GoogleClientIds = {
+  web: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || extra.googleClientIds?.web || '',
+  android: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || extra.googleClientIds?.android || '',
+  ios: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || extra.googleClientIds?.ios || '',
+};
+
+/**
+ * The client id for the platform this build is running on — and the only one
+ * that decides whether sign-in can work here.
+ *
+ * Checking "any id is set" instead would offer the button on Android to a build
+ * configured with only a web id, then fail at the tap with an empty `client_id`
+ * and an opaque Google error. The web id is not a fallback for a phone: Google
+ * ties an Android client to a package name and signing certificate, which a web
+ * client has no equivalent of.
+ */
+export const GOOGLE_PLATFORM_CLIENT_ID = Platform.select({
+  ios: GOOGLE_CLIENT_IDS.ios,
+  android: GOOGLE_CLIENT_IDS.android,
+  default: GOOGLE_CLIENT_IDS.web,
+});
+
+export const GOOGLE_SIGN_IN_ENABLED = Boolean(GOOGLE_PLATFORM_CLIENT_ID);

@@ -81,6 +81,15 @@ export interface StudentSession {
   /** Sanctum plain-text token. Goes straight to expo-secure-store, nowhere else. */
   token: string;
   expires_at: string;
+  /**
+   * True when this sign-in also created the record — only ever possible on the
+   * Google path, which is the only one that registers anyone.
+   *
+   * Presentation only: it picks the greeting and decides whether to nudge the
+   * student towards their profile. Nothing is authorised by it, and the record
+   * it describes is a full student either way.
+   */
+  is_new_student: boolean;
   student: StudentProfile;
 }
 
