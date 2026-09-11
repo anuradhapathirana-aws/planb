@@ -378,5 +378,19 @@
     "title": "Notifications",
     "emptyTitle": "No notifications yet",
     "emptyBody": "Updates about your courses, payments and services will show up here."
+  },
+  "currency": {
+    "title": "Exchange Your Money",
+    "todaysRate": "Today's rate",
+    "rateLine": "1 {{base}} = {{rate}} {{quote}}",
+    "openConverter": "Open the currency converter",
+    "indicative": "Indicative rate · {{date}}",
+    "stale": "Indicative rate · last updated {{date}}",
+    "disclaimer": "A guide only. Banks and exchange houses set their own rates, so what you actually get will be a little different.",
+    "amountIn": "Amount in {{currency}}",
+    "amountPlaceholder": "Enter an amount",
+    "swap": "Swap to convert from {{from}} to {{to}}",
+    "unavailableTitle": "Rate unavailable",
+    "unavailableBody": "We couldn't get today's rate. Check your connection and try again."
   }
 }

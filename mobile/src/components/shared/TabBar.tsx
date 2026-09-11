@@ -40,9 +40,9 @@ const BAR_HEIGHT = PUCK;
  * cut away rather than as a disc stuck on top of it, so it has to contrast with
  * the navy — a navy ring was tried and reads as a bump with no edge.
  *
- * Ring and disc are concentric, so `HALO` px of white shows around the gold at
+ * Ring and disc are concentric, so `HALO` px of white shows around the disc at
  * every lift and nothing clips. This only sets how much of that assembly clears
- * the bar: at 12 the ring breaks the edge by 12px and the gold by 7.
+ * the bar: at 12 the ring breaks the edge by 12px and the disc by 7.
  */
 const LIFT = 12;
 
@@ -69,8 +69,8 @@ type TabBarProps = Parameters<NonNullable<ComponentProps<typeof Tabs>['tabBar']>
 type TabBarIcon = NonNullable<TabBarProps['descriptors'][string]>['options']['tabBarIcon'];
 
 /**
- * The Plan B tab bar — a navy bar where the open tab rises into a gold disc, to
- * a client-supplied reference.
+ * The Plan B tab bar — a navy bar where the open tab rises into a ringed disc,
+ * to a client-supplied reference.
  *
  * Replaces React Navigation's own bar rather than restyling it. The disc has to
  * break the bar's top edge, and every way of doing that with the built-in bar
@@ -87,10 +87,9 @@ type TabBarIcon = NonNullable<TabBarProps['descriptors'][string]>['options']['ta
  * not optional here (mobile/CLAUDE.md §4) — it is the only thing a screen
  * reader has to go on.
  *
- * Colours are Plan B navy and gold, not the reference's blue. Gold on navy is
- * the brand's own pairing and the one contrast case `@shared/theme/tokens`
- * explicitly approves on a dark ground — gold fails AA on white, which is why
- * it appears here and not on a light screen.
+ * Colours are Plan B navy throughout, not the reference's blue. The disc is the
+ * bar's own navy and the glyph on it is white — ~14:1 — so selection is carried
+ * by the lift and the white ring rather than by a second colour.
  */
 export function TabBar({ state, descriptors, navigation, insets }: TabBarProps) {
   return (
@@ -169,11 +168,11 @@ interface TabItemProps {
 }
 
 /**
- * One tab. Rises into the gold disc when it becomes the open one, and settles
+ * One tab. Rises into the ringed disc when it becomes the open one, and settles
  * back into the bar when another is opened.
  *
  * The glyph is white in both states, so it is drawn once and never animated.
- * It used to be navy on the gold disc, which needed two stacked copies
+ * It used to be navy on a gold disc, which needed two stacked copies
  * crossfading — a lucide icon takes a plain colour prop, and switching it
  * outright turned the glyph navy while the disc behind it was still scaling up,
  * navy on navy for the length of the spring. One colour, one icon, no crossfade.
@@ -212,13 +211,13 @@ function TabItem({ focused, icon, label, onPress, onLongPress }: TabItemProps) {
       style={{ minHeight: MIN_TOUCH_TARGET }}
     >
       <Animated.View style={[styles.puck, puckStyle]}>
-        {/* The white ring, and the gold disc inside it, scaling in together. */}
+        {/* The white ring, and the navy disc inside it, scaling in together. */}
         <Animated.View style={[styles.halo, discStyle]}>
           <View style={styles.disc} />
         </Animated.View>
 
         {/*
-          White whether the tab is open or not. The lift and the gold disc are
+          White whether the tab is open or not. The lift and the ringed disc are
           what mark the open one, so the glyph does not also have to change.
         */}
         <View style={styles.icon}>
@@ -252,7 +251,17 @@ const styles = StyleSheet.create({
     width: DISC_SIZE,
     height: DISC_SIZE,
     borderRadius: DISC_SIZE / 2,
-    backgroundColor: colors.accent,
+    /*
+     * The bar's own navy, so the open tab reads as a bubble of the menu itself
+     * lifting out rather than a separate gold token. The white ring is what
+     * separates the two — without it the disc's lower half would vanish into
+     * the bar, since they are now the same colour.
+     *
+     * It also fixes a contrast problem the gold had: the glyph is white, and
+     * white on gold is ~2.6:1, under both the 4.5:1 text threshold and the 3:1
+     * floor for graphical objects. White on navy is ~14:1.
+     */
+    backgroundColor: colors.primary,
     /*
      * iOS only, and deliberately no Android `elevation`. Android paints by
      * elevation rather than document order, so an elevated disc would paint over

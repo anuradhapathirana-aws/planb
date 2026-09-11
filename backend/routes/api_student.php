@@ -91,6 +91,12 @@ Route::middleware(['auth:student', 'student.actor', 'student.active'])->group(fu
     Route::get('home-banners', [HomeController::class, 'banners']);
 
     /*
+     * The LKR/AED rate behind Home's converter. Display only — it never prices
+     * anything, and no amount derived from it may reach an order.
+     */
+    Route::get('exchange-rate', [HomeController::class, 'exchangeRate']);
+
+    /*
      * The faces on Course Details' "N learners" row. Not nested under a course
      * on purpose — see LearnerAvatarService for why it is not course-scoped.
      */

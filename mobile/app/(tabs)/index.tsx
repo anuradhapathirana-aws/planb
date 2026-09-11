@@ -9,11 +9,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { StudentCourseSummary } from '@shared/types/studentCourse';
 import { colors } from '@shared/theme/tokens';
 import { fetchCourses } from '@/api/courses.api';
-import { fetchHomeBanners } from '@/api/home.api';
+import { fetchExchangeRate, fetchHomeBanners } from '@/api/home.api';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Text } from '@/components/ui/Text';
+import { ExchangeRateCard } from '@/features/home/ExchangeRateCard';
 import { ExploreStrip } from '@/features/home/ExploreStrip';
 import { HomeCarousel } from '@/features/home/HomeCarousel';
 import { HomeHeader } from '@/features/home/HomeHeader';
@@ -23,6 +24,31 @@ import { useAuthStore } from '@/stores/authStore';
 
 /** How many tiles the Explore strip shows before "View all" takes over. */
 const EXPLORE_LIMIT = 10;
+
+/**
+ * Pulls a section heading up so the space above it MEASURES less than Home's
+ * 12px rhythm but READS the same.
+ *
+ * Home's blocks sit on a uniform `gap-3`. Between two cards that 12px runs edge
+ * to edge; before a heading it runs edge to the top of a TEXT BOX, and the
+ * letters do not start there — a 20px title sits inside a 28px line box, and on
+ * Android `includeFontPadding` adds several more points of ascent padding on
+ * top of that. The same 12px therefore looks about half again as large under a
+ * card as it does between two of them, which is exactly the gap under the
+ * currency card.
+ *
+ * Two fixes that were considered and rejected:
+ * - **Trimming the line height.** `Text`'s `title` variant is already 1.4x,
+ *   under the 1.6x floor Sinhala needs to avoid clipping (mobile/CLAUDE.md §4).
+ *   It must not come down further.
+ * - **`includeFontPadding: false`.** It removes the Android padding precisely,
+ *   and it is the documented cause of clipped Sinhala ascenders and descenders.
+ *   Not worth trading a legible script for even spacing.
+ *
+ * So the box moves and the text metrics are left alone. This is the one number
+ * to change if the rhythm still reads uneven on a device.
+ */
+const HEADING_LEADING_TRIM = 10;
 
 /**
  * Home — the shop window.
@@ -64,14 +90,25 @@ export default function HomeScreen() {
 
   const courses = useQuery({ queryKey: ['courses'], queryFn: () => fetchCourses() });
   const banners = useQuery({ queryKey: ['home-banners'], queryFn: fetchHomeBanners });
+  /*
+   * Shares its key with the converter screen, so tapping through costs no
+   * request. A long `staleTime` because the server refreshes this a few times a
+   * day — refetching on every Home focus would be a request per app open for a
+   * number that has not moved.
+   */
+  const rate = useQuery({
+    queryKey: ['exchange-rate'],
+    queryFn: fetchExchangeRate,
+    staleTime: 60 * 60 * 1000,
+  });
 
   const completion = useProfileCompletion(student);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([courses.refetch(), banners.refetch()]);
+    await Promise.all([courses.refetch(), banners.refetch(), rate.refetch()]);
     setRefreshing(false);
-  }, [courses, banners]);
+  }, [courses, banners, rate]);
 
   const all = useMemo(() => courses.data?.data ?? [], [courses.data]);
 
@@ -137,6 +174,13 @@ export default function HomeScreen() {
 
         <HomeCarousel slides={banners.data} loading={banners.isLoading} />
 
+        {/*
+          Draws nothing until there is a rate, so Home never shows a placeholder
+          for it — see the component. Display only: nothing it computes is ever
+          sent back to the server.
+        */}
+        <ExchangeRateCard rate={rate.data} />
+
         <Section
           title={t('home.exploreTitle')}
           actionLabel={t('home.viewAll')}
@@ -193,7 +237,17 @@ function Section({
 }) {
   return (
     <View className="gap-2">
-      <View className="flex-row items-center justify-between">
+      {/*
+        Optical alignment, not a nudge — see `HEADING_LEADING_TRIM`.
+
+        An inline style rather than a `-mt-*` class on purpose: a negative margin
+        expressed as a utility class is one more thing that has to survive
+        NativeWind's parser, and this needs to be unambiguous.
+      */}
+      <View
+        className="flex-row items-center justify-between"
+        style={{ marginTop: -HEADING_LEADING_TRIM }}
+      >
         <Text variant="title">{title}</Text>
 
         {actionLabel !== undefined && onAction !== undefined && (
@@ -201,7 +255,14 @@ function Section({
             label={actionLabel}
             variant="ghost"
             size="sm"
-            className="min-h-[32px] px-2 py-1"
+            /*
+             * 28px so the row hugs the title's own line box instead of being
+             * 4px taller than it and centring the words inside the difference.
+             * `cn` is a plain join and the later class wins, so this overrides
+             * the primitive's `min-h-[44px]` — the tap target is still past 44
+             * because `size="sm"` carries `hitSlop={8}` on all four sides.
+             */
+            className="min-h-[28px] px-2 py-1"
             onPress={onAction}
           />
         )}

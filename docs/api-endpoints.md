@@ -258,12 +258,24 @@ Playback bytes are still served by the existing `GET /api/v1/course-videos/{vide
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/student/home-banners` | The carousel slides, in `sort_order`. **`{ "data": [] }`** is a normal answer, not an error. |
+| GET | `/student/exchange-rate` | The LKR/AED rate behind Home's converter. **`{ "data": null }`** is a normal answer, not an error. |
 
 - **A slide is omitted in three cases the app treats identically**: switched off, active with no image, or never set up. One blank page inside a swipeable carousel reads as a broken app, so the slide is dropped rather than sent.
 - **An empty list is normal.** The app renders two built-in branded slides — Courses and Services — so the top of Home is never an empty box on a fresh install. They step aside entirely as soon as one real slide is published.
 - **The link arrives resolved.** `StudentHomeBannerResource` returns one `link` object — `{ type }`, `{ type: 'course', course_id }` or `{ type: 'url', url }` — rather than the three columns the admin resource exposes. The client switches on a discriminated union instead of re-implementing "which column applies".
 - **A course link whose course has been deleted degrades to `{ type: 'none' }`** rather than sending the student to a 404.
 - **There is no `/student/home` aggregate endpoint, deliberately.** Home's checklist and course progress tiles are computed from the *same* cached `GET /student/checklists` and `GET /student/courses` responses their tabs use, so opening Home warms both. A combined endpoint would be one round trip instead of three, and would buy a screen whose numbers could disagree with the screens they link to.
+
+### The exchange rate is display only
+
+`{ base, quote, rate, fetched_at, is_stale }` — `1 base = rate quote`, i.e. one AED in LKR.
+
+- **It never prices anything.** A course costs what `price_cents` says, read from the product on the server, and an amount in a request body is never trusted. A converted figure is a student working out what a number means to them; it must never reach an order, a payment, or any request body. `rate` is a float rather than integer smallest-units for the same reason — §4.11 governs *money*, and a rate is a ratio that rounding to whole cents would make wrong.
+- **The endpoint never calls the provider.** It reads a cache written by `RefreshExchangeRate`, a queued job on a schedule (§4.7), so a slow or broken currency feed can neither delay the response nor fail it. A cold cache dispatches that job (`ShouldBeUnique`, so a crowd queues one between them) and answers `null` meanwhile.
+- **`{ "data": null }` is normal**, covering a cold cache and a provider that has never answered. The app draws no rate rather than an error — a currency feed is not worth a toast on the most-opened screen. A 503 here would be.
+- **The cached entry has no expiry.** Serving yesterday's rate through a provider outage is the whole point of caching it; an expiring entry would leave nothing at exactly the wrong moment. A failed refresh keeps the previous rate, and `is_stale` flags anything past `EXCHANGE_STALE_AFTER_HOURS` so the app can caveat it instead of hiding it.
+- **`fetched_at` is not decoration.** This is a mid-market rate and an exchange house takes a few percent on top, so the app shows the date and an explicit "guide only" line. An undated figure reads as today's bank rate and is how a student budgets a visa fee wrongly.
+- **Refreshing needs both a scheduler and a queue worker** — the same dependency student sign-in already has (`backend/CLAUDE.md` §6). Without them the rate simply ages: the app keeps showing the last one with its date, then flags it stale.
 
 ## Student Learners
 

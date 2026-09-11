@@ -17,6 +17,7 @@
 export type { LucideIcon, LucideProps } from 'lucide-react-native';
 
 export { default as AlertTriangle } from 'lucide-react-native/icons/triangle-alert';
+export { default as ArrowLeftRight } from 'lucide-react-native/icons/arrow-left-right';
 export { default as Bell } from 'lucide-react-native/icons/bell';
 export { default as BookOpen } from 'lucide-react-native/icons/book-open';
 export { default as Calendar } from 'lucide-react-native/icons/calendar';
