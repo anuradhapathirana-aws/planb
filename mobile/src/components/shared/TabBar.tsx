@@ -32,13 +32,12 @@ const BAR_HEIGHT = PUCK;
  * Nothing overflows anything to get there, and that is deliberate: React Native
  * does not deliver touches to a child drawn outside its parent's bounds on
  * Android, so a disc hanging over the bar's edge would be dead across its whole
- * top half. The row is instead `LIFT` taller than the bar and the navy is
- * painted as a layer starting `LIFT` down, so the disc stays inside its own
+ * top half. The row is instead `LIFT` taller than the bar and the navy starts
+ * `LIFT` down from the component's top, so the disc stays inside its own
  * Pressable.
  *
- * The white ring around the disc is what makes the lift read as the bar being
- * cut away rather than as a disc stuck on top of it, so it has to contrast with
- * the navy — a navy ring was tried and reads as a bump with no edge.
+ * The white ring is what separates the disc from the bar — both are navy, so
+ * without it the disc's lower half would simply vanish into the bar.
  *
  * Ring and disc are concentric, so `HALO` px of white shows around the disc at
  * every lift and nothing clips. This only sets how much of that assembly clears

@@ -147,37 +147,54 @@ export function StudentFormDialog({ open, onOpenChange, student }: StudentFormDi
   const { data: industries, isLoading: industriesLoading } = useActiveIndustries();
   const { data: professions, isLoading: professionsLoading } = useActiveProfessionsByIndustry(watchedIndustryId);
 
+  /**
+   * Which record the fields below were seeded from, so they are seeded exactly
+   * once per opening. `student` is live query data on the detail page, and every
+   * photo/CV/video action in this dialog invalidates it — reseeding on the
+   * refetch that follows would silently throw away whatever the admin had typed
+   * and not yet saved. The bio was the visible casualty: type one, attach a
+   * photo, save, and the old value went back to the server.
+   */
+  const seededFor = useRef<string | null>(null);
+
   useEffect(() => {
-    if (open) {
-      reset(
-        student
-          ? {
-              student_id: student.student_id,
-              full_name: student.full_name ?? '',
-              email: student.email ?? '',
-              contact_number: student.contact_number ?? '',
-              address: student.address ?? '',
-              date_of_birth: student.date_of_birth ?? '',
-              highest_qualification: student.highest_qualification ?? '',
-              bio: student.bio ?? '',
-              industry_id: student.industry_id ?? undefined,
-              profession_id: student.profession_id ?? undefined,
-              visa_status: student.visa_status ?? 'visit',
-            }
-          : { student_id: '', visa_status: 'visit' },
-      );
-      setLocalPhotoUrl(student?.profile_photo_url ?? null);
-      setSavedCv(student?.cv ?? null);
-      setSavedProfileVideo(student?.profile_video ?? null);
-      setStagedCv(null);
-      setStagedProfileVideo(null);
-      setDocumentErrors({});
-      setStagedPhotoFile(null);
-      setStagedPhotoPreview((prev) => {
-        if (prev) URL.revokeObjectURL(prev);
-        return null;
-      });
+    if (!open) {
+      seededFor.current = null;
+      return;
     }
+
+    const seedKey = student ? `student-${student.id}` : 'new';
+    if (seededFor.current === seedKey) return;
+    seededFor.current = seedKey;
+
+    reset(
+      student
+        ? {
+            student_id: student.student_id,
+            full_name: student.full_name ?? '',
+            email: student.email ?? '',
+            contact_number: student.contact_number ?? '',
+            address: student.address ?? '',
+            date_of_birth: student.date_of_birth ?? '',
+            highest_qualification: student.highest_qualification ?? '',
+            bio: student.bio ?? '',
+            industry_id: student.industry_id ?? undefined,
+            profession_id: student.profession_id ?? undefined,
+            visa_status: student.visa_status ?? 'visit',
+          }
+        : { student_id: '', visa_status: 'visit' },
+    );
+    setLocalPhotoUrl(student?.profile_photo_url ?? null);
+    setSavedCv(student?.cv ?? null);
+    setSavedProfileVideo(student?.profile_video ?? null);
+    setStagedCv(null);
+    setStagedProfileVideo(null);
+    setDocumentErrors({});
+    setStagedPhotoFile(null);
+    setStagedPhotoPreview((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
   }, [open, student, reset]);
 
   useEffect(() => {

@@ -42473,3 +42473,177 @@
 {"_e":"metro:client_log","_t":1789106626103,"level":"warn","data":["[googleAuth] platform=android clientId=965400269132…(72 chars) enabled=true providerLoaded=true -> button SHOWN"]}
 {"_e":"metro:client_log","_t":1789106626104,"level":"warn","data":["Linking found multiple possible URI schemes in your Expo config.\nUsing 'planb'. Ignoring: lk.planbinternational.academydevelopment, lk.planbinternational.academy.development, lk.planbinternational.academydevelopment.\nProvide the preferred URI scheme to the Linking API."]}
 {"_e":"metro:client_log","_t":1789107524695,"level":"warn","data":["[startup] root layout evaluated"]}
+{"_e":"metro:bundling:started","_t":1789110497856,"id":"z","platform":"android","environment":null,"entry":"node_modules\\expo-router\\entry.js"}
+{"_e":"metro:bundling:progress","_t":1789110497880,"id":"z","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789110498720,"id":"z","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789110498864,"id":"z","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789110499045,"id":"z","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789110499148,"id":"z","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789110500093,"id":"z","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789110516798,"id":"z","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789110516897,"id":"z","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789110517027,"id":"z","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789110517127,"id":"z","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789110517228,"id":"z","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789110517328,"id":"z","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789110517429,"id":"z","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789110517531,"id":"z","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789110517634,"id":"z","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789110517735,"id":"z","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789110517834,"id":"z","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789110517934,"id":"z","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789110518074,"id":"z","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789110518174,"id":"z","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789110519046,"id":"z","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789110519182,"id":"z","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789110519289,"id":"z","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789110519515,"id":"z","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789110520762,"id":"z","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789110520919,"id":"z","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789110521074,"id":"z","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789110521256,"id":"z","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789110521413,"id":"z","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789110521779,"id":"z","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789110522222,"id":"z","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789110522322,"id":"z","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789110522831,"id":"z","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789110522931,"id":"z","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789110523154,"id":"z","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789110523332,"id":"z","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789110523432,"id":"z","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789110523532,"id":"z","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789110523641,"id":"z","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789110523740,"id":"z","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789110523841,"id":"z","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789110523940,"id":"z","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:done","_t":1789110524393,"id":"z","total":1,"ms":26523.4734}
+{"_e":"metro:client_log","_t":1789110535662,"level":"warn","data":["[startup] root layout evaluated"]}
+{"_e":"metro:client_log","_t":1789110535993,"level":"warn","data":["[googleAuth] platform=android clientId=965400269132…(72 chars) enabled=true providerLoaded=true -> button SHOWN"]}
+{"_e":"metro:client_log","_t":1789110535993,"level":"warn","data":["Linking found multiple possible URI schemes in your Expo config.\nUsing 'planb'. Ignoring: lk.planbinternational.academydevelopment, lk.planbinternational.academy.development, lk.planbinternational.academydevelopment.\nProvide the preferred URI scheme to the Linking API."]}
+{"_e":"metro:bundling:started","_t":1789111286626,"id":"10","platform":"android","environment":null,"entry":"node_modules\\expo-router\\entry.js"}
+{"_e":"metro:bundling:progress","_t":1789111286637,"id":"10","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789111286855,"id":"10","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789111286955,"id":"10","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789111287922,"id":"10","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789111288474,"id":"10","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789111288606,"id":"10","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789111288706,"id":"10","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789111288810,"id":"10","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789111288910,"id":"10","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789111289010,"id":"10","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789111289110,"id":"10","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789111289212,"id":"10","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789111289314,"id":"10","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789111289414,"id":"10","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789111289515,"id":"10","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789111289615,"id":"10","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789111289715,"id":"10","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789111289815,"id":"10","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789111289916,"id":"10","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789111290019,"id":"10","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789111290118,"id":"10","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789111290218,"id":"10","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789111290321,"id":"10","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789111290426,"id":"10","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789111290525,"id":"10","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789111290638,"id":"10","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789111290748,"id":"10","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789111290849,"id":"10","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789111290950,"id":"10","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789111291051,"id":"10","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789111291179,"id":"10","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789111291279,"id":"10","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789111291439,"id":"10","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789111291927,"id":"10","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:done","_t":1789111292583,"id":"10","total":1,"ms":5950.8828}
+{"_e":"metro:client_log","_t":1789111301520,"level":"warn","data":["[startup] root layout evaluated"]}
+{"_e":"metro:client_log","_t":1789111301522,"level":"warn","data":["[googleAuth] platform=android clientId=965400269132…(72 chars) enabled=true providerLoaded=true -> button SHOWN"]}
+{"_e":"metro:client_log","_t":1789111301522,"level":"warn","data":["Linking found multiple possible URI schemes in your Expo config.\nUsing 'planb'. Ignoring: lk.planbinternational.academydevelopment, lk.planbinternational.academy.development, lk.planbinternational.academydevelopment.\nProvide the preferred URI scheme to the Linking API."]}
+{"_e":"metro:bundling:started","_t":1789114386407,"id":"11","platform":"android","environment":null,"entry":"node_modules\\expo-router\\entry.js"}
+{"_e":"metro:bundling:progress","_t":1789114386431,"id":"11","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789114386710,"id":"11","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789114386810,"id":"11","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789114388393,"id":"11","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789114397286,"id":"11","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789114397389,"id":"11","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789114397495,"id":"11","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789114397595,"id":"11","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789114397698,"id":"11","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789114397799,"id":"11","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789114397899,"id":"11","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789114397999,"id":"11","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789114398099,"id":"11","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789114398199,"id":"11","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789114398300,"id":"11","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789114398402,"id":"11","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789114398504,"id":"11","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789114398604,"id":"11","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789114398704,"id":"11","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789114398809,"id":"11","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789114398909,"id":"11","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789114399009,"id":"11","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789114399109,"id":"11","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789114399209,"id":"11","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789114399313,"id":"11","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789114399424,"id":"11","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789114399854,"id":"11","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:done","_t":1789114400255,"id":"11","total":1,"ms":13835.2114}
+{"_e":"metro:client_log","_t":1789114409484,"level":"warn","data":["[startup] root layout evaluated"]}
+{"_e":"metro:client_log","_t":1789114409485,"level":"warn","data":["[googleAuth] platform=android clientId=965400269132…(72 chars) enabled=true providerLoaded=true -> button SHOWN"]}
+{"_e":"metro:client_log","_t":1789114409485,"level":"warn","data":["Linking found multiple possible URI schemes in your Expo config.\nUsing 'planb'. Ignoring: lk.planbinternational.academydevelopment, lk.planbinternational.academy.development, lk.planbinternational.academydevelopment.\nProvide the preferred URI scheme to the Linking API."]}
+{"_e":"metro:bundling:started","_t":1789115316073,"id":"12","platform":"android","environment":null,"entry":"node_modules\\expo-router\\entry.js"}
+{"_e":"metro:bundling:progress","_t":1789115316074,"id":"12","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:done","_t":1789115316418,"id":"12","total":1,"ms":345.172}
+{"_e":"metro:client_log","_t":1789115325987,"level":"warn","data":["[startup] root layout evaluated"]}
+{"_e":"metro:client_log","_t":1789115325987,"level":"warn","data":["[googleAuth] platform=android clientId=965400269132…(72 chars) enabled=true providerLoaded=true -> button SHOWN"]}
+{"_e":"metro:client_log","_t":1789115325987,"level":"warn","data":["Linking found multiple possible URI schemes in your Expo config.\nUsing 'planb'. Ignoring: lk.planbinternational.academydevelopment, lk.planbinternational.academy.development, lk.planbinternational.academydevelopment.\nProvide the preferred URI scheme to the Linking API."]}
+{"_e":"metro:client_log","_t":1789115614733,"level":"error","data":["[ReferenceError: Property 'useWindowDimensions' doesn't exist]","\n\n\u001b[1mCode: TabBar.tsx\u001b[22m\n\u001b[0m \u001b[90m 93 |\u001b[39m \u001b[90m */\u001b[39m\n \u001b[90m 94 |\u001b[39m \u001b[36mexport\u001b[39m \u001b[36mfunction\u001b[39m \u001b[33mTabBar\u001b[39m({ state\u001b[33m,\u001b[39m descriptors\u001b[33m,\u001b[39m navigation\u001b[33m,\u001b[39m insets }\u001b[33m:\u001b[39m \u001b[33mTabBarProps\u001b[39m) {\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 95 |\u001b[39m   \u001b[36mconst\u001b[39m { width } \u001b[33m=\u001b[39m useWindowDimensions()\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                     \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 96 |\u001b[39m\n \u001b[90m 97 |\u001b[39m   \u001b[36mconst\u001b[39m count \u001b[33m=\u001b[39m state\u001b[33m.\u001b[39mroutes\u001b[33m.\u001b[39mlength\u001b[33m;\u001b[39m\n \u001b[90m 98 |\u001b[39m   \u001b[36mconst\u001b[39m slot \u001b[33m=\u001b[39m count \u001b[33m>\u001b[39m \u001b[35m0\u001b[39m \u001b[33m?\u001b[39m width \u001b[33m/\u001b[39m count \u001b[33m:\u001b[39m width\u001b[33m;\u001b[39m\u001b[0m\n\u001b[1mCall Stack\u001b[22m\n\u001b[90m  TabBar (src\\components\\shared\\TabBar.tsx:95:21)\u001b[39m","\n\n\u001b[1mCode: _layout.tsx\u001b[22m\n\u001b[0m \u001b[90m 30 |\u001b[39m   \u001b[36mreturn\u001b[39m (\n \u001b[90m 31 |\u001b[39m     \u001b[33m<\u001b[39m\u001b[33mTabs\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 32 |\u001b[39m       tabBar\u001b[33m=\u001b[39m{(props) \u001b[33m=>\u001b[39m \u001b[33m<\u001b[39m\u001b[33mTabBar\u001b[39m {\u001b[33m...\u001b[39mprops} \u001b[33m/\u001b[39m\u001b[33m>\u001b[39m}\n \u001b[90m    |\u001b[39m                          \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 33 |\u001b[39m       screenOptions\u001b[33m=\u001b[39m{{\n \u001b[90m 34 |\u001b[39m         headerShown\u001b[33m:\u001b[39m \u001b[36mfalse\u001b[39m\u001b[33m,\u001b[39m\n \u001b[90m 35 |\u001b[39m         \u001b[33m...\u001b[39m(\u001b[33mPlatform\u001b[39m\u001b[33m.\u001b[39m\u001b[33mOS\u001b[39m \u001b[33m===\u001b[39m \u001b[32m'android'\u001b[39m \u001b[33m?\u001b[39m { tabBarHideOnKeyboard\u001b[33m:\u001b[39m \u001b[36mtrue\u001b[39m } \u001b[33m:\u001b[39m {})\u001b[33m,\u001b[39m\u001b[0m\n\u001b[1mCall Stack\u001b[22m\n\u001b[90m  Tabs.props.tabBar (app\\(tabs)\\_layout.tsx:32:26)\u001b[39m\n\u001b[90m  TabsLayout (app\\(tabs)\\_layout.tsx:31:5)\u001b[39m\n\u001b[90m  RootLayout (app\\_layout.tsx:283:13)\u001b[39m"]}
+{"_e":"metro:client_log","_t":1789115735297,"level":"error","data":["[ReferenceError: Property 'height' doesn't exist]","\n\n\u001b[1mCode: TabBar.tsx\u001b[22m\n\u001b[0m \u001b[90m 105 |\u001b[39m \u001b[90m     * app to fix one strip.\u001b[39m\n \u001b[90m 106 |\u001b[39m \u001b[90m     */\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 107 |\u001b[39m     \u001b[33m<\u001b[39m\u001b[33mView\u001b[39m style\u001b[33m=\u001b[39m{{ height\u001b[33m,\u001b[39m backgroundColor\u001b[33m:\u001b[39m colors\u001b[33m.\u001b[39mbackground }} accessibilityRole\u001b[33m=\u001b[39m\u001b[32m\"tablist\"\u001b[39m\u001b[33m>\u001b[39m\n \u001b[90m     |\u001b[39m                    \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 108 |\u001b[39m       {\u001b[90m/*\u001b[39m\n \u001b[90m 109 |\u001b[39m \u001b[90m        Painted behind the row rather than as its background, so the disc can sit\u001b[39m\n \u001b[90m 110 |\u001b[39m \u001b[90m        above the bar's top edge while staying inside the component's own bounds.\u001b[39m\u001b[0m\n\u001b[1mCall Stack\u001b[22m\n\u001b[90m  TabBar (src\\components\\shared\\TabBar.tsx:107:20)\u001b[39m","\n\n\u001b[1mCode: _layout.tsx\u001b[22m\n\u001b[0m \u001b[90m 30 |\u001b[39m   \u001b[36mreturn\u001b[39m (\n \u001b[90m 31 |\u001b[39m     \u001b[33m<\u001b[39m\u001b[33mTabs\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 32 |\u001b[39m       tabBar\u001b[33m=\u001b[39m{(props) \u001b[33m=>\u001b[39m \u001b[33m<\u001b[39m\u001b[33mTabBar\u001b[39m {\u001b[33m...\u001b[39mprops} \u001b[33m/\u001b[39m\u001b[33m>\u001b[39m}\n \u001b[90m    |\u001b[39m                          \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 33 |\u001b[39m       screenOptions\u001b[33m=\u001b[39m{{\n \u001b[90m 34 |\u001b[39m         headerShown\u001b[33m:\u001b[39m \u001b[36mfalse\u001b[39m\u001b[33m,\u001b[39m\n \u001b[90m 35 |\u001b[39m         \u001b[33m...\u001b[39m(\u001b[33mPlatform\u001b[39m\u001b[33m.\u001b[39m\u001b[33mOS\u001b[39m \u001b[33m===\u001b[39m \u001b[32m'android'\u001b[39m \u001b[33m?\u001b[39m { tabBarHideOnKeyboard\u001b[33m:\u001b[39m \u001b[36mtrue\u001b[39m } \u001b[33m:\u001b[39m {})\u001b[33m,\u001b[39m\u001b[0m\n\u001b[1mCall Stack\u001b[22m\n\u001b[90m  Tabs.props.tabBar (app\\(tabs)\\_layout.tsx:32:26)\u001b[39m\n\u001b[90m  TabsLayout (app\\(tabs)\\_layout.tsx:31:5)\u001b[39m\n\u001b[90m  RootLayout (app\\_layout.tsx:283:13)\u001b[39m"]}
+{"_e":"metro:bundling:started","_t":1789126373774,"id":"1b","platform":"android","environment":null,"entry":"node_modules\\expo-router\\entry.js"}
+{"_e":"metro:bundling:progress","_t":1789126373789,"id":"1b","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789126374303,"id":"1b","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789126374402,"id":"1b","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789126378002,"id":"1b","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789126378101,"id":"1b","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789126378201,"id":"1b","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789126378321,"id":"1b","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789126379185,"id":"1b","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789126379292,"id":"1b","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789126379577,"id":"1b","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789126379713,"id":"1b","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789126379912,"id":"1b","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789126380154,"id":"1b","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789126380303,"id":"1b","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789126381511,"id":"1b","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789126393467,"id":"1b","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789126393627,"id":"1b","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789126393729,"id":"1b","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789126393833,"id":"1b","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789126393933,"id":"1b","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789126394137,"id":"1b","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789126394237,"id":"1b","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789126394337,"id":"1b","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789126394437,"id":"1b","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789126394537,"id":"1b","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789126394646,"id":"1b","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789126394746,"id":"1b","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789126394848,"id":"1b","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789126394947,"id":"1b","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789126395048,"id":"1b","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789126395148,"id":"1b","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789126395250,"id":"1b","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789126395350,"id":"1b","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789126395469,"id":"1b","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789126395569,"id":"1b","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789126395670,"id":"1b","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789126395771,"id":"1b","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789126395871,"id":"1b","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789126395984,"id":"1b","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789126396086,"id":"1b","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789126396200,"id":"1b","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789126396881,"id":"1b","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789126396987,"id":"1b","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:done","_t":1789126397538,"id":"1b","total":1,"ms":23756.3422}
+{"_e":"metro:client_log","_t":1789126410088,"level":"warn","data":["[startup] root layout evaluated"]}
+{"_e":"metro:client_log","_t":1789126410100,"level":"warn","data":["[googleAuth] platform=android clientId=965400269132…(72 chars) enabled=true providerLoaded=true -> button SHOWN"]}
+{"_e":"metro:client_log","_t":1789126410100,"level":"warn","data":["Linking found multiple possible URI schemes in your Expo config.\nUsing 'planb'. Ignoring: lk.planbinternational.academydevelopment, lk.planbinternational.academy.development, lk.planbinternational.academydevelopment.\nProvide the preferred URI scheme to the Linking API."]}

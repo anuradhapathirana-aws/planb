@@ -263,7 +263,11 @@
     "bio": "About you",
     "bioPlaceholder": "A few lines about your experience and what you are looking for",
     "bioHint": "Shown on your profile. Up to 500 characters.",
-    "addBio": "Add a short bio"
+    "addBio": "Add a short bio",
+    "verified": "Verified",
+    "statServices": "Services bought",
+    "statLessons": "Lessons watched",
+    "statChecklist": "Checklist done"
   },
   "enrol": {
     "action": "Enrol",

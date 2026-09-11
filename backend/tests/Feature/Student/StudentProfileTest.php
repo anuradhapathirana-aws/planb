@@ -136,6 +136,39 @@ class StudentProfileTest extends TestCase
             ->assertJsonValidationErrors('bio');
     }
 
+    /** The student's own bio gets the admin form's rules — see NormalizesBio. */
+    public function test_a_bio_rejects_html_markup(): void
+    {
+        $this->putJson('/api/v1/student/profile', ['bio' => 'Me <img src=x onerror=alert(1)>'])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('bio');
+    }
+
+    public function test_a_bio_is_cleaned_before_it_is_capped_and_stored(): void
+    {
+        $bio = "\u{202E}  ".str_repeat('a', 490)."\u{200B}\tb  \r\n\r\n\r\n\r\nx  ";
+        $this->assertGreaterThan(500, mb_strlen($bio));
+
+        $this->putJson('/api/v1/student/profile', ['bio' => $bio])->assertOk();
+
+        $this->assertSame(str_repeat('a', 490)." b\n\nx", $this->student->fresh()->bio);
+    }
+
+    /**
+     * An absent bio still means "leave it alone" — normalizing must not turn a
+     * field the student never sent into an explicit null.
+     */
+    public function test_an_absent_bio_is_left_untouched(): void
+    {
+        $this->student->forceFill(['bio' => 'Already written.'])->save();
+
+        $this->putJson('/api/v1/student/profile', ['highest_qualification' => 'G.C.E. A/L'])
+            ->assertOk()
+            ->assertJsonPath('data.bio', 'Already written.');
+
+        $this->assertSame('Already written.', $this->student->fresh()->bio);
+    }
+
     public function test_the_minimum_age_rule_applies(): void
     {
         $this->putJson('/api/v1/student/profile', [

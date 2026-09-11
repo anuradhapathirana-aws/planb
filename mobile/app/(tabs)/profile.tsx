@@ -15,7 +15,8 @@ import { Text } from '@/components/ui/Text';
 import { useChecklistOverview } from '@/features/checklist/useChecklists';
 import { ContinueLearningCard } from '@/features/profile/ContinueLearningCard';
 import { ProfileHeader } from '@/features/profile/ProfileHeader';
-import { ProgressTiles } from '@/features/profile/ProgressTiles';
+import { ProfileStats } from '@/features/profile/ProfileStats';
+import { useServicePurchases } from '@/features/services/useServices';
 import { queryClient } from '@/lib/queryClient';
 import { useStatusBarStyle } from '@/lib/useStatusBarStyle';
 import { useAuthStore } from '@/stores/authStore';
@@ -50,13 +51,14 @@ export default function ProfileScreen() {
   const student = data ?? cached;
 
   /*
-   * Progress moved here from Home, which is now the catalogue. Both of these
-   * reuse the query keys the Courses and Checklists tabs already own, so this
-   * screen costs nothing extra once either has been opened — and its numbers
-   * can never disagree with the screens they link to.
+   * Progress moved here from Home, which is now the catalogue. All three reuse
+   * the query keys the Courses, Checklists and Services tabs already own, so
+   * this screen costs nothing extra once any of them has been opened — and its
+   * numbers can never disagree with the screens they link to.
    */
   const courses = useQuery({ queryKey: ['courses'], queryFn: () => fetchCourses() });
   const checklists = useChecklistOverview();
+  const purchases = useServicePurchases();
 
   useEffect(() => {
     if (data) setStudent(data);
@@ -94,13 +96,18 @@ export default function ProfileScreen() {
           />
         }
       >
-        <ProfileHeader student={student} onEdit={() => router.push('/profile/edit')} />
+        <ProfileHeader
+          student={student}
+          onEdit={() => router.push('/profile/edit')}
+          onNotifications={() => router.push('/notifications')}
+        />
 
-        <View className="px-5 pt-5">
-          <ProgressTiles
+        <View className="px-5 pt-4">
+          <ProfileStats
             phases={checklists.data ?? []}
             courses={courses.data?.data ?? []}
-            loading={courses.isLoading || checklists.isLoading}
+            purchases={purchases.data?.data ?? []}
+            loading={courses.isLoading || checklists.isLoading || purchases.isLoading}
           />
 
           <ContinueLearningCard courses={courses.data?.data ?? []} />

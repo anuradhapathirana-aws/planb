@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { bioText } from './bio';
 
 /** Matches the admin form's rule — the platform is not for minors. */
 const MIN_AGE_YEARS = 18;
@@ -35,9 +36,8 @@ export const studentProfileSchema = z.object({
     .nullable()
     .or(z.literal('')),
   highest_qualification: z.string().trim().max(255).nullable().or(z.literal('')),
-  // Mirrors the Form Request's `max:500`. The backend stays the enforcement
-  // point (root CLAUDE.md §7.3); this only saves the student a round trip.
-  bio: z.string().trim().max(500, 'Keep this under 500 characters').nullable().or(z.literal('')),
+  // Shared with the admin student form — see `./bio`.
+  bio: bioText('Keep this under 500 characters').nullable().or(z.literal('')),
   industry_id: z.number().int().positive().nullable(),
   profession_id: z.number().int().positive().nullable(),
   languages_spoken: z.array(z.string().trim().min(1)).max(20),

@@ -5,17 +5,25 @@ declare(strict_types=1);
 namespace App\Http\Requests\Student;
 
 use App\Enums\VisaStatus;
+use App\Http\Requests\Concerns\NormalizesBio;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class UpdateStudentRequest extends FormRequest
 {
+    use NormalizesBio;
+
     /** Students must be adults to enrol for migration programmes. */
     private const MIN_AGE_YEARS = 18;
 
     public function authorize(): bool
     {
         return $this->user()->can('update', $this->route('student'));
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->normalizeBio();
     }
 
     public function rules(): array
@@ -34,9 +42,9 @@ class UpdateStudentRequest extends FormRequest
                 'before_or_equal:'.now()->subYears(self::MIN_AGE_YEARS)->toDateString(),
             ],
             'highest_qualification' => ['nullable', 'string', 'max:255'],
-            // The same field the student writes on their own profile, and the
-            // same cap. Plain text: it is rendered as text, never as markup.
-            'bio' => ['nullable', 'string', 'max:500'],
+            // One column, written from here and from the student's own profile
+            // screen, so the rules come from one place — see NormalizesBio.
+            'bio' => $this->bioRules(),
             'industry_id' => ['required', 'integer', 'exists:industries,id'],
             'profession_id' => [
                 'required',

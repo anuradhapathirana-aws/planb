@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Student;
 
 use App\Enums\VisaStatus;
+use App\Http\Requests\Concerns\NormalizesBio;
 use App\Models\Profession;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -12,9 +13,16 @@ use Illuminate\Validation\Validator;
 
 class UpdateStudentProfileRequest extends FormRequest
 {
+    use NormalizesBio;
+
     public function authorize(): bool
     {
         return true;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->normalizeBio();
     }
 
     /**
@@ -45,9 +53,9 @@ class UpdateStudentProfileRequest extends FormRequest
             // Matches the admin form's minimum-age rule.
             'date_of_birth' => ['sometimes', 'nullable', 'date', 'before:-18 years'],
             'highest_qualification' => ['sometimes', 'nullable', 'string', 'max:255'],
-            // Plain text. It is rendered as a <Text>, never as markup, so there
-            // is nothing here for HtmlSanitizer to do.
-            'bio' => ['sometimes', 'nullable', 'string', 'max:500'],
+            // Plain text: rendered as a <Text>, never as markup. Normalized and
+            // capped by NormalizesBio, identically to the admin student form.
+            'bio' => $this->bioRules(partial: true),
             'industry_id' => ['sometimes', 'nullable', 'integer', 'exists:industries,id'],
             'profession_id' => ['sometimes', 'nullable', 'integer', 'exists:professions,id'],
             'languages_spoken' => ['sometimes', 'nullable', 'array', 'max:20'],

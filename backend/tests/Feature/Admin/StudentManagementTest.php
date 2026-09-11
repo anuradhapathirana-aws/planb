@@ -240,6 +240,67 @@ class StudentManagementTest extends TestCase
         )->assertUnprocessable()->assertJsonValidationErrors('bio');
     }
 
+    /** Markup is rejected outright rather than silently stripped — see PlainText. */
+    public function test_a_student_bio_rejects_html_markup(): void
+    {
+        $student = Student::factory()->create(['student_id' => 'PB-10006']);
+
+        $this->actingAs($this->superAdmin)->putJson(
+            "/api/v1/admin/students/{$student->id}",
+            $this->validStudentPayload([
+                'student_id' => 'PB-10006',
+                'bio' => 'Electrician <script>alert(1)</script> in Colombo.',
+            ]),
+        )->assertUnprocessable()->assertJsonValidationErrors('bio');
+
+        $this->assertNull($student->fresh()->bio);
+    }
+
+    /** A lone "<" is prose, not markup, and must survive. */
+    public function test_a_student_bio_allows_a_bare_angle_bracket(): void
+    {
+        $student = Student::factory()->create(['student_id' => 'PB-10007']);
+
+        $this->actingAs($this->superAdmin)->putJson(
+            "/api/v1/admin/students/{$student->id}",
+            $this->validStudentPayload(['student_id' => 'PB-10007', 'bio' => 'Worked < 2 years on site.']),
+        )->assertOk()->assertJsonPath('data.bio', 'Worked < 2 years on site.');
+    }
+
+    /**
+     * The cap has to measure the cleaned value, or it is padded past with
+     * characters the admin can neither see nor count. This bio is 509 raw
+     * characters and 495 once cleaned, so it saves — and what is stored is
+     * exactly what was measured.
+     */
+    public function test_a_student_bio_is_cleaned_before_it_is_capped_and_stored(): void
+    {
+        $student = Student::factory()->create(['student_id' => 'PB-10008']);
+
+        $bio = "\u{202E}  ".str_repeat('a', 490)."\u{200B}\tb  \r\n\r\n\r\n\r\nx  ";
+        $this->assertGreaterThan(500, mb_strlen($bio));
+
+        $this->actingAs($this->superAdmin)->putJson(
+            "/api/v1/admin/students/{$student->id}",
+            $this->validStudentPayload(['student_id' => 'PB-10008', 'bio' => $bio]),
+        )->assertOk();
+
+        $this->assertSame(str_repeat('a', 490)." b\n\nx", $student->fresh()->bio);
+    }
+
+    /** Whitespace-only is "no bio", not a bio made of spaces. */
+    public function test_a_whitespace_only_student_bio_is_stored_as_null(): void
+    {
+        $student = Student::factory()->create(['student_id' => 'PB-10009', 'bio' => 'Something.']);
+
+        $this->actingAs($this->superAdmin)->putJson(
+            "/api/v1/admin/students/{$student->id}",
+            $this->validStudentPayload(['student_id' => 'PB-10009', 'bio' => "  \u{200B}\n \t "]),
+        )->assertOk()->assertJsonPath('data.bio', null);
+
+        $this->assertNull($student->fresh()->bio);
+    }
+
     public function test_admin_must_backfill_required_fields_to_update_a_pending_registration_student(): void
     {
         // Bulk-imported students start with only a student_id — everything else is null
