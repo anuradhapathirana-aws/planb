@@ -36,6 +36,10 @@ If a pattern is used by more than one feature it belongs in `components/shared/`
   dense tables and dialogs on a large screen, the student app is full-bleed cards on a 390px one.
   Do NOT "restore consistency" by pointing them back at `radii`; that silently undoes a design
   decision. Changing the admin panel's corners means editing `web/src/index.css` too.
+- **The page ground is forked too: white on the phone.** `mobile/tailwind.config.js` points
+  `background` at `colors.card` (#ffffff); the shared `background` token stays slate for the admin
+  panel. White-on-white only works because every card, input and field draws a `border-border`
+  hairline — give any new surface one. `TabBar` reads the ground in JS and must stay on `colors.card`.
 - **`rounded-full` is never part of that scale.** Avatars, pills, the progress ring and the checkbox
   are circles by intent — rescaling radii must leave them alone.
 - **Every user-facing string goes through `t('key')`.** EN + SI live in `@shared/i18n`.

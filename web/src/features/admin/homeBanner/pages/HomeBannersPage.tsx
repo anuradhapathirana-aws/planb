@@ -166,9 +166,9 @@ function BannerCard({
 
   return (
     <div className="flex flex-col overflow-hidden rounded-lg border">
-      {/* The app renders slides at 16:9, so the card previews them that way —
+      {/* The app renders slides at 64:27, so the card previews them that way —
           an admin judging a crop needs the shape the student will see. */}
-      <div className="relative aspect-video bg-secondary">
+      <div className="relative aspect-64/27 bg-secondary">
         {banner.image_url ? (
           <img
             src={banner.image_url}

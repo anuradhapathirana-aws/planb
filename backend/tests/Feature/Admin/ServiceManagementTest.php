@@ -126,6 +126,45 @@ class ServiceManagementTest extends TestCase
         $this->assertDatabaseHas('services', ['name' => 'CV Writing', 'price_cents' => 750000]);
     }
 
+    public function test_a_service_can_be_given_an_icon(): void
+    {
+        $this->actingAs($this->contentManager)
+            ->postJson('/api/v1/admin/services', $this->payload(['icon' => 'cv']))
+            ->assertCreated()
+            ->assertJsonPath('data.icon', 'cv');
+
+        $this->assertDatabaseHas('services', ['name' => 'CV Writing', 'icon' => 'cv']);
+    }
+
+    /**
+     * The app resolves the icon name to a vector it already ships, so a name it
+     * does not know would render as an empty square. Free text has to be refused
+     * at the door rather than discovered on a phone.
+     */
+    public function test_an_unknown_icon_is_rejected(): void
+    {
+        $this->actingAs($this->contentManager)
+            ->postJson('/api/v1/admin/services', $this->payload(['icon' => 'rocket']))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('icon');
+
+        $this->assertDatabaseCount('services', 0);
+    }
+
+    /**
+     * Every service created before the column existed has a null icon, and an
+     * admin may simply not pick one. Both must save, and both must come back as
+     * an explicit null so the form shows "none chosen" rather than pre-selecting
+     * a choice nobody made — the app is what substitutes the fallback glyph.
+     */
+    public function test_a_service_without_an_icon_saves_and_reports_null(): void
+    {
+        $this->actingAs($this->contentManager)
+            ->postJson('/api/v1/admin/services', $this->payload())
+            ->assertCreated()
+            ->assertJsonPath('data.icon', null);
+    }
+
     public function test_a_service_must_carry_a_price_above_zero(): void
     {
         $this->actingAs($this->contentManager)

@@ -1,4 +1,4 @@
-import type { ServicePurchaseStatus } from './service';
+import type { ServiceIconName, ServicePurchaseStatus } from './service';
 import type { StudentOrder } from './studentOrder';
 
 /**
@@ -16,6 +16,12 @@ export interface StudentServiceSummary {
   id: number;
   name: string;
   summary: string | null;
+  /**
+   * What the Home grid draws. Null on every service created before the field
+   * existed, and on any the admin skipped — the app renders the `other` glyph
+   * rather than a hole, so this never has to be backfilled.
+   */
+  icon: ServiceIconName | null;
   price_cents: number;
   currency: string;
   delivery_time: string | null;

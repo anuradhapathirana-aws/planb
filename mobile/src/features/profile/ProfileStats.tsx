@@ -40,9 +40,9 @@ export function ProfileStats({ phases, courses, purchases, loading = false }: Pr
   if (loading) {
     return (
       <View className="flex-row gap-2.5">
-        <Skeleton className="h-[92px] flex-1 rounded-xl" />
-        <Skeleton className="h-[92px] flex-1 rounded-xl" />
-        <Skeleton className="h-[92px] flex-1 rounded-xl" />
+        <Skeleton className="h-14 flex-1 rounded-xl" />
+        <Skeleton className="h-14 flex-1 rounded-xl" />
+        <Skeleton className="h-14 flex-1 rounded-xl" />
       </View>
     );
   }
@@ -118,25 +118,24 @@ function Stat({ icon: Icon, tone, value, label, onPress }: StatProps) {
   const { chip, icon } = TONES[tone];
 
   return (
+    /*
+     * `label` is no longer drawn — the client wanted the icon and the number
+     * alone — so `accessibilityLabel` is the only place the tile says what it
+     * counts. Keep it, and keep it translated: three bare numbers in a row are
+     * otherwise read out as "3, 24, 68%" with nothing to attach them to.
+     */
     <PressableCard
       onPress={onPress}
       accessibilityLabel={`${label}: ${value}`}
-      className="flex-1 items-start p-3"
+      className="flex-1 flex-row items-center justify-center gap-2 p-3"
     >
+      {/* The tint is the only thing distinguishing the three tiles now that the
+          words are gone, so the chip stays. */}
       <View className={cn('h-8 w-8 items-center justify-center rounded-lg', chip)}>
         <Icon size={16} color={icon} />
       </View>
 
-      {/*
-        Sized off the type scale's `title` but tighter: three of these sit in a
-        row on a 390px screen, so the number has to stay one line at 100% and
-        still wrap gracefully when a student turns their system font up.
-      */}
-      <Text className="mt-2 text-[20px] font-bold leading-7 text-primary">{value}</Text>
-
-      <Text className="text-[11px] leading-4 text-muted-foreground" numberOfLines={2}>
-        {label}
-      </Text>
+      <Text className="text-[20px] font-bold leading-7 text-primary">{value}</Text>
     </PressableCard>
   );
 }

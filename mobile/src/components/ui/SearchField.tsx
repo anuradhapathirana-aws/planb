@@ -1,12 +1,14 @@
-import { useState } from 'react';
+import { forwardRef, useState } from 'react';
 import { Pressable, TextInput, View, type TextInputProps } from 'react-native';
 import { Search, X } from '@/components/icons';
 
 import { colors } from '@shared/theme/tokens';
 import { cn } from '@/lib/cn';
 
-export interface SearchFieldProps
-  extends Omit<TextInputProps, 'className' | 'style' | 'value' | 'onChangeText'> {
+export interface SearchFieldProps extends Omit<
+  TextInputProps,
+  'className' | 'style' | 'value' | 'onChangeText'
+> {
   value: string;
   onChangeText: (value: string) => void;
   onClear?: () => void;
@@ -23,15 +25,18 @@ export interface SearchFieldProps
  * self-evident from the magnifier, it lives outside any form, and a label above
  * it would cost a line of vertical space at the top of Home for nothing.
  */
-export function SearchField({
-  value,
-  onChangeText,
-  onClear,
-  accessibilityLabel,
-  onFocus,
-  onBlur,
-  ...props
-}: SearchFieldProps) {
+/**
+ * Ref-forwarding, so a caller can focus the field itself.
+ *
+ * The ref lands on the inner `TextInput`, not on the bordered `View` around it —
+ * the wrapper is presentation and has nothing worth calling. `CourseSearchSheet`
+ * needs this to raise the keyboard when the sheet opens; without it the student
+ * has to tap the field they just tapped to get there.
+ */
+export const SearchField = forwardRef<TextInput, SearchFieldProps>(function SearchField(
+  { value, onChangeText, onClear, accessibilityLabel, onFocus, onBlur, ...props },
+  ref,
+) {
   const [focused, setFocused] = useState(false);
 
   return (
@@ -46,6 +51,7 @@ export function SearchField({
       <Search size={18} color={focused ? colors.primary : colors['muted-foreground']} />
 
       <TextInput
+        ref={ref}
         accessibilityLabel={accessibilityLabel}
         value={value}
         onChangeText={onChangeText}
@@ -85,4 +91,4 @@ export function SearchField({
       )}
     </View>
   );
-}
+});

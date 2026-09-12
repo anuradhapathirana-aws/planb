@@ -13,13 +13,7 @@ import { cn } from '@/lib/cn';
  */
 
 export type TextVariant =
-  | 'display'
-  | 'title'
-  | 'heading'
-  | 'body'
-  | 'bodyStrong'
-  | 'caption'
-  | 'label';
+  'display' | 'title' | 'heading' | 'body' | 'bodyStrong' | 'caption' | 'label' | 'none';
 
 const VARIANTS: Record<TextVariant, string> = {
   /*
@@ -41,6 +35,25 @@ const VARIANTS: Record<TextVariant, string> = {
   // Section headers above lists. Uppercase + tracked reads as structure
   // rather than content, so it never competes with the real headings.
   label: 'text-[11px] font-semibold uppercase tracking-widest text-muted-foreground',
+
+  /*
+   * No base classes at all — the caller supplies every one.
+   *
+   * **This exists because appending a class does not reliably override a
+   * variant's.** `cn` is a plain join, so both classes land on the element, and
+   * when two of them set the same property it is the STYLESHEET order that
+   * decides which wins, not the order they appear in the string. `font-semibold`
+   * is generated after `font-normal`, and `text-primary` after
+   * `text-muted-foreground`, so a variant quietly beat the override in both
+   * cases — which is exactly how Home's section headings sat at the wrong weight
+   * through several rounds of being asked to change.
+   *
+   * Use it only when a caller genuinely owns the whole type treatment, and set
+   * size, weight, leading AND colour when you do — nothing is inherited. The
+   * Sinhala floor still applies: `lineHeight` at least 1.6x the font size
+   * (`MIN_LINE_HEIGHT_RATIO`), or the glyphs clip.
+   */
+  none: '',
 };
 
 export interface TextProps extends RNTextProps {

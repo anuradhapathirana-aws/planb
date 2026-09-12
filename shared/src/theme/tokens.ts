@@ -28,6 +28,23 @@ export const radii = raw.radii;
  *   achievement states — never body text on a light surface. Gold *on navy*
  *   is fine, and that pairing is the brand's own.
  * - `accent-soft` is the tint to put gold text on when you need it readable.
+ * - `category-1..4` are a DECORATIVE rotation, not semantic colours, and the
+ *   numbering says so on purpose. They tint the course-category tiles on the
+ *   mobile Home screen, cycled by a tile's POSITION in the row — no hue ever
+ *   means a particular subject, so nothing has to be re-learned when the admin
+ *   adds a category. Named `1..4` rather than `mint`/`sky` for the same reason:
+ *   a name invites someone to reach for "the green one" and give it a meaning.
+ *
+ *   They are the one deliberate exception to root CLAUDE.md §8's one-accent
+ *   cap, taken at the client's request against a supplied reference. Note the
+ *   green here is NOT `success` and must not be swapped for it — `success`
+ *   means "done" across the checklist and the completed badge, and a category
+ *   tile borrowing it would read as a course already finished.
+ *
+ *   Each `-foreground` is the glyph colour for its tint, measured ON that tint
+ *   (3.53:1 to 5.16:1 — clear of the 3:1 WCAG SC 1.4.11 floor for graphical
+ *   objects, with the orange pair closest to it). They are glyph colours, not
+ *   text colours: the tiles' labels use `foreground`, near-black at ~15:1.
  */
 export type ColorToken = keyof typeof colors;
 

@@ -22,9 +22,9 @@ import { openExternalUrl } from '@/lib/webBrowser';
 
 /**
  * Home's page gutter, which the carousel breaks out of to reach the screen edge.
- * Must match the `px-2.5` on Home's scroll content — see the note there.
+ * Must match the `px-4` on Home's scroll content — see the note there.
  */
-const PAGE_GUTTER = 10;
+const PAGE_GUTTER = 16;
 
 /** Space between two slides. */
 const GAP = 12;
@@ -70,6 +70,26 @@ const SLIDE_PADDING = 16;
  * shared centre line without hand-tuning an offset.
  */
 const CTA_HEIGHT = 28;
+
+/**
+ * The slide's shape: 64:27, which is 16:9 with a quarter of its height taken
+ * out, at the client's request.
+ *
+ * **It has to equal `HomeBannerService`'s `IMAGE_WIDTH`/`IMAGE_HEIGHT`** (1280 x
+ * 540). The backend crops every upload to that ratio with `cover()`, and the
+ * `Image` below is `contentFit="cover"` too — so if these two disagreed, a
+ * stored banner would be cropped a SECOND time here and the admin's picture
+ * would quietly lose its top and bottom with nothing to say so. Matching them is
+ * what "the image is fully visible" actually means; `contain` is not the answer,
+ * because it would letterbox a 16:9 upload inside a wider frame and leave bars
+ * down both sides.
+ *
+ * Written as a class rather than a constant because all three slide surfaces —
+ * the skeleton, the photo card and the branded card — must use it, and a
+ * skeleton that is a different height from the thing it stands in for makes the
+ * page jump when the banners land.
+ */
+const SLIDE_ASPECT = 'aspect-[64/27]';
 
 /** How long a banner holds before the carousel moves itself on. */
 const AUTOPLAY_MS = 5_000;
@@ -224,7 +244,7 @@ export function HomeCarousel({ slides, loading = false }: HomeCarouselProps) {
   if (loading) {
     return (
       <View style={{ width: slideWidth }}>
-        <Skeleton className="aspect-[16/9] w-full rounded-2xl" />
+        <Skeleton className={`${SLIDE_ASPECT} w-full rounded-2xl`} />
       </View>
     );
   }
@@ -423,11 +443,17 @@ function SlideCard({
   const tappable = slide.link.type !== 'none';
 
   /*
-   * The button replaces the subtitle the slide used to carry, at the client's
-   * request. `subtitle` is deliberately still in the API and the admin form —
-   * the data is the client's and the design may want it back — it simply is not
-   * drawn here any more.
+   * The supporting line, back at the client's request after a spell where the
+   * CTA pill had replaced it. Both are drawn now.
+   *
+   * **Shown only when the admin actually wrote one** — and `trim()` is what makes
+   * that true rather than nearly true. The field is optional in the admin form,
+   * and a form that has been opened and saved sends `""` rather than `null`, so a
+   * plain null check would leave an empty line holding space under the title on
+   * every slide anyone had ever edited. Whitespace-only is the same case.
    */
+  const subtitle = slide.subtitle?.trim() ?? '';
+
   const ctaKey = CTA_KEY[slide.link.type];
   const cta = ctaKey === null ? null : t(ctaKey);
 
@@ -444,6 +470,9 @@ function SlideCard({
     return (
       <BrandedCard
         title={title === '' ? t('common.appName') : title}
+        // The admin's own words either way — the branded card is a fallback for
+        // missing ARTWORK, not for missing copy.
+        subtitle={subtitle}
         cta={cta}
         tone={index % 2 === 0 ? 'primary' : 'accent'}
         onPress={tappable ? () => openLink(slide.link) : null}
@@ -453,7 +482,7 @@ function SlideCard({
   }
 
   const content = (
-    <View className="aspect-[16/9] w-full overflow-hidden rounded-2xl bg-surface">
+    <View className={`${SLIDE_ASPECT} w-full overflow-hidden rounded-2xl bg-surface`}>
       <Image
         source={{ uri: slide.image_url }}
         style={{ width: '100%', height: '100%' }}
@@ -466,23 +495,40 @@ function SlideCard({
       />
 
       {/*
-        Admin artwork is unpredictable — a pale photo would swallow white text.
-        The scrim is what guarantees the wording stays legible on whatever gets
-        uploaded, rather than hoping for a dark image.
+        NO overlay of any kind, at the client's request — the artwork is shown
+        exactly as uploaded.
 
-        Unconditional, not `hasText &&`: the carousel's page dots sit on every
-        slide now, so even a wordless banner needs something under them. A photo
-        with no title is rare and reads fine through 40%.
+        **This is a known risk, accepted deliberately.** The title, the subtitle
+        and the carousel's page dots are all white, and admin artwork is
+        unpredictable: a pale photograph swallows every one of them, with nothing
+        on screen to explain why. There used to be a flat 40% black here, then a
+        bottom-only gradient; both were removed. If a banner ever reads as having
+        lost its wording, this is the first place to look, and the fix is a
+        gradient behind the text rather than a scrim over the picture.
       */}
-      <View className="absolute inset-0 bg-black/40" />
 
-      {(title !== '' || cta !== null) && (
+      {(title !== '' || subtitle !== '' || cta !== null) && (
         // Only pad clear of the dots when there is no pill. With one, the pill
         // owns the bottom band and the dots share its centre line to the right.
         <View className={cn('absolute inset-x-0 bottom-0 p-4', clearOfDots && 'pr-16')}>
           {title !== '' && (
             <Text className="text-[20px] font-bold leading-7 text-white" numberOfLines={2}>
               {title}
+            </Text>
+          )}
+
+          {subtitle !== '' && (
+            /*
+              Capped at two lines and held clear of the dots' corner whenever
+              there is no pill to own that band. Admin copy has no length limit
+              worth trusting, and a photo slide is only 64:27 — a runaway
+              sentence would push the title off the top of its own artwork.
+            */
+            <Text
+              className={cn('mt-1 text-[13px] leading-5 text-white/90', clearOfDots && 'pr-2')}
+              numberOfLines={2}
+            >
+              {subtitle}
             </Text>
           )}
 
@@ -501,9 +547,16 @@ function SlideCard({
     </View>
   );
 
+  /*
+   * Both lines, because the wrapper's explicit label replaces everything the
+   * subtree would otherwise announce — the supporting line is drawn again, so it
+   * has to be named here or it exists for sighted students only.
+   */
+  const spokenLabel = [title, subtitle].filter((part) => part !== '').join('. ');
+
   if (!tappable) {
     return (
-      <View accessible accessibilityRole="image" accessibilityLabel={slide.title ?? ''}>
+      <View accessible accessibilityRole="image" accessibilityLabel={spokenLabel}>
         {content}
       </View>
     );
@@ -512,7 +565,7 @@ function SlideCard({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={slide.title ?? ''}
+      accessibilityLabel={spokenLabel}
       onPress={() => openLink(slide.link)}
       className="active:opacity-90"
     >
@@ -573,6 +626,13 @@ function BuiltInCard({ slide }: { slide: BuiltInSlide }) {
 
 interface BrandedCardProps {
   title: string;
+  /**
+   * The admin's supporting line, or `''`. Empty renders nothing at all — no
+   * line, no margin — so a slide without one is exactly as tall as it was
+   * before the field came back. The built-in slides pass nothing: they have no
+   * subtitle to give, and inventing one would put words in the client's mouth.
+   */
+  subtitle?: string;
   /** Null renders no pill — a slide that goes nowhere must not look tappable. */
   cta: string | null;
   tone: 'primary' | 'accent';
@@ -586,7 +646,14 @@ interface BrandedCardProps {
 }
 
 /** The house-colours slide: no photograph, drawn entirely from brand tokens. */
-function BrandedCard({ title, cta, tone, onPress, reserveDots = false }: BrandedCardProps) {
+function BrandedCard({
+  title,
+  subtitle = '',
+  cta,
+  tone,
+  onPress,
+  reserveDots = false,
+}: BrandedCardProps) {
   const onAccent = tone === 'accent';
   const clearOfDots = reserveDots && cta === null;
 
@@ -597,9 +664,10 @@ function BrandedCard({ title, cta, tone, onPress, reserveDots = false }: Branded
       {...(onPress === null
         ? { accessible: true, accessibilityRole: 'image' as const }
         : { accessibilityRole: 'button' as const, onPress })}
-      accessibilityLabel={title}
+      // Both lines — the explicit label replaces what the subtree would say.
+      accessibilityLabel={subtitle === '' ? title : `${title}. ${subtitle}`}
       className={cn(
-        'aspect-[16/9] w-full justify-end overflow-hidden rounded-2xl p-4',
+        `${SLIDE_ASPECT} w-full justify-end overflow-hidden rounded-2xl p-4`,
         onPress !== null && 'active:opacity-90',
         onAccent ? 'bg-accent' : 'bg-surface',
       )}
@@ -635,6 +703,25 @@ function BrandedCard({ title, cta, tone, onPress, reserveDots = false }: Branded
       >
         {title}
       </Text>
+
+      {subtitle !== '' && (
+        /*
+          Full-opacity `primary` on the gold card rather than a faded navy: navy
+          on gold is ~6:1 and has no headroom to spend on transparency, where
+          white on navy starts at ~14:1 and can. Dimming both equally would have
+          quietly taken the gold slide's supporting line under AA.
+        */
+        <Text
+          className={cn(
+            'mt-1 text-[13px] leading-5',
+            onAccent ? 'text-primary' : 'text-white/90',
+            clearOfDots && 'pr-14',
+          )}
+          numberOfLines={2}
+        >
+          {subtitle}
+        </Text>
+      )}
 
       {cta !== null && (
         <View

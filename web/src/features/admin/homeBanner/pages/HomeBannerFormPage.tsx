@@ -219,7 +219,7 @@ export function HomeBannerFormPage() {
       <Breadcrumbs
         items={[
           { label: 'Home banners', href: paths.admin.homeBanners },
-          { label: isEditing ? (banner?.title || 'Banner') : 'New banner' },
+          { label: isEditing ? banner?.title || 'Banner' : 'New banner' },
         ]}
       />
 
@@ -249,9 +249,9 @@ export function HomeBannerFormPage() {
               <ImageDropzone
                 label="Banner image"
                 url={imageUrl}
-                aspect="video"
+                aspect="banner"
                 busy={uploadImage.isPending || deleteImage.isPending}
-                hint="PNG or JPG. Best at 1280×720 — anything else is cropped to 16:9."
+                hint="PNG or JPG. Upload at 1280×540 — anything else is centre-cropped to that shape."
                 onSelect={(file) => {
                   // Editing has a record to attach to; creating does not yet.
                   if (isEditing && bannerId !== null) uploadImage.mutate({ id: bannerId, file });
@@ -403,12 +403,17 @@ export function HomeBannerFormPage() {
             {/* Deliberately the app's own colours, not the admin palette — the
                 point of the preview is what the student's screen looks like. */}
             <div className="overflow-hidden rounded-2xl border bg-[#f8fafc] p-3">
-              <div className="relative aspect-video overflow-hidden rounded-2xl bg-[#0f1e45]">
+              {/* 64:27 — the app's slide shape and the shape uploads are cropped
+                  to. A preview in a different ratio would show the admin a crop
+                  the phone is never going to render. */}
+              <div className="relative aspect-64/27 overflow-hidden rounded-2xl bg-[#0f1e45]">
                 {imageUrl && <img src={imageUrl} alt="" className="size-full object-cover" />}
 
-                {/* The scrim is unconditional in the app, because the carousel's
-                    page dots sit on every slide — so the preview shows it too. */}
-                <div className="absolute inset-0 bg-black/40" />
+                {/* No scrim, because the app no longer draws one — the banner is
+                    shown exactly as uploaded. That makes this preview the place
+                    an admin finds out their white headline is invisible on a pale
+                    photo, which is the whole point of having it. If a scrim ever
+                    comes back to the carousel, it has to come back here too. */}
 
                 {(title.trim() !== '' || subtitle.trim() !== '') && (
                   <div className="absolute inset-x-0 bottom-0 space-y-0.5 p-3 pr-14">

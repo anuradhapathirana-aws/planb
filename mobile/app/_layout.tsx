@@ -94,8 +94,8 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
         Something went wrong
       </RNText>
       <RNText style={{ color: '#c7d2e5', fontSize: 14, lineHeight: 20, marginBottom: 20 }}>
-        The app hit an error it could not recover from. The details below are for the
-        development team.
+        The app hit an error it could not recover from. The details below are for the development
+        team.
       </RNText>
 
       <View style={{ backgroundColor: '#0b1533', borderRadius: 12, padding: 16, marginBottom: 20 }}>
@@ -142,10 +142,17 @@ export default function RootLayout() {
 
   /*
    * Course videos are the product, so screenshots and screen recording are
-   * blocked app-wide. This is not absolute — a second phone pointed at the
-   * screen always works — but it stops casual mass-sharing of paid content.
-   * On Android it blocks outright; on iOS the OS only permits detection plus
-   * blanking, which expo-screen-capture handles.
+   * blocked by DEFAULT — every screen, unless one opts out. This is not
+   * absolute — a second phone pointed at the screen always works — but it stops
+   * casual mass-sharing of paid content. On Android it blocks outright; on iOS
+   * the OS only permits detection plus blanking, which expo-screen-capture
+   * handles.
+   *
+   * **Home opts out** (`app/(tabs)/index.tsx`), at the client's request: it
+   * releases this same default key while it is the screen on show and re-applies
+   * it on blur. Anything that lifts the block belongs there, on the screen that
+   * wants it — leaving this call as the default means a screen added later is
+   * protected without having to remember to ask.
    */
   useEffect(() => {
     void ScreenCapture.preventScreenCaptureAsync();

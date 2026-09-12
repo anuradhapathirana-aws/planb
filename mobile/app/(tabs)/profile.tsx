@@ -3,7 +3,7 @@ import { RefreshControl, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { ChevronRight, LogOut, Mail, Pencil, Phone, Receipt, ShieldCheck } from '@/components/icons';
+import { ChevronRight, LogOut, Mail, Phone, Receipt, ShieldCheck } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 
 import { colors } from '@shared/theme/tokens';
@@ -149,22 +149,18 @@ export default function ProfileScreen() {
             <ChevronRight size={20} color={colors['muted-foreground']} />
           </PressableCard>
 
-          <Button
-            label={t('profile.edit')}
-            icon={Pencil}
-            size="lg"
-            fullWidth
-            className="mt-6"
-            onPress={() => router.push('/profile/edit')}
-          />
-
+          {/*
+            Sign out is the only button on the page. Editing is the pencil in the
+            navy header — a second, full-width way into the same screen made the
+            footer read as the primary action when it is the rarer one.
+          */}
           <Button
             label={t('auth.signOut')}
             variant="outline"
             icon={LogOut}
             size="lg"
             fullWidth
-            className="mt-3"
+            className="mt-6"
             loading={signOut.isPending}
             onPress={() => signOut.mutate()}
           />

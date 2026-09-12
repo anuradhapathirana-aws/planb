@@ -102,9 +102,14 @@ export function TabBar({ state, descriptors, navigation, insets }: TabBarProps) 
      * continuous with the screen, which is what "transparent" has to mean here.
      * The alternative, theming the navigator, would repaint every scene in the
      * app to fix one strip.
+     *
+     * `colors.card`, NOT `colors.background`: the phone's page ground is forked
+     * to white in `mobile/tailwind.config.js`, and this JS read of the shared
+     * token would otherwise keep the old slate and reopen the band described
+     * above. Keep the two pointed at the same token.
      */
     <View
-      style={{ paddingBottom: insets.bottom, backgroundColor: colors.background }}
+      style={{ paddingBottom: insets.bottom, backgroundColor: colors.card }}
       accessibilityRole="tablist"
     >
       {/*

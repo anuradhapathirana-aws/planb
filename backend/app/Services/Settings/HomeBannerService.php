@@ -20,10 +20,22 @@ use Intervention\Image\ImageManager;
  */
 class HomeBannerService
 {
-    /** 16:9, which is the aspect the app's carousel reserves. */
+    /**
+     * 1280x540 — 64:27, exactly the aspect the app's carousel reserves.
+     *
+     * **These two numbers and the carousel's `aspect-[64/27]` are one decision
+     * in two files.** `cover()` below crops every upload to this ratio, so the
+     * stored file IS this shape; if the app reserved a different one it would
+     * crop the stored image a second time at display, and the admin's picture
+     * would silently lose its top and bottom. Change one, change the other.
+     *
+     * It was 1280x720 (16:9) until the client asked for a quarter off the
+     * banner's height. 540 is 720 x 3/4, which is where the odd-looking 64:27
+     * comes from — it is 16:9 with that quarter taken out.
+     */
     private const IMAGE_WIDTH = 1280;
 
-    private const IMAGE_HEIGHT = 720;
+    private const IMAGE_HEIGHT = 540;
 
     /**
      * Every slide, in the admin's order.

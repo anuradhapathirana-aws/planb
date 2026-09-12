@@ -28,6 +28,14 @@ export interface ProgressRingProps {
    */
   tone?: 'accent' | 'primary';
   label?: string;
+  /**
+   * Draw the percentage inside the ring. Turn it off for a small ring used as a
+   * pure indicator: the figure is sized at 24% of the diameter, so below roughly
+   * 48px it stops being readable and starts being a smudge in the middle of the
+   * arc. The value still reaches a screen reader either way — it is on
+   * `accessibilityValue`, not on the text.
+   */
+  showValue?: boolean;
 }
 
 export function ProgressRing({
@@ -37,6 +45,7 @@ export function ProgressRing({
   onDark = false,
   tone = 'accent',
   label,
+  showValue = true,
 }: ProgressRingProps) {
   const safePercent = Math.max(0, Math.min(100, Math.round(percent)));
 
@@ -82,16 +91,18 @@ export function ProgressRing({
         Sized relative to the ring rather than from the type scale, so one
         component covers the 48px inline ring and the 96px hero ring.
       */}
-      <Text
-        style={{
-          fontSize: size * 0.24,
-          lineHeight: size * 0.3,
-          fontWeight: '700',
-          color: onDark ? '#ffffff' : colors.primary,
-        }}
-      >
-        {safePercent}%
-      </Text>
+      {showValue && (
+        <Text
+          style={{
+            fontSize: size * 0.24,
+            lineHeight: size * 0.3,
+            fontWeight: '700',
+            color: onDark ? '#ffffff' : colors.primary,
+          }}
+        >
+          {safePercent}%
+        </Text>
+      )}
     </View>
   );
 }

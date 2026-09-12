@@ -42,13 +42,37 @@ const mobileRadii = {
   '2xl': 10,
 };
 
+/*
+ * THE PAGE GROUND IS ALSO FORKED, for the same kind of reason as the radii.
+ *
+ * The client asked for white screens on the phone. The shared `background`
+ * (#f8fafc, a faint slate) stays as it is for the admin panel, where a tinted
+ * ground is what separates dense tables and forms from the page around them.
+ * `web/` does not read `tokens.json` for it anyway — it mirrors the value into
+ * `web/src/index.css` — so editing the shared token would have changed nothing
+ * there and silently broken the "mirror" instead.
+ *
+ * Pointed at `colors.card` (#ffffff) rather than a literal, so no hex lives
+ * outside the token file. Every card, input and search field in the app draws
+ * its own `border-border` hairline, which is what keeps white-on-white surfaces
+ * distinct — a new card added without one will vanish into the page.
+ *
+ * One JS consumer reads the ground directly instead of through a class —
+ * `src/components/shared/TabBar.tsx` — and points at `colors.card` for the same
+ * reason. Change this and change that.
+ */
+const mobileColors = {
+  ...colors,
+  background: colors.card,
+};
+
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: ['./app/**/*.{js,jsx,ts,tsx}', './src/**/*.{js,jsx,ts,tsx}'],
   presets: [require('nativewind/preset')],
   theme: {
     extend: {
-      colors,
+      colors: mobileColors,
       borderRadius: {
         sm: `${mobileRadii.sm}px`,
         md: `${mobileRadii.md}px`,

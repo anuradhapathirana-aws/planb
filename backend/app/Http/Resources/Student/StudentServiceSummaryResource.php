@@ -23,6 +23,14 @@ class StudentServiceSummaryResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'summary' => $this->summary,
+
+            /*
+             * The glyph the Home grid draws. Null is a normal answer — every
+             * service created before the field existed has one — and the app
+             * falls back to the `other` icon rather than leaving a hole in the
+             * grid, so nothing here has to be backfilled first.
+             */
+            'icon' => $this->icon?->value,
             'price_cents' => (int) $this->price_cents,
             'currency' => $this->currency,
             'delivery_time' => $this->delivery_time,

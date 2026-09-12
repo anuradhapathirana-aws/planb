@@ -91,6 +91,10 @@ class ServiceCatalogService
         return [
             'name' => $data['name'],
             'summary' => $data['summary'] ?? null,
+            // Validated against `ServiceIcon` in the Form Request. Null when the
+            // admin picked nothing — the app substitutes its fallback glyph, so
+            // nothing is defaulted here.
+            'icon' => $data['icon'] ?? null,
             'description' => HtmlSanitizer::clean($data['description'] ?? null),
             'price_cents' => $data['price_cents'],
             'currency' => $data['currency'] ?? config('payments.currency'),

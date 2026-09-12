@@ -9,11 +9,89 @@
 
 export type ServiceStatus = 'draft' | 'published';
 
+/**
+ * The glyph a service shows on the app's "Get My Service" grid.
+ *
+ * **These are meanings, not icon names** — `passport`, not `id-card`. Each
+ * client maps the meaning to whatever its icon set calls that picture, so a
+ * Lucide rename costs one line in a map instead of a data migration. Mirrors
+ * `backend/app/Enums/ServiceIcon.php`, which is the validation authority;
+ * adding a case means editing both, plus the two client maps in
+ * `web/src/features/admin/services/serviceIcons.ts` and
+ * `mobile/src/features/services/serviceIcons.ts`. Both maps are exhaustive
+ * `Record<ServiceIconName, …>`s, so TypeScript fails the build on a miss.
+ */
+export type ServiceIconName =
+  | 'passport'
+  | 'visa'
+  | 'flight'
+  | 'cv'
+  | 'jobs'
+  | 'interview'
+  | 'education'
+  | 'attestation'
+  | 'translation'
+  | 'bank'
+  | 'money'
+  | 'medical'
+  | 'insurance'
+  | 'housing'
+  | 'company'
+  | 'driving'
+  | 'sim'
+  | 'relocation'
+  | 'appointment'
+  | 'contract'
+  | 'documents'
+  | 'consultation'
+  | 'award'
+  | 'other';
+
+/**
+ * The picker's contents and its order, shared so the admin sees the same list
+ * whichever client grows one next. Ordered by how often Plan B is likely to
+ * need them rather than alphabetically — an admin scanning for "Visa" finds it
+ * in the first row, and `other` sits last because it is the fallback.
+ *
+ * Labels are the admin's own vocabulary, not the enum value. They are English
+ * only and deliberately not run through i18n: the admin panel is English (root
+ * CLAUDE.md §8 puts Sinhala on the student side), and the student never sees
+ * these words — only the picture.
+ */
+export const SERVICE_ICONS: ReadonlyArray<{ value: ServiceIconName; label: string }> = [
+  { value: 'visa', label: 'Visa' },
+  { value: 'passport', label: 'Passport' },
+  { value: 'flight', label: 'Flight booking' },
+  { value: 'cv', label: 'CV writing' },
+  { value: 'jobs', label: 'Job placement' },
+  { value: 'interview', label: 'Interview prep' },
+  { value: 'education', label: 'Education' },
+  { value: 'attestation', label: 'Attestation' },
+  { value: 'translation', label: 'Translation' },
+  { value: 'bank', label: 'Bank account' },
+  { value: 'money', label: 'Money transfer' },
+  { value: 'medical', label: 'Medical' },
+  { value: 'insurance', label: 'Insurance' },
+  { value: 'housing', label: 'Accommodation' },
+  { value: 'company', label: 'Company setup' },
+  { value: 'driving', label: 'Driving licence' },
+  { value: 'sim', label: 'SIM / mobile' },
+  { value: 'relocation', label: 'Relocation' },
+  { value: 'appointment', label: 'Appointment' },
+  { value: 'contract', label: 'Contract' },
+  { value: 'documents', label: 'Documents' },
+  { value: 'consultation', label: 'Consultation' },
+  { value: 'award', label: 'Certification' },
+  { value: 'other', label: 'Other' },
+];
+
 export interface Service {
   id: number;
   name: string;
   /** One line for a catalogue card. */
   summary: string | null;
+  /** Null when the admin never picked one; clients fall back to `other`. */
+  icon: ServiceIconName | null;
   /** Sanitized HTML authored in the rich-text editor. */
   description: string | null;
   /** Smallest currency unit, integer, always above zero (CLAUDE.md §4.11). */
@@ -37,6 +115,7 @@ export interface Service {
 export interface ServicePayload {
   name: string;
   summary?: string | null;
+  icon?: ServiceIconName | null;
   description?: string | null;
   price_cents: number;
   currency: string;

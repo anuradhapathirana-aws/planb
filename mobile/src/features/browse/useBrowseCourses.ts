@@ -28,6 +28,25 @@ export interface BrowseCoursesState {
   hasQuery: boolean;
 }
 
+export interface BrowseCoursesOptions {
+  /**
+   * The category to open with, from Home's category strip. `null` (the default)
+   * opens on All.
+   *
+   * Seeds `useState` rather than being synced to it, deliberately: it is the
+   * STARTING chip, not a controlled value. Pushing it into state on every
+   * change would fight the student the moment they tapped a different chip, and
+   * the screen is pushed fresh each time anyway — `expo-router` mounts a new
+   * instance per navigation, so a second arrival from a different tile gets its
+   * own initial value rather than a stale one.
+   *
+   * A name that no longer matches any published course is not special-cased:
+   * the list comes back empty and `hasResultsOutsideCategory` offers the way
+   * back to All, which is the same recovery a stale chip already had.
+   */
+  initialCategory?: string | null;
+}
+
 /**
  * The shop window: every course the student has NOT enrolled in.
  *
@@ -48,9 +67,11 @@ export interface BrowseCoursesState {
  * enrolled halves of that live on the Courses tab itself now, so this hook
  * knows one filter: not enrolled.
  */
-export function useBrowseCourses(): BrowseCoursesState {
+export function useBrowseCourses({
+  initialCategory = null,
+}: BrowseCoursesOptions = {}): BrowseCoursesState {
   const [query, setQuery] = useState('');
-  const [category, setCategory] = useState<string | null>(null);
+  const [category, setCategory] = useState<string | null>(initialCategory);
 
   const debounced = useDebouncedValue(query.trim(), 300);
   const hasQuery = debounced.length >= MIN_QUERY_LENGTH;

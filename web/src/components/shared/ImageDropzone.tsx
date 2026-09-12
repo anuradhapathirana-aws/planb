@@ -9,8 +9,13 @@ interface ImageDropzoneProps {
   url: string | null;
   onSelect: (file: File) => void;
   onRemove: () => void;
-  /** Shape of the frame. `video` is 16:9, matching course and lesson art. */
-  aspect?: 'video' | 'square';
+  /**
+   * Shape of the frame. `video` is 16:9, matching course and lesson art;
+   * `banner` is 64:27, the Home carousel's shape. The frame should match what
+   * the backend crops that image to, so an admin sees the crop they are going to
+   * get rather than discovering it on a phone.
+   */
+  aspect?: 'video' | 'square' | 'banner';
   acceptedTypes?: string[];
   maxBytes?: number;
   /** Second line inside the empty dropzone, e.g. "PNG or JPG, up to 2MB". */
@@ -110,7 +115,9 @@ export function ImageDropzone({
         aria-label={url ? undefined : label}
         className={cn(
           'relative overflow-hidden rounded-lg border-2 border-dashed transition-colors',
-          aspect === 'video' ? 'aspect-video' : 'aspect-square',
+          aspect === 'video' && 'aspect-video',
+          aspect === 'banner' && 'aspect-64/27',
+          aspect === 'square' && 'aspect-square',
           url ? 'border-solid border-border' : 'border-input',
           !url && !disabled && 'cursor-pointer hover:bg-secondary/50',
           isDragging && 'border-primary bg-secondary',

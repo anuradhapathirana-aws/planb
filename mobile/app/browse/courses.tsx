@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft, GraduationCap, SearchX, WifiOff } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -37,7 +37,16 @@ import { useEnrol } from '@/features/enrolment/useEnrol';
 export default function BrowseCoursesScreen() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const browse = useBrowseCourses();
+  /*
+   * Set by Home's category strip, absent when the student arrived from a plain
+   * "View all". `expo-router` types a param as `string | string[]` because a URL
+   * may repeat it — this screen takes one category, so a repeat is read as the
+   * first rather than crashing on an array where a string was expected.
+   */
+  const params = useLocalSearchParams<{ category?: string | string[] }>();
+  const initialCategory = Array.isArray(params.category) ? params.category[0] : params.category;
+
+  const browse = useBrowseCourses({ initialCategory: initialCategory ?? null });
   const [refreshing, setRefreshing] = useState(false);
 
   // A bought course leaves this list, so staying put beats being thrown into

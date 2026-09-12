@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Contracts\Purchasable;
+use App\Enums\ServiceIcon;
 use App\Enums\ServiceStatus;
 use Database\Factories\ServiceFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -34,6 +35,7 @@ class Service extends Model implements HasMedia, Purchasable
     protected $fillable = [
         'name',
         'summary',
+        'icon',
         'description',
         'price_cents',
         'currency',
@@ -50,6 +52,10 @@ class Service extends Model implements HasMedia, Purchasable
     {
         return [
             'status' => ServiceStatus::class,
+            // Nullable in the database, so this is `?ServiceIcon` on the model —
+            // an unset icon stays unset rather than becoming `Other` here, and
+            // each client decides what to draw for null.
+            'icon' => ServiceIcon::class,
             'price_cents' => 'integer',
             'sort_order' => 'integer',
         ];

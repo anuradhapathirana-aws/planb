@@ -5,9 +5,9 @@ import { CourseGridCard } from '@/components/shared/CourseGridCard';
 
 /**
  * Home's page gutter, which the strip breaks out of to reach the screen edge.
- * Must match the `px-2.5` on Home's scroll content — see the note there.
+ * Must match the `px-4` on Home's scroll content — see the note there.
  */
-const PAGE_GUTTER = 10;
+const PAGE_GUTTER = 16;
 
 /** Space between two tiles. Matches the `gap-2.5` the grid used before it. */
 const GAP = 10;

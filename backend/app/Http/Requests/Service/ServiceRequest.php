@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Service;
 
+use App\Enums\ServiceIcon;
 use App\Enums\ServiceStatus;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -22,6 +23,14 @@ abstract class ServiceRequest extends FormRequest
         return [
             'name' => $this->nameRules(),
             'summary' => ['nullable', 'string', 'max:300'],
+
+            /*
+             * One of a fixed set, never free text: the app resolves this to a
+             * vector it already ships, so a name it does not know renders as
+             * nothing. Nullable — an admin who skips the field gets the `other`
+             * glyph rather than a validation error.
+             */
+            'icon' => ['nullable', Rule::in(ServiceIcon::values())],
 
             // Rich-text HTML, sanitized server-side before storage. The cap is
             // generous because it counts markup, not the words the admin typed.
@@ -55,6 +64,7 @@ abstract class ServiceRequest extends FormRequest
             'price_cents.min' => 'A service needs a price above zero — students pay for each one.',
             'price_cents.integer' => 'Enter the price as a number.',
             'currency.in' => 'Prices are only supported in '.config('payments.currency').' right now.',
+            'icon.in' => 'Pick an icon from the list.',
         ];
     }
 

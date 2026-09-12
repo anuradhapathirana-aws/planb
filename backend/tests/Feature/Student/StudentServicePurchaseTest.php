@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature\Student;
 
 use App\Enums\OrderStatus;
+use App\Enums\ServiceIcon;
 use App\Enums\ServicePurchaseStatus;
 use App\Models\Service;
 use App\Models\ServicePurchase;
@@ -59,6 +60,27 @@ class StudentServicePurchaseTest extends TestCase
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.name', 'CV Writing')
             ->assertJsonPath('data.0.has_open_purchase', false);
+    }
+
+    /**
+     * The Home grid draws this, so it has to reach the student payload — and it
+     * has to reach it as an explicit null when unset, because the app switches
+     * on null to substitute its fallback glyph. A key missing altogether would
+     * work by accident in JavaScript and break the day the app reads it more
+     * strictly.
+     */
+    public function test_the_catalogue_carries_each_services_icon(): void
+    {
+        $this->service->update(['icon' => ServiceIcon::Cv]);
+        Service::factory()->published()->create(['name' => 'Airport pickup']);
+
+        $response = $this->getJson('/api/v1/student/services')->assertOk();
+
+        $icons = collect($response->json('data'))->pluck('icon', 'name');
+
+        $this->assertSame('cv', $icons['CV Writing']);
+        $this->assertNull($icons['Airport pickup']);
+        $this->assertArrayHasKey('Airport pickup', $icons->all());
     }
 
     /** The published scope is the authorization — a draft is not merely hidden. */

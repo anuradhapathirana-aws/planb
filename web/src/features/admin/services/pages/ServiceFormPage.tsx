@@ -3,7 +3,17 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Controller, useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
-import { Clock, FileText, Image as ImageIcon, Loader2, Save, Sparkles, Tag, Wallet } from 'lucide-react';
+import {
+  Clock,
+  FileText,
+  Image as ImageIcon,
+  Loader2,
+  Save,
+  Shapes,
+  Sparkles,
+  Tag,
+  Wallet,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,6 +24,7 @@ import { ImageDropzone } from '@/components/shared/ImageDropzone';
 import { PageLoader } from '@/components/shared/PageLoader';
 import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { SegmentedToggle } from '@/components/shared/SegmentedToggle';
+import { ServiceIconPicker } from '@/features/admin/services/components/ServiceIconPicker';
 import {
   blankService,
   serviceFormSchema,
@@ -44,6 +55,7 @@ function toFormValues(service: Service): ServiceFormSchema {
   return {
     name: service.name,
     summary: service.summary ?? '',
+    icon: service.icon,
     description: service.description ?? '',
     price: fromCents(service.price_cents),
     currency: service.currency || DEFAULT_CURRENCY,
@@ -114,7 +126,9 @@ export function ServiceFormPage() {
 
   const pickThumbnail = (file: File) => {
     if (isEditing) {
-      uploadThumbnail.mutate(file, { onSuccess: (updated) => setThumbnailUrl(updated.thumbnail_url) });
+      uploadThumbnail.mutate(file, {
+        onSuccess: (updated) => setThumbnailUrl(updated.thumbnail_url),
+      });
       return;
     }
 
@@ -141,6 +155,7 @@ export function ServiceFormPage() {
   const buildPayload = (values: ServiceFormSchema): ServicePayload => ({
     name: values.name,
     summary: values.summary || null,
+    icon: values.icon,
     description: values.description || null,
     // Converted here, once, from the decimal the admin typed — a price is never
     // carried as a float (CLAUDE.md §4.11).
@@ -155,9 +170,15 @@ export function ServiceFormPage() {
 
     try {
       const payload = buildPayload(values);
-      saved = isEditing ? await updateService.mutateAsync(payload) : await createService.mutateAsync(payload);
+      saved = isEditing
+        ? await updateService.mutateAsync(payload)
+        : await createService.mutateAsync(payload);
     } catch (error) {
-      const { applied, unmatched } = applyServerValidationErrors(error, setError, SERVICE_FIELD_NAMES);
+      const { applied, unmatched } = applyServerValidationErrors(
+        error,
+        setError,
+        SERVICE_FIELD_NAMES,
+      );
       if (unmatched.length > 0) toast.error(unmatched[0]);
       else if (applied > 0) toast.error('Check the highlighted fields and try again.');
       return;
@@ -170,7 +191,9 @@ export function ServiceFormPage() {
         await uploadServiceThumbnail(saved.id, stagedThumbnail);
         setStagedThumbnail(null);
       } catch {
-        toast.error('Service saved, but the image could not be uploaded. Add it from the service page.');
+        toast.error(
+          'Service saved, but the image could not be uploaded. Add it from the service page.',
+        );
         navigate(paths.admin.serviceEdit(saved.id), { replace: true });
         return;
       }
@@ -194,7 +217,9 @@ export function ServiceFormPage() {
       <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-3">
         <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
           <div className="min-w-0">
-            <h1 className="truncate text-xl font-semibold">{isEditing ? 'Edit service' : 'Add service'}</h1>
+            <h1 className="truncate text-xl font-semibold">
+              {isEditing ? 'Edit service' : 'Add service'}
+            </h1>
             <p className="text-sm text-muted-foreground">
               Name it, set the price students pay, then describe what they get.
             </p>
@@ -249,6 +274,25 @@ export function ServiceFormPage() {
                     {...register('summary')}
                   />
                   <FieldError message={errors.summary?.message} />
+                </div>
+
+                <div className="space-y-1 sm:col-span-2">
+                  <FieldLabel icon={Shapes}>Icon</FieldLabel>
+                  <Controller
+                    control={control}
+                    name="icon"
+                    render={({ field }) => (
+                      <ServiceIconPicker
+                        value={field.value}
+                        onChange={field.onChange}
+                        disabled={busy}
+                      />
+                    )}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Shown on the Home screen of the student app. Click the chosen icon again to
+                    clear it — services without one fall back to a generic glyph.
+                  </p>
                 </div>
 
                 <div className="space-y-1">
