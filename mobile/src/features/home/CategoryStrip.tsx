@@ -1,5 +1,6 @@
 import { FlatList, useWindowDimensions, View } from 'react-native';
 
+import type { StudentCourseCategory } from '@shared/types/studentCourse';
 import { CategoryCard } from './CategoryCard';
 
 /**
@@ -26,24 +27,22 @@ const GAP = 10;
 const CARDS_PER_SCREEN = 3.5;
 
 export interface CategoryStripProps {
-  /** Category names, already deduped and ordered by the caller. */
-  categories: string[];
-  onSelect: (category: string) => void;
+  /** Active categories, in the admin's order, from `GET /student/course-categories`. */
+  categories: StudentCourseCategory[];
+  onSelect: (category: StudentCourseCategory) => void;
 }
 
 /**
  * "Top Categories" — one row of tinted tiles, scrolled sideways.
  *
- * Laid out exactly like `ExploreStrip` and `ServiceCarousel`: same break-out,
- * same snapping, same `removeClippedSubviews` opt-out, and each for the reason
- * documented there. Three horizontally scrolling rows on one screen that
- * behaved differently under the thumb would feel broken even though none of
- * them is doing anything wrong on its own.
+ * Laid out exactly like `ExploreStrip`: same break-out, same snapping, same
+ * `removeClippedSubviews` opt-out, and each for the reason documented there.
+ * Two horizontally scrolling rows on one screen that behaved differently under
+ * the thumb would feel broken even though neither is doing anything wrong on
+ * its own.
  *
- * Keyed by NAME rather than by an id, because a category reaches this app as a
- * string off each course summary — there is no student-facing category
- * endpoint, so there is no id to key on. The caller dedupes, which is what
- * makes the name safe as a key.
+ * **Every active category, not a cap.** The client wants the whole list on the
+ * row, and it scrolls — the half-tile at the edge is what says there is more.
  */
 export function CategoryStrip({ categories, onSelect }: CategoryStripProps) {
   const { width } = useWindowDimensions();
@@ -68,13 +67,14 @@ export function CategoryStrip({ categories, onSelect }: CategoryStripProps) {
      * to clip, peek included.
      */
     <View style={{ marginHorizontal: -PAGE_GUTTER }}>
-      <FlatList<string>
+      <FlatList<StudentCourseCategory>
         data={categories}
         horizontal
-        keyExtractor={(category) => category}
+        keyExtractor={(category) => String(category.id)}
         renderItem={({ item, index }) => (
           <CategoryCard
-            name={item}
+            name={item.name}
+            icon={item.icon}
             width={tileWidth}
             index={index}
             onPress={() => onSelect(item)}

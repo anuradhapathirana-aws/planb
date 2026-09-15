@@ -30,6 +30,47 @@ interface ImageDropzoneProps {
 const DEFAULT_TYPES = ['image/jpeg', 'image/png'];
 const DEFAULT_MAX_BYTES = 2 * 1024 * 1024;
 
+const ASPECT_RATIOS: Record<NonNullable<ImageDropzoneProps['aspect']>, number> = {
+  video: 16 / 9,
+  banner: 64 / 27,
+  square: 1,
+};
+
+const ASPECT_NAMES: Record<NonNullable<ImageDropzoneProps['aspect']>, string> = {
+  video: '16:9',
+  banner: '64:27',
+  square: 'square',
+};
+
+// Loose enough that 1920×1081 or a rounded export does not nag the admin.
+const ASPECT_TOLERANCE = 0.02;
+
+/**
+ * The backend centre-crops every upload to the frame's shape. There is no crop
+ * tool by design — admins are asked to upload art at the recommended size — so
+ * an off-shape image is still accepted, but the admin is told the edges will go
+ * rather than finding out on a phone.
+ */
+function warnIfOffShape(file: File, aspect: NonNullable<ImageDropzoneProps['aspect']>) {
+  const objectUrl = URL.createObjectURL(file);
+  const img = new Image();
+
+  img.onload = () => {
+    URL.revokeObjectURL(objectUrl);
+    if (!img.naturalWidth || !img.naturalHeight) return;
+
+    const expected = ASPECT_RATIOS[aspect];
+    const actual = img.naturalWidth / img.naturalHeight;
+    if (Math.abs(actual - expected) / expected <= ASPECT_TOLERANCE) return;
+
+    toast.warning(`This image is ${img.naturalWidth}×${img.naturalHeight}, not ${ASPECT_NAMES[aspect]}.`, {
+      description: 'Its edges will be cropped. Upload the recommended size for the best result.',
+    });
+  };
+  img.onerror = () => URL.revokeObjectURL(objectUrl);
+  img.src = objectUrl;
+}
+
 /**
  * Click-or-drag image picker that fills with the image once one exists, with
  * small overlaid change/remove controls — the standard admin upload control
@@ -71,6 +112,7 @@ export function ImageDropzone({
 
   const handleFile = (file: File | undefined) => {
     if (!file || !validate(file)) return;
+    warnIfOffShape(file, aspect);
     onSelect(file);
   };
 

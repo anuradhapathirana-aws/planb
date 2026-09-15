@@ -49,7 +49,7 @@ Anything describing the API contract — types mirroring an API Resource, a Zod 
 
 **Web (`web/`):** React 18, TypeScript, Vite, `vite-plugin-pwa` (PWA), shadcn/ui, Tailwind CSS, TanStack Query (server state), TanStack Table (data grids), React Hook Form + Zod (forms), Zustand (client state), React Router v6, Axios, Lucide React (icons), Recharts (charts), Sonner (toasts), Framer Motion (animations), react-i18next (Sinhala/English), TipTap (rich-text editing for admin-authored content — headless, so the toolbar is our own shadcn buttons).
 
-**Mobile (`mobile/`):** React Native + Expo, TypeScript, `expo-router` (file-based routing), NativeWind (Tailwind for RN — the RN renderer for the framework already chosen, **not** a second design vocabulary), TanStack Query, Zustand, React Hook Form + Zod, Axios, `expo-secure-store` (auth tokens), `expo-video` (no-skip player), `expo-auth-session` (Google Sign-In), `lucide-react-native` + `react-native-svg` (same icon set as web), `sonner-native` (toasts), react-i18next + `expo-localization`, EAS Build (APK for internal testing, AAB for Google Play).
+**Mobile (`mobile/`):** React Native + Expo, TypeScript, Poppins (`@expo-google-fonts/poppins`), `expo-router` (file-based routing), NativeWind (Tailwind for RN — the RN renderer for the framework already chosen, **not** a second design vocabulary), TanStack Query, Zustand, React Hook Form + Zod, Axios, `expo-secure-store` (auth tokens), `expo-video` (no-skip player), `expo-auth-session` (Google Sign-In), `lucide-react-native` + `react-native-svg` (same icon set as web), `sonner-native` (toasts), react-i18next + `expo-localization`, EAS Build (APK for internal testing, AAB for Google Play).
 
 **Shared (`shared/`):** TypeScript source only — API types, Zod schemas, `serverErrors.ts`, brand tokens, i18n strings. No dependencies of its own.
 
@@ -190,7 +190,7 @@ Students will access primarily from phones. **Design mobile-first, enhance for d
 ### Design System
 
 - **Primary color:** Plan B brand (TBD — placeholder `#1F4E79` deep blue).
-- **Font:** Inter (English UI) + Noto Sans Sinhala (Sinhala UI).
+- **Font:** **Poppins** on `mobile/` (adopted app-wide at the client's request) and Inter on `web/`, both with Noto Sans Sinhala for Sinhala. On mobile, weight is expressed by choosing the Poppins *family* (`Poppins_600SemiBold`), never by `fontWeight` — Android silently falls back to the system font otherwise. `mobile/src/components/ui/Text.tsx` translates every `font-*` class for you; a raw `TextInput` must set `fonts.poppins[...]` itself.
 - **Spacing:** Tailwind default (4px base).
 - **Border radius:** `rounded-lg` (8px) cards, `rounded-md` (6px) buttons, `rounded-2xl` (16px) modals.
 - **Shadows:** cards use border only, no shadow (`web/src/components/ui/card.tsx`) — a page with many stacked cards gets visually heavy fast otherwise. Dialogs/Sheets/AlertDialogs use `shadow-lg` (they float above the page, so a shadow reads correctly there). No shadow on other flat surfaces.

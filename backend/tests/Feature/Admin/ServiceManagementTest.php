@@ -54,7 +54,6 @@ class ServiceManagementTest extends TestCase
     {
         return array_merge([
             'name' => 'CV Writing',
-            'summary' => 'A recruiter-ready CV, written for UAE employers.',
             'description' => '<p>We rewrite your CV.</p>',
             'price_cents' => 750000,
             'currency' => 'LKR',

@@ -7,7 +7,7 @@ import { formatDate } from '@shared/lib/formatters';
 import { Text } from '@/components/ui/Text';
 import { cn } from '@/lib/cn';
 
-export interface DeliveryStep {
+interface DeliveryStep {
   labelKey: string;
   /** Null until this step has actually happened. */
   at: string | null;
@@ -16,15 +16,8 @@ export interface DeliveryStep {
   current: boolean;
 }
 
-/**
- * Paid → In progress → Completed (or Cancelled), derived once.
- *
- * Exported because the compact track on a "My services" row draws the same three
- * steps in 6px of height. Two copies of "which step is it on?" would disagree
- * the first time the rules change — and the row and the tracker sit one tap
- * apart, so a student would see the disagreement.
- */
-export function deliverySteps(purchase: StudentServicePurchase): DeliveryStep[] {
+/** Paid → In progress → Completed (or Cancelled), derived once. */
+function deliverySteps(purchase: StudentServicePurchase): DeliveryStep[] {
   const isCancelled = purchase.status === 'cancelled';
   const isCompleted = purchase.status === 'completed';
   const isWorking = purchase.status === 'in_progress';
@@ -85,10 +78,10 @@ export function DeliveryStepper({ purchase }: { purchase: StudentServicePurchase
         return (
           <View key={step.labelKey} className="flex-row">
             {/* Rail: the marker, and the line down to the next step. */}
-            <View className="w-6 items-center">
+            <View className="w-5 items-center">
               <View
                 className={cn(
-                  'h-6 w-6 items-center justify-center rounded-full border-2',
+                  'h-5 w-5 items-center justify-center rounded-full border-2',
                   failed
                     ? 'border-destructive bg-destructive'
                     : step.done
@@ -97,9 +90,9 @@ export function DeliveryStepper({ purchase }: { purchase: StudentServicePurchase
                 )}
               >
                 {failed ? (
-                  <X size={13} color="#ffffff" strokeWidth={3} />
+                  <X size={11} color="#ffffff" strokeWidth={3} />
                 ) : step.done ? (
-                  <Check size={13} color="#ffffff" strokeWidth={3} />
+                  <Check size={11} color="#ffffff" strokeWidth={3} />
                 ) : null}
               </View>
 
@@ -109,20 +102,24 @@ export function DeliveryStepper({ purchase }: { purchase: StudentServicePurchase
                   className={cn('w-0.5 flex-1', step.done ? 'bg-success' : 'bg-border')}
                   // minHeight, not height: the row grows with the system font
                   // size and the line has to keep up with it.
-                  style={{ minHeight: 22 }}
+                  style={{ minHeight: 16 }}
                 />
               )}
             </View>
 
-            <View className={cn('flex-1 pl-3', isLast ? 'pb-0' : 'pb-4')}>
+            <View className={cn('flex-1 pl-2.5', isLast ? 'pb-0' : 'pb-3')}>
               <Text
-                variant={step.current ? 'bodyStrong' : 'body'}
-                className={cn(!step.done && 'text-muted-foreground')}
+                variant="none"
+                className={cn(
+                  'text-[11px] leading-[18px]',
+                  step.current ? 'font-semibold' : 'font-normal',
+                  step.done ? 'text-foreground' : 'text-muted-foreground',
+                )}
               >
                 {t(step.labelKey)}
               </Text>
 
-              <Text variant="caption" className="mt-0.5">
+              <Text variant="none" className="text-[10px] leading-4 text-muted-foreground">
                 {step.at ? formatDate(step.at) : t('services.stepPending')}
               </Text>
             </View>
@@ -158,12 +155,12 @@ export function DeliveryNote({
     purchase.is_open && deliveryTime ? t('services.deliveryTime', { time: deliveryTime }) : null;
 
   return (
-    <View className="mt-3 rounded-lg bg-muted px-3 py-2.5">
-      <Text variant="caption" className="leading-5 text-foreground">
+    <View className="mt-2.5 rounded-lg bg-muted px-3 py-2">
+      <Text variant="none" className="text-[10px] leading-4 text-foreground">
         {body}
       </Text>
       {estimate && (
-        <Text variant="caption" className="mt-1">
+        <Text variant="none" className="mt-0.5 text-[10px] leading-4 text-muted-foreground">
           {estimate}
         </Text>
       )}

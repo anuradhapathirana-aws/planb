@@ -2,7 +2,7 @@ import { forwardRef, useState } from 'react';
 import { Pressable, TextInput, View, type TextInputProps } from 'react-native';
 import { Search, X } from '@/components/icons';
 
-import { colors } from '@shared/theme/tokens';
+import { colors, fonts } from '@shared/theme/tokens';
 import { cn } from '@/lib/cn';
 
 export interface SearchFieldProps extends Omit<
@@ -42,13 +42,33 @@ export const SearchField = forwardRef<TextInput, SearchFieldProps>(function Sear
   return (
     <View
       className={cn(
-        // minHeight, not height — Sinhala glyphs clip in a fixed box, and the
-        // field has to grow with the system font size (mobile/CLAUDE.md §4).
-        'w-full min-h-[48px] flex-row items-center gap-2.5 rounded-xl border bg-card px-3.5',
-        focused ? 'border-primary' : 'border-border',
+        /*
+         * A pill, matching Home's search bar, so a search box looks the same
+         * wherever a student meets one. Resting on a soft gray fill it reads as
+         * "tap to search" against the white page; on focus it turns white with a
+         * navy ring so it is obvious where the typing is going. minHeight, not
+         * height — Sinhala glyphs clip in a fixed box (mobile/CLAUDE.md §4).
+         */
+        'w-full min-h-[44px] flex-row items-center gap-2 rounded-full border py-1 pl-1 pr-2',
+        // `bg-muted/60`, not full `bg-muted`: on the full tint the gray
+        // placeholder falls just under WCAG AA (4.3:1); at 60% it clears 4.5:1.
+        focused ? 'border-primary bg-card' : 'border-border bg-muted/60',
       )}
     >
-      <Search size={18} color={focused ? colors.primary : colors['muted-foreground']} />
+      {/* Decorative — the field's own accessibilityLabel names it. */}
+      <View
+        className={cn(
+          'h-8 w-8 items-center justify-center rounded-full',
+          focused ? 'bg-primary' : 'bg-card',
+        )}
+        pointerEvents="none"
+      >
+        <Search
+          size={15}
+          color={focused ? colors['primary-foreground'] : colors.primary}
+          strokeWidth={2.25}
+        />
+      </View>
 
       <TextInput
         ref={ref}
@@ -71,7 +91,12 @@ export const SearchField = forwardRef<TextInput, SearchFieldProps>(function Sear
           setFocused(false);
           onBlur?.(event);
         }}
-        className="flex-1 py-2.5 text-[15px] leading-6 text-foreground"
+        // A `TextInput` renders its own text, outside `Text`, so it does not get
+        // the Poppins translation there — the face is set here directly. Regular
+        // weight, and no `font-*` class, for the Android fallback reason in
+        // `fonts` (shared/src/theme/tokens.ts).
+        style={{ fontFamily: fonts.poppins[400] }}
+        className="flex-1 py-1.5 text-[13px] leading-5 text-foreground"
         {...props}
       />
 
@@ -84,9 +109,12 @@ export const SearchField = forwardRef<TextInput, SearchFieldProps>(function Sear
             onChangeText('');
             onClear?.();
           }}
-          className="h-7 w-7 items-center justify-center rounded-full bg-muted active:opacity-70"
+          className={cn(
+            'h-6 w-6 items-center justify-center rounded-full active:opacity-70',
+            focused ? 'bg-muted' : 'bg-card',
+          )}
         >
-          <X size={14} color={colors['muted-foreground']} />
+          <X size={13} color={colors['muted-foreground']} />
         </Pressable>
       )}
     </View>

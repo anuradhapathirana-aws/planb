@@ -7,12 +7,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { StudentServiceSummary } from '@shared/types/studentService';
 import { colors } from '@shared/theme/tokens';
-import { ServiceGridCard } from '@/components/shared/ServiceGridCard';
+import { ServiceListRow } from '@/components/shared/ServiceListRow';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { SearchField } from '@/components/ui/SearchField';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Text } from '@/components/ui/Text';
-import { useServiceCatalogue } from '@/features/services/useServices';
+import { useServiceCatalogue, useServicePurchases } from '@/features/services/useServices';
 
 /**
  * All Services — everything Plan B offers.
@@ -22,42 +22,62 @@ import { useServiceCatalogue } from '@/features/services/useServices';
  * has it got to?", so the catalogue needed a home of its own rather than a
  * toggle a student has to find before either question can be answered.
  *
- * Tiles, not the rows the tab uses: nothing here has delivery progress, so the
- * right rail a status track would occupy is better spent on artwork.
+ * A single-column list, like the checklist: names scan down one column, and a
+ * row fits a longer service name than half a screen's tile could.
  *
  * No category chips, unlike the courses sibling — services have no categories.
  * Search is client-side because `/student/services` takes no search parameter
  * and the whole (short) catalogue is already in hand; a course search hits the
  * server only because it has to match topic titles, which have no equivalent
  * here.
+ *
+ * Services the student has already bought are left out, as All Courses leaves
+ * out enrolled courses: those live on My Services, and listing them here too
+ * made the catalogue read as "things to buy" with half of them already bought.
+ * A cancelled purchase does not count — nothing was delivered, so the student
+ * may well want it again. Filtered here rather than on the server because the
+ * catalogue only flags *open* purchases, while the purchases list is already
+ * cached for the My Services tab.
  */
 export default function BrowseServicesScreen() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const catalogue = useServiceCatalogue();
+  const purchases = useServicePurchases();
   const [query, setQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await catalogue.refetch();
+    await Promise.all([catalogue.refetch(), purchases.refetch()]);
     setRefreshing(false);
-  }, [catalogue]);
+  }, [catalogue, purchases]);
+
+  const boughtIds = useMemo(
+    () =>
+      new Set(
+        (purchases.data?.data ?? [])
+          .filter((purchase) => purchase.status !== 'cancelled' && purchase.service)
+          .map((purchase) => purchase.service!.id),
+      ),
+    [purchases.data],
+  );
+
+  // Hides nothing if the purchases list failed: showing a service twice beats
+  // showing a student an empty catalogue over a network hiccup.
+  const available = useMemo(
+    () => (catalogue.data?.data ?? []).filter((service) => !boughtIds.has(service.id)),
+    [catalogue.data, boughtIds],
+  );
 
   const results = useMemo(() => {
-    const services = catalogue.data?.data ?? [];
+    const services = available;
     const term = query.trim().toLowerCase();
 
     if (term === '') return services;
 
-    // The summary too, not just the name: "CV" should find "Professional
-    // rewrite", whose name says nothing about a CV.
-    return services.filter(
-      (service) =>
-        service.name.toLowerCase().includes(term) ||
-        (service.summary ?? '').toLowerCase().includes(term),
-    );
-  }, [catalogue.data, query]);
+    return services.filter((service) => service.name.toLowerCase().includes(term));
+  }, [available, query]);
 
   const openService = (service: StudentServiceSummary) =>
     router.push({ pathname: '/service/[id]', params: { id: service.id } });
@@ -79,8 +99,12 @@ export default function BrowseServicesScreen() {
           </Pressable>
 
           <View className="flex-1">
-            <Text variant="display">{t('browseServices.title')}</Text>
-            <Text variant="caption">{t('services.subtitle')}</Text>
+            <Text variant="none" className="text-[20px] font-bold leading-8 text-primary">
+              {t('browseServices.title')}
+            </Text>
+            <Text variant="none" className="text-[12px] leading-5 text-muted-foreground">
+              {t('browseServices.subtitle')}
+            </Text>
           </View>
         </View>
 
@@ -93,30 +117,25 @@ export default function BrowseServicesScreen() {
         />
       </View>
 
-      {catalogue.isLoading ? (
-        <View className="gap-2.5 px-4">
-          <View className="flex-row gap-2.5">
-            <Skeleton className="h-[190px] flex-1 rounded-xl" />
-            <Skeleton className="h-[190px] flex-1 rounded-xl" />
-          </View>
-          <View className="flex-row gap-2.5">
-            <Skeleton className="h-[190px] flex-1 rounded-xl" />
-            <Skeleton className="h-[190px] flex-1 rounded-xl" />
-          </View>
+      {/* Both lists, or a bought service would flash in and then vanish. */}
+      {catalogue.isLoading || purchases.isLoading ? (
+        <View className="gap-2 px-4">
+          {[0, 1, 2, 3, 4].map((key) => (
+            <Skeleton key={key} className="h-[80px] w-full rounded-xl" />
+          ))}
         </View>
       ) : (
         <FlatList
           data={results}
           keyExtractor={(service) => String(service.id)}
-          numColumns={2}
-          columnWrapperStyle={{ gap: 10 }}
           renderItem={({ item }) => (
-            <View className="w-[47%] grow">
-              <ServiceGridCard service={item} onPress={() => openService(item)} />
-            </View>
+            <ServiceListRow service={item} onPress={() => openService(item)} />
           )}
-          contentContainerClassName="px-4 gap-2.5"
-          contentContainerStyle={{ paddingBottom: insets.bottom + 16, flexGrow: 1 }}
+          contentContainerClassName="px-4 gap-2"
+          contentContainerStyle={{
+            paddingBottom: insets.bottom + 16,
+            flexGrow: 1,
+          }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           refreshControl={
@@ -141,6 +160,16 @@ export default function BrowseServicesScreen() {
                 icon={SearchX}
                 title={t('browseServices.noMatchTitle')}
                 body={t('browseServices.noMatchBody')}
+              />
+            ) : available.length === 0 && (catalogue.data?.data.length ?? 0) > 0 ? (
+              // Not an empty catalogue — the student owns all of it. Saying so
+              // stops "no services" reading as Plan B having withdrawn them.
+              <EmptyState
+                icon={Sparkles}
+                title={t('browseServices.allBoughtTitle')}
+                body={t('browseServices.allBoughtBody')}
+                actionLabel={t('services.myTitle')}
+                onAction={() => router.replace('/(tabs)/services')}
               />
             ) : (
               <EmptyState

@@ -31,12 +31,12 @@ class StudentServiceCatalogService
         return $this->baseQuery($student)
             ->when(
                 filled($filters['search'] ?? null),
-                fn (Builder $query) => $query->where(function (Builder $inner) use ($filters): void {
-                    // Escaped, and wrapped in its own closure so the OR below
-                    // cannot escape the `published()` filter around it.
-                    $term = '%'.addcslashes($filters['search'], '%_\\').'%';
-                    $inner->where('name', 'like', $term)->orWhere('summary', 'like', $term);
-                }),
+                fn (Builder $query) => $query->where(
+                    'name',
+                    'like',
+                    // Escaped: `%` and `_` typed by a student are literal characters.
+                    '%'.addcslashes($filters['search'], '%_\\').'%',
+                ),
             )
             ->orderBy('sort_order')
             ->orderBy('name')

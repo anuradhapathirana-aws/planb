@@ -6,6 +6,7 @@ namespace App\Services\Course;
 
 use App\Models\CourseCategory;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Collection;
 
 class CourseCategoryService
 {
@@ -39,6 +40,27 @@ class CourseCategoryService
     /**
      * @param  array{name: string, description?: ?string, sort_order?: ?int}  $data
      */
+    /**
+     * The categories a student sees on Home: every ACTIVE one, in the admin's
+     * sort order, including categories with no published courses yet.
+     *
+     * Empty categories are included on purpose — the admin decides what is on
+     * the row by switching a category on or off, not by whether a course happens
+     * to be published in it today. A student tapping one lands on All Courses'
+     * own "nothing in this category" state. Deactivating a category is how an
+     * admin takes it off the row.
+     *
+     * @return Collection<int, CourseCategory>
+     */
+    public function activeForStudents(): Collection
+    {
+        return CourseCategory::query()
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['id', 'name', 'icon']);
+    }
+
     public function create(array $data): CourseCategory
     {
         $data['sort_order'] ??= $this->nextSortOrder();

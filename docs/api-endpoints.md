@@ -76,9 +76,9 @@ Categories follow the same activate/deactivate-instead-of-delete pattern as indu
 | Method | Path | Auth / role | Notes |
 |---|---|---|---|
 | GET | `/admin/course-categories` | any admin role | Query: `search, is_active(1\|0), sort(name\|sort_order\|created_at), direction, per_page, page`. Paginated. Each row carries `programmes_count`. |
-| POST | `/admin/course-categories` | Super Admin, Content Manager | `{ name, description? }`. `sort_order` is assigned server-side (appended last). |
+| POST | `/admin/course-categories` | Super Admin, Content Manager | `{ name, description?, icon? }`. `icon` is one of `App\Enums\CourseCategoryIcon` or null (422 `Pick an icon from the list.` otherwise). `sort_order` is assigned server-side (appended last). |
 | GET | `/admin/course-categories/{category}` | any admin role | |
-| PUT | `/admin/course-categories/{category}` | Super Admin, Content Manager | `{ name, description? }`. |
+| PUT | `/admin/course-categories/{category}` | Super Admin, Content Manager | `{ name, description?, icon? }`. Sending `icon: null` clears a chosen icon. Every category row now carries `icon`. |
 | POST | `/admin/course-categories/{category}/activate` | Super Admin, Content Manager | |
 | POST | `/admin/course-categories/{category}/deactivate` | Super Admin, Content Manager | No destroy route — a DELETE returns 405. |
 
@@ -218,8 +218,14 @@ Notes:
 
 | Method | Path | Notes |
 |---|---|---|
+| GET | `/student/course-categories` | Home's "Top Categories" row: **every active category**, in admin `sort_order` then name, **including categories with no published courses**. `{ data: [{ id, name, icon }] }` via `StudentCourseCategoryResource`, none of the admin fields. `icon` is null when no admin picked one — the app guesses from the name. |
 | GET | `/student/courses` | Published programmes only, with a progress summary. Query: `search`, `per_page` (max 50), `page`. Paginated. |
 | GET | `/student/courses/{course}` | Full tree: `topics[].videos[]`, each with the student's own `progress` and `is_locked`, plus `paper` (or null). |
+| GET | `/student/wishlist` | The student's saved courses, **newest save first**, as the same rows `GET /student/courses` returns. Published only; not paginated. `{ data: [...] }`, empty array when nothing is saved. |
+| POST | `/student/courses/{course}/wishlist` | Save a course. Idempotent. `{ data: { course_id, is_wishlisted: true } }`. 404 for an unpublished course (published-only binding). Throttled 60/min. |
+| DELETE | `/student/courses/{course}/wishlist` | Unsave a course. Idempotent — removing one not saved is still 200. `{ data: { course_id, is_wishlisted: false } }`. Throttled 60/min. |
+
+Every course row on the student API — list, detail and wishlist — carries **`is_wishlisted`**: whether *this* student saved it. It gates nothing; it only fills the heart. Save and unsave are two verbs rather than a toggle so a retried request lands on the state asked for instead of flipping it back.
 | GET | `/student/lessons/{lesson}/stream` | `{ url, expires_at, progress }` — a signed link valid 30 minutes. |
 | POST | `/student/lessons/{lesson}/progress` | `{ position_seconds, watched_delta_seconds }` → the **server's** clamped view. Throttled 60/min. |
 
@@ -308,6 +314,20 @@ Attempt state on the paper summary: `attempts_used`, `attempts_remaining` (null 
 - Only submitted attempts count against `max_attempts`.
 - **The correct answers are revealed only when they can no longer help** — the student passed, or has no attempts left. Revealing them after a failed attempt would make unlimited retries meaningless.
 
+## Company Settings
+
+Settings > Bank Details and Settings > App Intro in the admin panel. One singleton record (`company_settings`), saved in two halves so each page submits only its own fields and each half has its own permission.
+
+| Method | Path | Auth / role | Notes |
+|---|---|---|---|
+| GET | `/admin/branding` | **public** | `{ logo_url }` for the admin sign-in page. Rate-limited 60/min. |
+| GET | `/admin/company-settings` | any admin role | Every field, plus `logo_url` and `updated_at`. |
+| PUT | `/admin/company-settings/bank-details` | **Super Admin** | `{ bank_transfer_enabled, bank_name, bank_account_name, bank_account_number, bank_branch, bank_notes }`. Switching bank transfer on needs name, account name and number (422 otherwise). |
+| PUT | `/admin/company-settings/app-intro` | Super Admin, Content Manager | `{ intro_is_enabled, intro_greeting_en, intro_greeting_si, intro_animation }`. English greeting required while the intro is on. Animation is `fade`, `zoom`, `slide_up` or `pulse`. |
+| POST | `/admin/company-settings/logo` | Super Admin, Content Manager | `multipart/form-data`, field `logo`. PNG/JPG/WebP up to 2 MB, re-encoded to PNG within 512×512. |
+| DELETE | `/admin/company-settings/logo` | Super Admin, Content Manager | Clears the logo; clients fall back to the bundled one. |
+| GET | `/student/app-config` | **public** | `{ logo_url, intro: { enabled, greeting_en, greeting_si, animation }, updated_at }`. Read on launch, before sign-in. Branding only, never bank details. Rate-limited 60/min. |
+
 ## Home Banner
 
 The promo across the top of the student app's Home screen. A **singleton**, so there is no index and no id in any path — the same shape as the checklist phases, which are also edited as one document rather than browsed as a collection.
@@ -362,7 +382,7 @@ A service always costs money — `price_cents` must be **above zero**. There is 
 | Method | Path | Auth / role | Notes |
 |---|---|---|---|
 | GET | `/admin/services` | any admin role | Query: `search, status(draft\|published), sort(name\|sort_order\|price_cents\|created_at), direction, per_page, page`. Carries `purchases_count` and `open_purchases_count`. |
-| POST | `/admin/services` | Super Admin, Content Manager | `{ name, summary?, description?, price_cents, currency?, delivery_time?, status? }`. `description` is rich-text HTML, sanitized server-side on write. Name must be unique among non-deleted services. |
+| POST | `/admin/services` | Super Admin, Content Manager | `{ name, icon?, description?, price_cents, currency?, delivery_time?, status? }`. `description` is rich-text HTML, sanitized server-side on write. Name must be unique among non-deleted services. |
 | GET | `/admin/services/{service}` | any admin role | |
 | PUT | `/admin/services/{service}` | Super Admin, Content Manager | |
 | DELETE | `/admin/services/{service}` | **Super Admin** | Soft delete. Purchases already paid for stay in the queue and must still be delivered. |
@@ -386,7 +406,7 @@ Support Agent, not Content Manager, works the queue: authoring a service is cont
 
 | Method | Path | Auth | Notes |
 |---|---|---|---|
-| GET | `/student/services` | student | Published services only. Query: `search, per_page` (max 50). Each row carries `has_open_purchase` / `open_purchase_status` — **presentation**, so the app can show "In progress" instead of a Buy button that would 422. |
+| GET | `/student/services` | student | Published services only. Query: `search` (matches the name), `per_page` (max 50). Each row carries `has_open_purchase` / `open_purchase_status` — **presentation**, so the app can show "In progress" instead of a Buy button that would 422. |
 | GET | `/student/services/{service}` | student | Adds the long `description` and `latest_purchase` — **this student's own** most recent purchase, or null, so the app's delivery tracker needs no second request. A draft or deleted service **404s**: the published scope is the authorization, not a UI filter. |
 | POST | `/student/services/{service}/purchase` | student | Opens (or reuses) an order and returns `{ status: "payment_required", order }`. The order is then paid through the ordinary `/student/orders/{order}/card` or `/bank-transfer` endpoints. **Refused with 422 while an earlier purchase of the same service is still `pending` or `in_progress`** — a student may buy a service again, but only once the last one is finished. Rate-limited 20/min. |
 | GET | `/student/service-purchases` | student | "My services". Scoped to the caller; never carries `admin_note` or `handled_by`. The service is loaded `withTrashed()` — one the admin has since withdrawn still appears, because it was paid for and the work is still owed — and `service.is_available` says whether the catalogue entry can still be opened, so a client never links into a 404. |
@@ -410,10 +430,10 @@ Card details never reach this application: every gateway driver hands the studen
 |---|---|---|---|
 | POST | `/student/courses/{course}/enrol` | student | The single entry point. A **free** course (`price_cents = 0`) enrols immediately and returns `{ status: "enrolled", order: null }`. A **paid** one opens (or reuses) an order and returns `{ status: "payment_required", order }`. Already enrolled returns `status: "enrolled"` rather than charging again. Rate-limited 20/min. |
 | GET | `/student/orders` | student | Transaction history (FR-MOB-036). Paginated, scoped to the caller. |
-| GET | `/student/orders/{order}` | student | Another student's order 404s. Carries `item: { type, id }` — a public token for what was bought (`"course"` today), so the app can open it after payment without ever seeing the backing model's class name. |
+| GET | `/student/orders/{order}` | student | Another student's order 404s. Carries `item: { type, id }` — a public token for what was bought (`"course"` today), so the app can open it after payment without ever seeing the backing model's class name. Also carries `item.thumbnail_url` (the product's image, or null) for the checkout header — this endpoint only; the `/student/orders` list omits the key rather than loading one product per row. |
 | POST | `/student/orders/{order}/card` | student | Returns `{ payment_id, order, checkout: { gateway, checkout_url, fields, completed_immediately, redirect_url } }`. **`redirect_url` is the only field a client should act on** — always a plain URL to open, including for gateways whose real checkout is a signed form POST (those are bridged, below). `checkout_url` + `fields` remain for a web client that can post a form itself. **The order stays `pending`** — only the webhook settles it. Refused while a bank transfer for the same order is awaiting verification, so a student cannot pay twice. |
-| POST | `/student/orders/{order}/bank-transfer` | student | Multipart `reference_number` + `receipt` (JPG/PNG/PDF, max 5MB). Moves the order to `awaiting_verification`, **not** `paid`. Only one submission may sit in the queue at a time. |
-| GET | `/student/payment-methods/bank-transfer` | student | Account details to pay into, and the receipt size cap. Not secret. |
+| POST | `/student/orders/{order}/bank-transfer` | student | Multipart `reference_number` (**digits only, 4–30 long**, leading zeros kept — `digits_between:4,30`) + `receipt` (JPG/PNG/PDF, checked by real content and extension, max 5MB). Moves the order to `awaiting_verification`, **not** `paid`. Only one submission may sit in the queue at a time. |
+| GET | `/student/payment-methods/bank-transfer` | student | `{ enabled, account: { bank_name, account_name, account_number, branch, notes }, max_receipt_mb }`. Set by an admin under Settings > Bank Details. Not secret. |
 
 ### Gateway callbacks
 

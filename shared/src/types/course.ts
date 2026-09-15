@@ -2,10 +2,76 @@ export type CourseStatus = 'draft' | 'published';
 
 export type VideoProvider = 'upload' | 'external';
 
+/**
+ * The glyph a course category shows on the student app's Home row. Mirrors
+ * `backend/app/Enums/CourseCategoryIcon.php`, which is the validation authority.
+ *
+ * **Meanings, not icon names**, like `ServiceIconName`: each client maps them to
+ * whatever its icon set calls the picture. Adding one means editing the enum,
+ * this union and `COURSE_CATEGORY_ICONS`, and the two exhaustive client maps —
+ * `web/src/features/admin/courseCategories/courseCategoryIcons.ts` and
+ * `mobile/src/features/home/categoryIcons.ts` — which fail to compile on a miss.
+ */
+export type CourseCategoryIconName =
+  | 'migration'
+  | 'language'
+  | 'career'
+  | 'interview'
+  | 'writing'
+  | 'legal'
+  | 'culture'
+  | 'finance'
+  | 'healthcare'
+  | 'hospitality'
+  | 'construction'
+  | 'technical'
+  | 'digital'
+  | 'social_media'
+  | 'design'
+  | 'sales'
+  | 'skills'
+  | 'education'
+  | 'certification'
+  | 'getting_started'
+  | 'other';
+
+/**
+ * The admin picker's options, in the order it lists them. English only: the
+ * admin panel is English, and a student never sees these words — only the glyph.
+ */
+export const COURSE_CATEGORY_ICONS: ReadonlyArray<{
+  value: CourseCategoryIconName;
+  label: string;
+}> = [
+  { value: 'migration', label: 'Migration' },
+  { value: 'language', label: 'Language' },
+  { value: 'career', label: 'Career & jobs' },
+  { value: 'interview', label: 'Interview' },
+  { value: 'writing', label: 'CV & writing' },
+  { value: 'legal', label: 'Legal & rights' },
+  { value: 'culture', label: 'UAE life & culture' },
+  { value: 'finance', label: 'Finance' },
+  { value: 'healthcare', label: 'Healthcare' },
+  { value: 'hospitality', label: 'Hospitality' },
+  { value: 'construction', label: 'Construction' },
+  { value: 'technical', label: 'Technical trades' },
+  { value: 'digital', label: 'IT & digital' },
+  { value: 'social_media', label: 'Social media' },
+  { value: 'design', label: 'Design' },
+  { value: 'sales', label: 'Sales & service' },
+  { value: 'skills', label: 'Skills & training' },
+  { value: 'education', label: 'Education' },
+  { value: 'certification', label: 'Exams & certificates' },
+  { value: 'getting_started', label: 'Getting started' },
+  { value: 'other', label: 'Other' },
+];
+
 export interface CourseCategory {
   id: number;
   name: string;
   description: string | null;
+  /** Null when no admin picked one; the app then guesses a glyph from the name. */
+  icon: CourseCategoryIconName | null;
   is_active: boolean;
   sort_order: number;
   /** Only present on list responses. */
@@ -17,6 +83,7 @@ export interface CourseCategory {
 export interface CourseCategoryFormValues {
   name: string;
   description?: string | null;
+  icon?: CourseCategoryIconName | null;
 }
 
 export interface CourseCategoryListFilters {

@@ -21,7 +21,12 @@ class SubmitBankTransferRequest extends FormRequest
         $maxKb = (int) config('payments.bank_transfer.max_receipt_mb') * 1024;
 
         return [
-            'reference_number' => ['required', 'string', 'max:100'],
+            /*
+             * Digits only, 4-30 long. `digits_between` checks the characters and
+             * the length without casting to a number, so a reference with leading
+             * zeros ("0048712") is kept exactly as the bank printed it.
+             */
+            'reference_number' => ['required', 'string', 'digits_between:4,30'],
             'receipt' => [
                 'required',
                 'file',
@@ -36,6 +41,7 @@ class SubmitBankTransferRequest extends FormRequest
     {
         return [
             'reference_number.required' => 'Enter the transfer reference number from your bank.',
+            'reference_number.digits_between' => 'The reference number must be 4 to 30 digits, with no letters.',
             'receipt.required' => 'Attach a photo or PDF of your transfer slip.',
             'receipt.mimetypes' => 'Attach a JPG, PNG or PDF file.',
             'receipt.mimes' => 'Attach a JPG, PNG or PDF file.',

@@ -17,11 +17,6 @@ const ICON_VALUES = SERVICE_ICONS.map((icon) => icon.value) as [
 
 export const serviceFormSchema = z.object({
   name: z.string().min(1, 'Enter a service name.').max(255),
-  summary: z
-    .string()
-    .max(300, 'Keep the summary under 300 characters.')
-    .optional()
-    .or(z.literal('')),
   /*
    * Optional: a service with no icon gets the app's fallback glyph rather than a
    * hole, so this is never worth blocking a save over. Nullable rather than
@@ -53,7 +48,6 @@ export type ServiceFormSchema = z.infer<typeof serviceFormSchema>;
 export function blankService(): ServiceFormSchema {
   return {
     name: '',
-    summary: '',
     icon: null,
     description: '',
     price: '',

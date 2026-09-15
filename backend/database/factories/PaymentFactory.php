@@ -34,7 +34,7 @@ class PaymentFactory extends Factory
         return $this->state(fn () => [
             'method' => PaymentMethod::BankTransfer,
             'gateway' => null,
-            'reference_number' => 'TRX-'.$this->faker->numerify('########'),
+            'reference_number' => $this->faker->numerify('########'),
         ]);
     }
 }

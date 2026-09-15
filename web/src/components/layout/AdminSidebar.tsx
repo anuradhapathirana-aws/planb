@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useAuthStore } from '@/stores/authStore';
 import { useLogout } from '@/hooks/useAuth';
+import { useBrandLogo } from '@/hooks/useBranding';
 import { initials } from '@/lib/formatters';
 
 interface AdminSidebarProps {
@@ -24,11 +25,12 @@ export function AdminSidebar({ onNavigate }: AdminSidebarProps) {
   const location = useLocation();
   const user = useAuthStore((s) => s.user);
   const logout = useLogout();
+  const logoUrl = useBrandLogo();
 
   return (
     <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
       <div className="flex items-center gap-3 px-5 py-5">
-        <img src="/logo.png" alt="Plan B International" className="size-10 rounded-full object-cover" />
+        <img src={logoUrl} alt="Plan B International" className="size-10 rounded-full object-cover" />
         <div className="leading-tight">
           <p className="font-semibold text-white">Plan B</p>
           <p className="text-xs text-sidebar-muted">Admin Panel</p>

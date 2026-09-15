@@ -228,7 +228,7 @@ class CheckoutHandoffTest extends TestCase
         $orderId = $this->openOrder();
 
         $this->postJson("/api/v1/student/orders/{$orderId}/bank-transfer", [
-            'reference_number' => 'BOC-1234',
+            'reference_number' => '12340001',
             'receipt' => UploadedFile::fake()->image('slip.jpg'),
         ])->assertCreated();
 
@@ -258,6 +258,22 @@ class CheckoutHandoffTest extends TestCase
 
         // The class name is our structure, not the app's business.
         $this->assertStringNotContainsString('CourseProgramme', $response->getContent());
+    }
+
+    public function test_the_checkout_order_carries_the_product_artwork_but_the_history_list_does_not(): void
+    {
+        $orderId = $this->openOrder();
+
+        // No image uploaded: the key is present for the checkout, and null.
+        $this->getJson("/api/v1/student/orders/{$orderId}")
+            ->assertOk()
+            ->assertJsonPath('data.item.thumbnail_url', null)
+            ->assertJsonStructure(['data' => ['item' => ['thumbnail_url']]]);
+
+        // The list never eager-loads products, so it must not lazy-load one per row.
+        $this->getJson('/api/v1/student/orders')
+            ->assertOk()
+            ->assertJsonMissingPath('data.0.item.thumbnail_url');
     }
 
     /*

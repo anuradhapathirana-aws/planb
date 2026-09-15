@@ -30,6 +30,7 @@ class StudentCourseService
     public function __construct(
         private readonly CourseProgressService $progress,
         private readonly EnrolmentService $enrolments,
+        private readonly CourseWishlistService $wishlist,
     ) {}
 
     /** Published programmes, each with a progress summary. */
@@ -37,18 +38,7 @@ class StudentCourseService
     {
         $perPage = min(max((int) ($filters['per_page'] ?? 20), 1), 50);
 
-        $programmes = CourseProgramme::query()
-            ->where('status', CourseStatus::Published)
-            ->withCount(['topics', 'videos'])
-            /*
-             * Total run time, summed in the same query rather than by loading
-             * every lesson row. `duration_seconds` is nullable, so an
-             * unpublished-quality course can sum to null — the resource coerces
-             * that to 0 and the UI hides the chip rather than showing "0m".
-             */
-            ->withSum('videos as total_duration_seconds', 'duration_seconds')
-            // `media` avoids an N+1 when each row renders its thumbnail URL.
-            ->with(['category', 'media', 'paper:id,course_programme_id'])
+        $programmes = $this->summaryQuery()
             ->when(
                 filled($filters['search'] ?? null),
                 fn ($query) => $this->applySearch($query, (string) $filters['search']),
@@ -59,12 +49,74 @@ class StudentCourseService
 
         $this->attachProgressSummaries($student, $programmes->getCollection());
         $this->attachAccess($student, $programmes->getCollection());
+        $this->attachWishlist($student, $programmes->getCollection());
 
         if (filled($filters['search'] ?? null)) {
             $this->attachMatchedTopics($programmes->getCollection(), (string) $filters['search']);
         }
 
         return $programmes;
+    }
+
+    /**
+     * The courses this student has saved, as the same rows the course list
+     * returns, newest save first.
+     *
+     * Published only — a saved course that is later unpublished keeps its
+     * wishlist row but drops out of here, exactly as it drops out of the
+     * catalogue. Not paginated: a wishlist is a handful of courses a student
+     * picked by hand, and the whole catalogue is already capped at 50 a page.
+     *
+     * @return Collection<int, CourseProgramme>
+     */
+    public function wishlist(Student $student): Collection
+    {
+        $ids = $this->wishlist->programmeIds($student);
+
+        if ($ids === []) {
+            return new Collection;
+        }
+
+        $order = array_flip($ids);
+
+        $programmes = $this->summaryQuery()
+            ->whereIn('id', $ids)
+            ->get()
+            // The list's own order — when each was saved — not the catalogue's.
+            ->sortBy(fn (CourseProgramme $programme): int => $order[$programme->id])
+            ->values();
+
+        $this->attachProgressSummaries($student, $programmes);
+        $this->attachAccess($student, $programmes);
+
+        foreach ($programmes as $programme) {
+            $programme->setAttribute('is_wishlisted', true);
+        }
+
+        return $programmes;
+    }
+
+    /**
+     * Published programmes with everything a summary row renders loaded in the
+     * same query. Shared by the catalogue and the wishlist so the two return
+     * identical rows — the app draws both with one tile.
+     *
+     * @return Builder<CourseProgramme>
+     */
+    private function summaryQuery(): Builder
+    {
+        return CourseProgramme::query()
+            ->where('status', CourseStatus::Published)
+            ->withCount(['topics', 'videos'])
+            /*
+             * Total run time, summed in the same query rather than by loading
+             * every lesson row. `duration_seconds` is nullable, so an
+             * unpublished-quality course can sum to null — the resource coerces
+             * that to 0 and the UI hides the chip rather than showing "0m".
+             */
+            ->withSum('videos as total_duration_seconds', 'duration_seconds')
+            // `media` avoids an N+1 when each row renders its thumbnail URL.
+            ->with(['category', 'media', 'paper:id,course_programme_id']);
     }
 
     /**
@@ -183,6 +235,7 @@ class StudentCourseService
 
         $this->attachProgressSummaries($student, collect([$programme]));
         $this->attachAccess($student, collect([$programme]));
+        $this->attachWishlist($student, collect([$programme]));
 
         /*
          * A student browsing a course they have not bought still sees the syllabus
@@ -251,6 +304,21 @@ class StudentCourseService
 
         foreach ($programmes as $programme) {
             $programme->setAttribute('is_enrolled', in_array($programme->id, $enrolledIds, true));
+        }
+    }
+
+    /**
+     * Sets `is_wishlisted` on each programme — whether THIS student has saved it.
+     * One query for the whole page, like `attachAccess`.
+     *
+     * @param  Collection<int, CourseProgramme>  $programmes
+     */
+    private function attachWishlist(Student $student, Collection $programmes): void
+    {
+        $savedIds = $this->wishlist->programmeIds($student);
+
+        foreach ($programmes as $programme) {
+            $programme->setAttribute('is_wishlisted', in_array($programme->id, $savedIds, true));
         }
     }
 

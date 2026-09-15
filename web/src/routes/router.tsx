@@ -53,6 +53,12 @@ const HomeBannerFormPage = lazy(() =>
     default: m.HomeBannerFormPage,
   })),
 );
+const BankDetailsPage = lazy(() =>
+  import('@/features/admin/settings/pages/BankDetailsPage').then((m) => ({ default: m.BankDetailsPage })),
+);
+const AppIntroPage = lazy(() =>
+  import('@/features/admin/settings/pages/AppIntroPage').then((m) => ({ default: m.AppIntroPage })),
+);
 const OrdersListPage = lazy(() =>
   import('@/features/admin/orders/pages/OrdersListPage').then((m) => ({ default: m.OrdersListPage })),
 );
@@ -120,6 +126,8 @@ export const router = createBrowserRouter([
       { path: 'mobile/home-banners', element: page(<HomeBannersPage />) },
       { path: 'mobile/home-banners/new', element: page(<HomeBannerFormPage />) },
       { path: 'mobile/home-banners/:id/edit', element: page(<HomeBannerFormPage />) },
+      { path: 'settings/bank-details', element: page(<BankDetailsPage />) },
+      { path: 'settings/app-intro', element: page(<AppIntroPage />) },
     ],
   },
   { path: '*', element: <Navigate to={paths.admin.dashboard} replace /> },

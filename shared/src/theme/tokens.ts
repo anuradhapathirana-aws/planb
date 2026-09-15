@@ -65,7 +65,27 @@ export const MIN_TOUCH_TARGET = 44;
  */
 export const MIN_LINE_HEIGHT_RATIO = 1.6;
 
+/**
+ * The app's typeface: Poppins, one registered family per weight.
+ *
+ * **A custom font on React Native is chosen by its exact registered name, weight
+ * included** — `Poppins_600SemiBold`, not `Poppins` plus `fontWeight: 600`. On
+ * Android a `fontWeight` beside a custom family sends it looking for a weighted
+ * variant that was never registered, and it silently falls back to the system
+ * font. So weight is expressed by picking the family, and `mobile`'s `Text`
+ * does that translation for every `font-*` class — see `resolveFontFamily`.
+ *
+ * Only the four weights the app uses are loaded. A weight not listed here
+ * resolves to the nearest one that is.
+ */
 export const fonts = {
-  sans: 'Inter',
+  poppins: {
+    400: 'Poppins_400Regular',
+    500: 'Poppins_500Medium',
+    600: 'Poppins_600SemiBold',
+    700: 'Poppins_700Bold',
+  },
   sinhala: 'NotoSansSinhala',
 } as const;
+
+export type FontWeight = keyof typeof fonts.poppins;

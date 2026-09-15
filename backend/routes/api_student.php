@@ -3,8 +3,10 @@
 declare(strict_types=1);
 
 use App\Enums\CourseStatus;
+use App\Http\Controllers\Student\AppConfigController;
 use App\Http\Controllers\Student\AuthController;
 use App\Http\Controllers\Student\ChecklistController;
+use App\Http\Controllers\Student\CourseCategoryController;
 use App\Http\Controllers\Student\CourseController;
 use App\Http\Controllers\Student\EnrolmentController;
 use App\Http\Controllers\Student\HomeController;
@@ -14,6 +16,7 @@ use App\Http\Controllers\Student\PaymentController;
 use App\Http\Controllers\Student\ProfileController;
 use App\Http\Controllers\Student\ReferenceDataController;
 use App\Http\Controllers\Student\ServiceController;
+use App\Http\Controllers\Student\WishlistController;
 use App\Models\CourseProgramme;
 use App\Models\CourseVideo;
 use Illuminate\Support\Facades\Route;
@@ -63,6 +66,13 @@ Route::post('auth/google', [AuthController::class, 'google'])
     ->middleware('throttle:student-login-verify');
 
 /*
+ * Logo and intro, read before the app knows whether anyone is signed in — the
+ * intro plays ahead of Sign in too. Branding only; bank details stay behind
+ * the authenticated payment endpoint below.
+ */
+Route::get('app-config', [AppConfigController::class, 'show'])->middleware('throttle:60,1');
+
+/*
  * `student.actor` and `student.active` are not redundant with `auth:student`:
  * the first keeps an admin session out (Sanctum's stateful branch reads one
  * global guard list), the second kills a token the moment its student is
@@ -102,9 +112,29 @@ Route::middleware(['auth:student', 'student.actor', 'student.active'])->group(fu
      */
     Route::get('learner-avatars', LearnerController::class);
 
+    /*
+     * Home's "Top Categories" row: every active category, in admin order, with
+     * its icon — including categories with no published courses yet. Not derived
+     * from the course list, because an empty category would then never appear.
+     */
+    Route::get('course-categories', [CourseCategoryController::class, 'index']);
+
     // Courses
     Route::get('courses', [CourseController::class, 'index']);
     Route::get('courses/{course}', [CourseController::class, 'show']);
+
+    /*
+     * The wishlist — the heart on a course tile. Add and remove are separate
+     * verbs rather than one toggle, and both are idempotent, so a retried
+     * request lands on the state the student asked for instead of flipping it
+     * back. `{course}` goes through the published-only binding above, so only a
+     * course a student can see can be saved. Throttled for a burst of taps.
+     */
+    Route::get('wishlist', [WishlistController::class, 'index']);
+    Route::post('courses/{course}/wishlist', [WishlistController::class, 'store'])
+        ->middleware('throttle:60,1');
+    Route::delete('courses/{course}/wishlist', [WishlistController::class, 'destroy'])
+        ->middleware('throttle:60,1');
 
     /*
      * Kept flat rather than nested three deep under the course (CLAUDE.md §6

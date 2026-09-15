@@ -39,9 +39,13 @@ If a pattern is used by more than one feature it belongs in `components/shared/`
 - **The page ground is forked too: white on the phone.** `mobile/tailwind.config.js` points
   `background` at `colors.card` (#ffffff); the shared `background` token stays slate for the admin
   panel. White-on-white only works because every card, input and field draws a `border-border`
-  hairline — give any new surface one. `TabBar` reads the ground in JS and must stay on `colors.card`.
+  hairline — give any new surface one.
 - **`rounded-full` is never part of that scale.** Avatars, pills, the progress ring and the checkbox
   are circles by intent — rescaling radii must leave them alone.
+- **The tab bar floats over the tab screens; it does not take space from them.** Every scrolling
+  list or `ScrollView` in `app/(tabs)/` ends with `useTabBarClearance()` of bottom padding (from
+  `@/components/shared/TabBar`), or its last row sits under the bar with no way to scroll it clear.
+  A new tab screen, or a new list on an existing one, must do the same.
 - **Every user-facing string goes through `t('key')`.** EN + SI live in `@shared/i18n`.
 - **Server state is TanStack Query. Client state is Zustand.** No `useEffect + fetch`.
 - **Forms are React Hook Form + Zod**, schema imported from `@shared/schemas`.

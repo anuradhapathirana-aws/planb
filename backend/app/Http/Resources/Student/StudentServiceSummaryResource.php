@@ -10,8 +10,8 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * A service as a catalogue row: the short summary only, never the long
- * description, so the list stays one small response on a slow connection.
+ * A service as a catalogue row: never the long description, so the list stays
+ * one small response on a slow connection.
  *
  * @mixin Service
  */
@@ -22,7 +22,6 @@ class StudentServiceSummaryResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
-            'summary' => $this->summary,
 
             /*
              * The glyph the Home grid draws. Null is a normal answer — every

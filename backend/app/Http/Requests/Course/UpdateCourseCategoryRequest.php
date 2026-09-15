@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Course;
 
+use App\Enums\CourseCategoryIcon;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -24,6 +25,11 @@ class UpdateCourseCategoryRequest extends FormRequest
                 Rule::unique('course_categories', 'name')->ignore($this->route('category')),
             ],
             'description' => ['nullable', 'string', 'max:500'],
+            /*
+             * The Home tile's glyph. Optional: left empty, the app guesses one
+             * from the category name, so existing categories need no backfill.
+             */
+            'icon' => ['nullable', Rule::in(CourseCategoryIcon::values())],
         ];
     }
 
@@ -32,6 +38,7 @@ class UpdateCourseCategoryRequest extends FormRequest
         return [
             'name.required' => 'Enter a category name.',
             'name.unique' => 'A category with this name already exists.',
+            'icon.in' => 'Pick an icon from the list.',
         ];
     }
 }

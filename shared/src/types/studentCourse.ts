@@ -1,5 +1,6 @@
 import type { ProgrammeProgress, VideoProgress } from './progress';
 import type { StudentPaperSummary } from './paper';
+import type { CourseCategoryIconName } from './course';
 
 /**
  * The course tree as a student sees it. Separate from the admin `course.ts`
@@ -30,6 +31,18 @@ export interface StudentCourseTopic {
   is_complete: boolean;
 }
 
+/**
+ * A course category as Home's "Top Categories" row draws it
+ * (`GET /student/course-categories`): every active category, in admin order,
+ * including ones with no published courses yet.
+ */
+export interface StudentCourseCategory {
+  id: number;
+  name: string;
+  /** Null when no admin picked one; the app guesses a glyph from the name. */
+  icon: CourseCategoryIconName | null;
+}
+
 /** List-row shape — no topics, so the courses list stays one small response. */
 export interface StudentCourseSummary {
   id: number;
@@ -49,6 +62,11 @@ export interface StudentCourseSummary {
    * enforced on the endpoint (root CLAUDE.md, Payments & Purchasables).
    */
   is_enrolled: boolean;
+  /**
+   * Whether THIS student has saved the course to their wishlist. Unlike
+   * `is_enrolled` it gates nothing — it only decides whether the heart is filled.
+   */
+  is_wishlisted: boolean;
   topics_count: number;
   videos_count: number;
   /**

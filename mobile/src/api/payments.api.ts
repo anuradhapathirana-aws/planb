@@ -1,3 +1,4 @@
+import type { ReceiptMimeType } from '@shared/schemas/bankTransfer';
 import type { ApiResource, PaginatedResponse } from '@shared/types/api';
 import type {
   BankTransferDetails,
@@ -71,9 +72,18 @@ export async function fetchBankTransferDetails(): Promise<BankTransferDetails> {
 
 export interface BankTransferSubmission {
   referenceNumber: string;
-  /** Local file URI from the image picker. */
+  /** Local file URI from the image or document picker. */
   receiptUri: string;
+  receiptMimeType: ReceiptMimeType;
+  /** The picker's own file name, when it gave one. */
+  receiptName?: string | null;
 }
+
+const RECEIPT_EXTENSION: Record<ReceiptMimeType, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'application/pdf': 'pdf',
+};
 
 /**
  * Submits proof of a bank transfer for manual verification (FR-MOB-033/034).
@@ -84,17 +94,21 @@ export interface BankTransferSubmission {
  */
 export async function submitBankTransfer(
   orderId: number,
-  { referenceNumber, receiptUri }: BankTransferSubmission,
+  { referenceNumber, receiptUri, receiptMimeType, receiptName }: BankTransferSubmission,
 ): Promise<{ payment: StudentPayment; order: StudentOrder }> {
   const form = new FormData();
-  const name = receiptUri.split('/').pop() ?? 'receipt.jpg';
-  const extension = name.split('.').pop()?.toLowerCase();
+  /*
+   * The extension always matches the declared type. The server checks both, and
+   * a document-picker URI often ends in an opaque id rather than ".pdf".
+   */
+  const extension = RECEIPT_EXTENSION[receiptMimeType];
+  const baseName = (receiptName ?? receiptUri.split('/').pop() ?? 'receipt').replace(/\.[^.]*$/, '');
 
   form.append('reference_number', referenceNumber);
   form.append('receipt', {
     uri: receiptUri,
-    name,
-    type: extension === 'png' ? 'image/png' : 'image/jpeg',
+    name: `${baseName || 'receipt'}.${extension}`,
+    type: receiptMimeType,
   } as unknown as Blob);
 
   const { data } = await apiClient.post<

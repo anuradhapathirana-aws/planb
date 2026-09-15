@@ -6,11 +6,13 @@ namespace App\Http\Controllers\Student;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Payment\SubmitBankTransferRequest;
+use App\Http\Resources\Student\StudentBankTransferDetailsResource;
 use App\Http\Resources\Student\StudentOrderResource;
 use App\Http\Resources\Student\StudentPaymentResource;
 use App\Models\Order;
 use App\Models\Student;
 use App\Services\Payment\PaymentService;
+use App\Services\Settings\CompanySettingsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -42,7 +44,7 @@ class PaymentController extends Controller
         $this->assertOwned($request, $order);
 
         return response()->json([
-            'data' => new StudentOrderResource($order->load('payments.media')),
+            'data' => new StudentOrderResource($order->load(['payments.media', 'purchasable.media'])),
         ]);
     }
 
@@ -96,15 +98,11 @@ class PaymentController extends Controller
         ], 201);
     }
 
-    /** Where to send the money. Not secret — the student needs it to pay. */
-    public function bankDetails(): JsonResponse
+    /** Where to send the money, as set under Settings > Bank Details. */
+    public function bankDetails(CompanySettingsService $settings): JsonResponse
     {
         return response()->json([
-            'data' => [
-                'enabled' => (bool) config('payments.bank_transfer.enabled'),
-                'account' => config('payments.bank_transfer.account'),
-                'max_receipt_mb' => (int) config('payments.bank_transfer.max_receipt_mb'),
-            ],
+            'data' => new StudentBankTransferDetailsResource($settings->current()),
         ]);
     }
 

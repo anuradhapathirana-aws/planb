@@ -55,11 +55,11 @@ export function CourseTopicCard({
           count: lessons.length,
         })}`}
         onPress={onToggle}
-        className="min-h-[64px] flex-row items-center gap-3 p-3.5 active:bg-muted"
+        className="min-h-[52px] flex-row items-center gap-2.5 px-3 py-2 active:bg-muted"
       >
         <View
           className={cn(
-            'h-10 w-10 items-center justify-center rounded-full',
+            'h-8 w-8 items-center justify-center rounded-full',
             tone === 'complete'
               ? 'bg-success-soft'
               : tone === 'locked'
@@ -68,29 +68,38 @@ export function CourseTopicCard({
           )}
         >
           {tone === 'complete' ? (
-            <CheckCircle2 size={18} color={colors.success} />
+            <CheckCircle2 size={16} color={colors.success} />
           ) : tone === 'locked' ? (
-            <Lock size={16} color={colors['muted-foreground']} />
+            <Lock size={14} color={colors['muted-foreground']} />
           ) : (
-            <Play size={16} color={colors.primary} />
+            <Play size={14} color={colors.primary} />
           )}
         </View>
 
         <View className="flex-1">
-          <Text variant="bodyStrong" numberOfLines={2}>
+          <Text
+            variant="none"
+            numberOfLines={2}
+            className="text-[14px] font-medium leading-[22px] text-foreground"
+          >
             {`${index + 1}. ${topic.title}`}
           </Text>
 
-          <Text variant="caption" className="mt-0.5">
+          <Text variant="none" className="text-[12px] leading-5 text-muted-foreground">
             {topic.videos_watched > 0 && !topic.is_complete
-              ? t('courses.progress', { watched: topic.videos_watched, total: lessons.length })
+              ? t('courses.progress', {
+                  watched: topic.videos_watched,
+                  total: lessons.length,
+                })
               : t('courses.lessonCount', { count: lessons.length })}
           </Text>
         </View>
 
         <View className="flex-row items-center gap-1.5">
           {length !== '' && (
-            <Text className="text-[13px] font-semibold leading-5 text-primary">{length}</Text>
+            <Text variant="none" className="text-[12px] font-semibold leading-5 text-primary">
+              {length}
+            </Text>
           )}
 
           {expanded ? (
@@ -103,10 +112,15 @@ export function CourseTopicCard({
 
       {expanded && (
         <View className="border-t border-border">
-          {topic.description && <RichText html={topic.description} className="px-4 pt-3" />}
+          {topic.description && (
+            <RichText html={topic.description} size="sm" className="px-3 pb-1 pt-2" />
+          )}
 
           {lessons.length === 0 ? (
-            <Text variant="caption" className="px-4 py-4">
+            <Text
+              variant="none"
+              className="px-3 py-2.5 text-[12px] leading-5 text-muted-foreground"
+            >
               {t('courses.topicEmpty')}
             </Text>
           ) : (
@@ -150,34 +164,37 @@ function LessonRow({
       accessibilityState={{ disabled: lesson.is_locked }}
       onPress={onPress}
       className={cn(
-        'min-h-[56px] flex-row items-center gap-3 px-4 py-3 active:bg-muted',
+        // 44px is the touch-target floor (mobile/CLAUDE.md §4) — tighter than this is not allowed.
+        'min-h-[44px] flex-row items-center gap-2.5 px-3 py-1.5 active:bg-muted',
         divided && 'border-t border-border',
       )}
     >
       <View
         className={cn(
-          'h-8 w-8 items-center justify-center rounded-full',
+          'h-7 w-7 items-center justify-center rounded-full',
           watched ? 'bg-success-soft' : lesson.is_locked ? 'bg-muted' : 'bg-primary-soft',
         )}
       >
         {/*
-          A watched lesson shows a video icon, not a tick — these rows are
-          videos, and the row already says "Watched" in words on the right, so
-          the green fill is reinforcement rather than the only signal.
+          Lessons carry a video camera; the play glyph belongs to the topic row
+          above. A locked lesson (not enrolled, or not reached yet) shows the lock
+          instead, so the reason it will not open is visible before the tap.
+          Watched is the same camera in green — the tick on the right says it too.
         */}
-        {watched ? (
-          <Video size={14} color={colors.success} />
-        ) : lesson.is_locked ? (
-          <Lock size={13} color={colors['muted-foreground']} />
+        {lesson.is_locked ? (
+          <Lock size={12} color={colors['muted-foreground']} />
         ) : (
-          <Play size={13} color={colors.primary} />
+          <Video size={13} color={watched ? colors.success : colors.primary} />
         )}
       </View>
 
       <Text
-        variant="body"
+        variant="none"
         numberOfLines={2}
-        className={cn('flex-1', lesson.is_locked && 'text-muted-foreground')}
+        className={cn(
+          'flex-1 text-[13px] leading-[21px]',
+          lesson.is_locked ? 'text-muted-foreground' : 'text-foreground',
+        )}
       >
         {lesson.title}
       </Text>
@@ -188,7 +205,9 @@ function LessonRow({
       {watched ? (
         <CheckCircle2 size={16} color={colors.success} />
       ) : (
-        <Text variant="caption">{formatDuration(lesson.duration_seconds)}</Text>
+        <Text variant="none" className="text-[12px] leading-5 text-muted-foreground">
+          {formatDuration(lesson.duration_seconds)}
+        </Text>
       )}
     </Pressable>
   );

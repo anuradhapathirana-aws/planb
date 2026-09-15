@@ -3,6 +3,7 @@ import type { LearnerAvatar } from '@shared/types/learner';
 import type { VideoPlayback } from '@shared/types/course';
 import type { VideoProgress, VideoProgressPayload } from '@shared/types/progress';
 import type {
+  StudentCourseCategory,
   StudentCourseDetail,
   StudentCourseListFilters,
   StudentCourseSummary,
@@ -31,6 +32,48 @@ export async function fetchCourses(
   );
 
   return data;
+}
+
+/**
+ * Every active course category, in admin order, with its icon — including
+ * categories with no published courses yet. Behind Home's "Top Categories" row.
+ */
+export async function fetchCourseCategories(): Promise<StudentCourseCategory[]> {
+  const { data } = await apiClient.get<ApiResource<StudentCourseCategory[]>>(
+    '/student/course-categories',
+  );
+
+  return data.data;
+}
+
+/** The course state the server settled on after a wishlist write. */
+export interface WishlistState {
+  course_id: number;
+  is_wishlisted: boolean;
+}
+
+/**
+ * The student's saved courses, newest save first — the same rows the course
+ * list returns. Not paginated: a wishlist is a handful of hand-picked courses.
+ */
+export async function fetchWishlist(): Promise<StudentCourseSummary[]> {
+  const { data } = await apiClient.get<ApiResource<StudentCourseSummary[]>>('/student/wishlist');
+
+  return data.data;
+}
+
+/**
+ * Save or unsave a course. Two verbs rather than a toggle, and both are
+ * idempotent on the server, so a retried request lands on the state the student
+ * asked for instead of flipping it back.
+ */
+export async function setWishlisted(courseId: number, wishlisted: boolean): Promise<WishlistState> {
+  const url = `/student/courses/${courseId}/wishlist`;
+  const { data } = wishlisted
+    ? await apiClient.post<ApiResource<WishlistState>>(url)
+    : await apiClient.delete<ApiResource<WishlistState>>(url);
+
+  return data.data;
 }
 
 export async function fetchCourse(courseId: number): Promise<StudentCourseDetail> {

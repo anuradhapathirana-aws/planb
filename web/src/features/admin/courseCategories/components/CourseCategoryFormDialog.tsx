@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useForm, type Resolver } from 'react-hook-form';
+import { Controller, useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -15,6 +15,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { IconPicker } from '@/components/shared/IconPicker';
+import { COURSE_CATEGORY_ICON_GLYPHS } from '@/features/admin/courseCategories/courseCategoryIcons';
 import {
   courseCategoryFormSchema,
   type CourseCategoryFormSchema,
@@ -24,7 +26,7 @@ import {
   useUpdateCourseCategory,
 } from '@/features/admin/courseCategories/hooks/useCourseCategories';
 import { applyServerValidationErrors } from '@shared/lib/serverErrors';
-import type { CourseCategory } from '@shared/types/course';
+import { COURSE_CATEGORY_ICONS, type CourseCategory } from '@shared/types/course';
 
 interface CourseCategoryFormDialogProps {
   open: boolean;
@@ -43,6 +45,7 @@ export function CourseCategoryFormDialog({ open, onOpenChange, category }: Cours
   const {
     register,
     handleSubmit,
+    control,
     reset,
     setError,
     formState: { errors },
@@ -57,13 +60,14 @@ export function CourseCategoryFormDialog({ open, onOpenChange, category }: Cours
       reset({
         name: category?.name ?? '',
         description: category?.description ?? '',
+        icon: category?.icon ?? null,
       });
     }
   }, [open, category, reset]);
 
   const onSubmit = (values: CourseCategoryFormSchema) => {
     mutation.mutate(
-      { name: values.name, description: values.description || null },
+      { name: values.name, description: values.description || null, icon: values.icon },
       {
         onSuccess: () => onOpenChange(false),
         onError: (error) => {
@@ -99,6 +103,38 @@ export function CourseCategoryFormDialog({ open, onOpenChange, category }: Cours
               {...register('name')}
             />
             {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="category-icon" className="text-xs">
+              Icon <span className="text-muted-foreground">(optional)</span>
+            </Label>
+            <Controller
+              control={control}
+              name="icon"
+              render={({ field }) => (
+                <IconPicker
+                  id="category-icon"
+                  ariaLabel="Category icon"
+                  noneLabel="No icon (guess from name)"
+                  options={COURSE_CATEGORY_ICONS}
+                  glyphs={COURSE_CATEGORY_ICON_GLYPHS}
+                  value={field.value}
+                  onChange={field.onChange}
+                  disabled={mutation.isPending}
+                />
+              )}
+            />
+            {/*
+              Says what "no icon" does, because it is not a blank tile: the app picks a
+              glyph from the category name, which is right often enough that an admin
+              may reasonably leave it — but they should know it is a guess.
+            */}
+            <p className="text-xs text-muted-foreground">
+              Shown on the category tile on the student app's Home screen. Left empty, the app picks one from
+              the category name.
+            </p>
+            {errors.icon && <p className="text-xs text-destructive">{errors.icon.message}</p>}
           </div>
 
           <div className="space-y-1.5">

@@ -21,5 +21,7 @@ export const paths = {
     homeBanners: '/admin/mobile/home-banners',
     homeBannerNew: '/admin/mobile/home-banners/new',
     homeBannerEdit: (id: number | string) => `/admin/mobile/home-banners/${id}/edit`,
+    settingsBankDetails: '/admin/settings/bank-details',
+    settingsAppIntro: '/admin/settings/app-intro',
   },
 } as const;

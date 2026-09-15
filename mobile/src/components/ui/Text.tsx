@@ -1,4 +1,11 @@
-import { Text as RNText, type TextProps as RNTextProps } from 'react-native';
+import {
+  StyleSheet,
+  Text as RNText,
+  type TextProps as RNTextProps,
+  type TextStyle,
+} from 'react-native';
+
+import { fonts, type FontWeight } from '@shared/theme/tokens';
 
 import { cn } from '@/lib/cn';
 
@@ -61,13 +68,100 @@ export interface TextProps extends RNTextProps {
   className?: string;
 }
 
-export function Text({ variant = 'body', className, ...props }: TextProps) {
+/** The weight classes the app uses, mapped to the Poppins face that draws them. */
+const CLASS_WEIGHT: Record<string, FontWeight> = {
+  thin: 400,
+  extralight: 400,
+  light: 400,
+  normal: 400,
+  medium: 500,
+  semibold: 600,
+  bold: 700,
+  extrabold: 700,
+  black: 700,
+};
+
+const WEIGHT_CLASS =
+  /\bfont-(thin|extralight|light|normal|medium|semibold|bold|extrabold|black)\b/g;
+
+/** The last weight class in a class string, or null when there is none. */
+function weightFromClasses(classes: string | undefined): FontWeight | null {
+  const matches = classes ? [...classes.matchAll(WEIGHT_CLASS)] : [];
+  const last = matches.at(-1)?.[1];
+
+  return last === undefined ? null : (CLASS_WEIGHT[last] ?? null);
+}
+
+/** A numeric or keyword `fontWeight`, snapped to the nearest weight we load. */
+function weightFromStyle(value: TextStyle['fontWeight']): FontWeight | null {
+  if (value === undefined) return null;
+  if (value === 'bold') return 700;
+  if (value === 'normal') return 400;
+
+  const numeric = Number(value);
+  if (Number.isNaN(numeric)) return null;
+  if (numeric >= 650) return 700;
+  if (numeric >= 550) return 600;
+  if (numeric >= 450) return 500;
+
+  return 400;
+}
+
+/**
+ * Which Poppins face a piece of text should be drawn in.
+ *
+ * **Weight has to become a family name, not a `fontWeight`.** React Native picks
+ * a custom font by its exact registered name, weight included; on Android a
+ * `fontWeight` beside a custom family sends it looking for a weighted variant
+ * that was never registered, and it silently falls back to the system font. So
+ * every `font-semibold` in the app is translated here into `Poppins_600SemiBold`
+ * and the `fontWeight` itself is neutralised — which is what lets the rest of
+ * the codebase keep writing ordinary Tailwind weight classes.
+ *
+ * Precedence, most specific first: an inline `fontWeight`, then the caller's
+ * `className`, then the variant's own classes. The caller wins over the variant
+ * deliberately — that is the intent of passing a weight at all — and resolving
+ * it here makes that true, where layering the two classes on the element left it
+ * to stylesheet order.
+ */
+function resolveFontWeight(
+  variantClasses: string,
+  className: string | undefined,
+  style: TextStyle | undefined,
+): FontWeight {
+  return (
+    weightFromStyle(style?.fontWeight) ??
+    weightFromClasses(className) ??
+    weightFromClasses(variantClasses) ??
+    400
+  );
+}
+
+export function Text({ variant = 'body', className, style, ...props }: TextProps) {
+  const variantClasses = VARIANTS[variant];
+  const flat = StyleSheet.flatten(style) as TextStyle | undefined;
+
+  /*
+   * A caller that names its own family keeps it — `RichText` sets a monospace
+   * face for code, and that must not be turned into Poppins. Everything else
+   * gets the face for its weight, applied AFTER the caller's style so it wins,
+   * with `fontWeight` reset for the Android reason above.
+   */
+  const fontStyle: TextStyle | undefined =
+    flat?.fontFamily === undefined
+      ? {
+          fontFamily: fonts.poppins[resolveFontWeight(variantClasses, className, flat)],
+          fontWeight: 'normal',
+        }
+      : undefined;
+
   return (
     <RNText
       // Deliberately NOT `allowFontScaling={false}`: a student who has turned
       // their system font size up needs it to work here too. The layouts are
       // built with minHeight so they grow instead of clipping.
-      className={cn(VARIANTS[variant], className)}
+      className={cn(variantClasses, className)}
+      style={[style, fontStyle]}
       {...props}
     />
   );

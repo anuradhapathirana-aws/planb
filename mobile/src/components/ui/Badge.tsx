@@ -38,20 +38,40 @@ export interface BadgeProps {
   label: string;
   tone?: Tone;
   icon?: LucideIcon;
+  /** `sm` sits inline beside other text, e.g. next to a price. */
+  size?: 'default' | 'sm';
   className?: string;
 }
 
-export function Badge({ label, tone = 'neutral', icon: Icon, className }: BadgeProps) {
+export function Badge({
+  label,
+  tone = 'neutral',
+  icon: Icon,
+  size = 'default',
+  className,
+}: BadgeProps) {
+  const isSmall = size === 'sm';
+
   return (
     <View
       className={cn(
-        'flex-row items-center gap-1 self-start rounded-full px-2.5 py-1',
+        'flex-row items-center self-start',
+        // The small badge is a squarer tag, so it reads as a label rather than a button.
+        isSmall ? 'gap-0.5 rounded-md px-1.5 py-0.5' : 'gap-1 rounded-full px-2.5 py-1',
         CONTAINER[tone],
         className,
       )}
     >
-      {Icon && <Icon size={12} color={ICON_COLOR[tone]} />}
-      <Text className={cn('text-[11px] font-semibold', LABEL[tone])}>{label}</Text>
+      {Icon && <Icon size={isSmall ? 10 : 12} color={ICON_COLOR[tone]} />}
+      <Text
+        className={cn(
+          isSmall ? 'text-[10px] leading-4' : 'text-[11px]',
+          'font-semibold',
+          LABEL[tone],
+        )}
+      >
+        {label}
+      </Text>
     </View>
   );
 }

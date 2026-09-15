@@ -16,6 +16,7 @@ use App\Models\Service;
 use App\Models\User;
 use App\Services\Enrolment\EnrolmentService;
 use App\Services\Service\ServicePurchaseService;
+use App\Services\Settings\CompanySettingsService;
 use App\Support\Payment\CheckoutSession;
 use App\Support\Payment\WebhookResult;
 use Illuminate\Database\QueryException;
@@ -43,6 +44,7 @@ class PaymentService
         private readonly PaymentGatewayManager $gateways,
         private readonly EnrolmentService $enrolments,
         private readonly ServicePurchaseService $servicePurchases,
+        private readonly CompanySettingsService $companySettings,
     ) {}
 
     /**
@@ -138,7 +140,7 @@ class PaymentService
     {
         $this->guardPayable($order);
 
-        if (! config('payments.bank_transfer.enabled')) {
+        if (! $this->companySettings->bankTransferEnabled()) {
             throw ValidationException::withMessages([
                 'method' => 'Bank transfer is not available right now.',
             ]);

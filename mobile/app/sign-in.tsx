@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Text } from '@/components/ui/Text';
 import { useToast } from '@/components/ui/Toast';
+import { useAppConfig } from '@/features/intro/useAppConfig';
 import { GOOGLE_SIGN_IN_AVAILABLE } from '@/lib/googleAuth';
 import { useStatusBarStyle } from '@/lib/useStatusBarStyle';
 
@@ -59,6 +60,7 @@ export default function SignInScreen() {
   const { t } = useTranslation();
   const toast = useToast();
   const insets = useSafeAreaInsets();
+  const appConfig = useAppConfig();
 
   // The navy panel runs under the clock on this screen, so the glyphs go white.
   useStatusBarStyle('light');
@@ -109,7 +111,7 @@ export default function SignInScreen() {
       >
         {/* Brand panel */}
         <View className="px-6 pb-10" style={{ paddingTop: insets.top + 48 }}>
-          <BrandMark />
+          <BrandMark logoUrl={appConfig.data?.logo_url} />
 
           <Text className="mt-6 text-[26px] font-bold leading-9 text-white">
             {t('auth.signInTitle')}

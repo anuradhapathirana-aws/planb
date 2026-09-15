@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { ActivityIndicator, Pressable, RefreshControl, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import {
   CheckCircle2,
@@ -7,6 +7,7 @@ import {
   CreditCard,
   Hourglass,
   Info,
+  RefreshCw,
   ShieldCheck,
   WifiOff,
 } from '@/components/icons';
@@ -14,7 +15,6 @@ import { useTranslation } from 'react-i18next';
 
 import { formatMoney } from '@shared/lib/formatters';
 import { colors } from '@shared/theme/tokens';
-import { OrderStatusBadge } from '@/components/shared/OrderStatusBadge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -22,10 +22,20 @@ import { Screen } from '@/components/ui/Screen';
 import { SegmentedToggle } from '@/components/ui/SegmentedToggle';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Text } from '@/components/ui/Text';
+import { useToast } from '@/components/ui/Toast';
 import { BankTransferForm } from '@/features/enrolment/BankTransferForm';
+import { CheckoutItemCard } from '@/features/enrolment/CheckoutItemCard';
 import { useCheckout } from '@/features/enrolment/useCheckout';
 
 type Method = 'card' | 'bank';
+
+/*
+ * Card payment is switched off in the app for now (client decision). The option
+ * stays visible but greyed out, and the card flow below is kept intact so turning
+ * it back on is this one line. Hiding it here is presentation only — the backend
+ * card endpoint is unchanged.
+ */
+const CARD_PAYMENTS_ENABLED = false;
 
 /**
  * Paying for an order.
@@ -38,6 +48,7 @@ type Method = 'card' | 'bank';
  */
 export default function CheckoutScreen() {
   const { t } = useTranslation();
+  const toast = useToast();
   const { orderId, courseId, serviceId } = useLocalSearchParams<{
     orderId: string;
     courseId?: string;
@@ -57,8 +68,35 @@ export default function CheckoutScreen() {
     checkAgain,
   } = useCheckout(Number(orderId));
 
-  // Opens on whichever method can actually complete on this build.
-  const [method, setMethod] = useState<Method>(canPayByCard ? 'card' : 'bank');
+  // Bank transfer first: it is how most students pay, and it works on every build.
+  const [method, setMethod] = useState<Method>('bank');
+  const [refreshing, setRefreshing] = useState(false);
+  const [checkingStatus, setCheckingStatus] = useState(false);
+
+  /*
+   * Nothing about reloading is a security concern: the order is read-only here,
+   * scoped to this student on the server, and an admin's approval is the only
+   * thing that changes it. So the student may ask as often as they like.
+   */
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
+  }, [refetch]);
+
+  /** The visible version of pull-to-refresh, with an answer either way. */
+  const checkStatus = useCallback(async () => {
+    setCheckingStatus(true);
+    const { data, isError: failed } = await refetch();
+    setCheckingStatus(false);
+
+    if (failed) {
+      toast.error(t('payment.checkStatusFailed'));
+    } else if (data?.status === 'awaiting_verification') {
+      toast.info(t('payment.stillChecking'));
+    }
+    // Any other status swaps the panel itself, which is answer enough.
+  }, [refetch, t, toast]);
 
   /*
    * What to open once this is paid.
@@ -94,7 +132,14 @@ export default function CheckoutScreen() {
     .at(-1);
 
   return (
-    <Screen scroll>
+    <Screen
+      scroll
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+      }
+    >
+      {/* The same back-arrow + left-aligned title as All Services and the other
+          pushed pages, at All Services' client-reviewed 20px. */}
       <View className="flex-row items-center gap-1 pt-2">
         <Pressable
           accessibilityRole="button"
@@ -106,11 +151,13 @@ export default function CheckoutScreen() {
           <ChevronLeft size={24} color={colors.foreground} />
         </Pressable>
 
-        <Text variant="display">{t('payment.title')}</Text>
+        <Text variant="display" className="flex-1 text-[20px] leading-8" numberOfLines={1}>
+          {t('payment.title')}
+        </Text>
       </View>
 
       {isLoading && (
-        <View className="mt-4 gap-3">
+        <View className="mt-3 gap-3">
           <Skeleton className="h-28 w-full" />
           <Skeleton className="h-44 w-full" />
         </View>
@@ -128,37 +175,23 @@ export default function CheckoutScreen() {
       )}
 
       {order && (
-        <View className="mt-4 gap-4">
+        <View className="mt-3 gap-3">
           {/* What is being paid for, and how much. Always visible, in every
               state, so the student can check it against their bank app. */}
-          <Card className="p-4">
-            <View className="flex-row items-start justify-between gap-3">
-              <Text variant="heading" className="flex-1">
-                {order.title}
-              </Text>
-              <OrderStatusBadge status={order.status} />
-            </View>
-
-            <View className="mt-3 flex-row items-end justify-between">
-              <Text variant="caption">
-                {t('payment.orderNumber')} {order.order_number}
-              </Text>
-              <Text className="text-[22px] font-bold leading-8 text-foreground">{amount}</Text>
-            </View>
-          </Card>
+          <CheckoutItemCard order={order} />
 
           {/* Paid. What follows differs by product: a course opens, a service
               joins a queue somebody has to work through. */}
           {isPaid && (
-            <Card className="items-center p-5">
-              <View className="h-14 w-14 items-center justify-center rounded-full bg-success-soft">
-                <CheckCircle2 size={26} color={colors.success} />
+            <Card className="items-center p-4">
+              <View className="h-12 w-12 items-center justify-center rounded-full bg-success-soft">
+                <CheckCircle2 size={22} color={colors.success} />
               </View>
 
-              <Text variant="heading" className="mt-3 text-center">
+              <Text className="mt-2.5 text-center text-[15px] font-semibold leading-6 text-primary">
                 {t('payment.paidTitle')}
               </Text>
-              <Text variant="caption" className="mt-1.5 text-center leading-5">
+              <Text className="mt-1 text-center text-[12px] leading-5 text-muted-foreground">
                 {isService ? t('payment.paidBodyService') : t('payment.paidBody')}
               </Text>
 
@@ -166,9 +199,9 @@ export default function CheckoutScreen() {
                 ? purchasedServiceId !== null && (
                     <Button
                       label={t('payment.viewService')}
-                      size="lg"
+                      size="sm"
                       fullWidth
-                      className="mt-5"
+                      className="mt-4"
                       onPress={() =>
                         router.replace({
                           pathname: '/service/[id]',
@@ -180,9 +213,9 @@ export default function CheckoutScreen() {
                 : purchasedCourseId !== null && (
                     <Button
                       label={t('payment.startLearning')}
-                      size="lg"
+                      size="sm"
                       fullWidth
-                      className="mt-5"
+                      className="mt-4"
                       onPress={() =>
                         router.replace({
                           pathname: '/course/[id]',
@@ -196,22 +229,22 @@ export default function CheckoutScreen() {
 
           {/* The webhook has not landed yet. Not an error — we simply do not know. */}
           {!isPaid && (phase === 'confirming' || phase === 'unconfirmed') && (
-            <Card className="p-5">
-              <View className="flex-row items-center gap-3">
+            <Card className="p-4">
+              <View className="flex-row items-center gap-2.5">
                 {phase === 'confirming' ? (
-                  <ActivityIndicator color={colors.primary} />
+                  <ActivityIndicator size="small" color={colors.primary} />
                 ) : (
-                  <Info size={20} color={colors['muted-foreground']} />
+                  <Info size={16} color={colors['muted-foreground']} />
                 )}
 
-                <Text variant="heading" className="flex-1">
+                <Text className="flex-1 text-[14px] font-semibold leading-[22px] text-primary">
                   {phase === 'confirming'
                     ? t('payment.confirmingTitle')
                     : t('payment.notConfirmedTitle')}
                 </Text>
               </View>
 
-              <Text variant="caption" className="mt-2 leading-5">
+              <Text className="mt-1.5 text-[12px] leading-5 text-muted-foreground">
                 {phase === 'confirming'
                   ? t('payment.confirmingBody')
                   : t('payment.notConfirmedBody')}
@@ -221,8 +254,9 @@ export default function CheckoutScreen() {
                 <Button
                   label={t('common.retry')}
                   variant="outline"
+                  size="sm"
                   fullWidth
-                  className="mt-4"
+                  className="mt-3"
                   onPress={checkAgain}
                 />
               )}
@@ -231,27 +265,38 @@ export default function CheckoutScreen() {
 
           {/* Slip submitted, waiting on a human (FR-ADM-018). */}
           {isAwaitingReview && (
-            <Card className="p-5">
-              <View className="flex-row items-center gap-3">
-                <Hourglass size={20} color={colors.warning} />
-                <Text variant="heading" className="flex-1">
+            <Card className="p-4">
+              <View className="flex-row items-center gap-2.5">
+                <Hourglass size={16} color={colors.warning} />
+                <Text className="flex-1 text-[14px] font-semibold leading-[22px] text-primary">
                   {t('payment.awaitingTitle')}
                 </Text>
               </View>
 
-              <Text variant="caption" className="mt-2 leading-5">
+              <Text className="mt-1.5 text-[12px] leading-5 text-muted-foreground">
                 {t('payment.awaitingBody')}
               </Text>
+
+              <Button
+                label={t('payment.checkStatus')}
+                icon={RefreshCw}
+                variant="outline"
+                size="sm"
+                fullWidth
+                className="mt-3"
+                loading={checkingStatus}
+                onPress={() => void checkStatus()}
+              />
             </Card>
           )}
 
           {/* An admin turned the last transfer down and said why. */}
           {rejection && isPayable && (
-            <Card className="border-destructive/30 bg-destructive-soft p-4">
-              <Text variant="label" className="text-destructive">
+            <Card className="border-destructive/30 bg-destructive-soft p-3">
+              <Text className="text-[12px] font-semibold leading-5 text-destructive">
                 {t('payment.rejectedTitle')}
               </Text>
-              <Text variant="caption" className="mt-1.5 leading-5 text-foreground">
+              <Text className="mt-0.5 text-[12px] leading-5 text-foreground">
                 {rejection.review_remark}
               </Text>
             </Card>
@@ -263,43 +308,53 @@ export default function CheckoutScreen() {
               shape for no reason they saw. */}
           {isPayable && (phase === 'idle' || phase === 'paying') && (
             <>
-              <View className="gap-2">
-                <Text variant="label">{t('payment.methodQuestion')}</Text>
+              <View className="gap-1.5">
+                <Text className="text-[12px] font-medium leading-5 text-foreground">
+                  {t('payment.methodQuestion')}
+                </Text>
 
                 <SegmentedToggle<Method>
+                  size="sm"
                   value={method}
                   onChange={setMethod}
                   options={[
-                    { value: 'card', label: t('payment.methodCard') },
                     { value: 'bank', label: t('payment.methodBank') },
+                    {
+                      value: 'card',
+                      label: CARD_PAYMENTS_ENABLED
+                        ? t('payment.methodCard')
+                        : t('payment.methodCardSoon'),
+                      disabled: !CARD_PAYMENTS_ENABLED,
+                    },
                   ]}
                 />
               </View>
 
-              {method === 'card' ? (
-                <View className="gap-4">
-                  {/*
-                    Said plainly, because it is the student's main worry and it
-                    is literally true: the card form belongs to the payment
-                    provider, on their own page, and this app never receives a
-                    card number.
-                  */}
-                  <View className="flex-row items-start gap-2.5">
-                    <ShieldCheck size={16} color={colors.success} />
-                    <Text variant="caption" className="flex-1 leading-5">
-                      {canPayByCard ? t('payment.cardBody') : t('payment.cardUnavailable')}
-                    </Text>
-                  </View>
-
+              {CARD_PAYMENTS_ENABLED && method === 'card' ? (
+                <View className="gap-3">
                   <Button
                     label={t('payment.cardAction', { amount })}
                     icon={CreditCard}
-                    size="lg"
+                    size="sm"
                     fullWidth
                     loading={isStartingCard || phase === 'paying'}
                     disabled={phase === 'paying' || !canPayByCard}
                     onPress={payByCard}
                   />
+
+                  {/*
+                    A notice under the action, matching the bank transfer tab.
+                    Said plainly, because it is the student's main worry and it
+                    is literally true: the card form belongs to the payment
+                    provider, on their own page, and this app never receives a
+                    card number.
+                  */}
+                  <View className="flex-row items-start gap-2 rounded-xl border border-border bg-muted/50 p-3">
+                    <ShieldCheck size={14} color={colors.success} />
+                    <Text className="flex-1 text-[11px] leading-5 text-muted-foreground">
+                      {canPayByCard ? t('payment.cardBody') : t('payment.cardUnavailable')}
+                    </Text>
+                  </View>
                 </View>
               ) : (
                 <BankTransferForm order={order} />

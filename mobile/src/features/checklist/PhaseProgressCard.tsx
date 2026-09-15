@@ -32,25 +32,24 @@ export function PhaseProgressCard({ phase, progress }: PhaseProgressCardProps) {
   const finished = progress.total > 0 && progress.completed === progress.total;
   const remaining = progress.total - progress.completed;
 
-  const hint = phase === 'before_arrival'
-    ? t('checklist.beforeArrivalHint')
-    : t('checklist.afterArrivalHint');
+  const hint =
+    phase === 'before_arrival' ? t('checklist.beforeArrivalHint') : t('checklist.afterArrivalHint');
 
   if (finished) {
     return (
       <Animated.View entering={FadeIn.duration(220)}>
-        <Card elevated className="flex-row items-center gap-4 border-0 bg-surface p-5">
+        <Card elevated className="flex-row items-center gap-3 border-0 bg-surface px-4 py-3">
           {/* Gold on navy is the brand's own pairing, and the only surface the
               accent is unambiguously safe behind content (tokens.ts). */}
-          <View className="h-16 w-16 items-center justify-center rounded-full bg-accent">
-            <PartyPopper size={28} color={colors['accent-foreground']} />
+          <View className="h-12 w-12 items-center justify-center rounded-full bg-accent">
+            <PartyPopper size={22} color={colors['accent-foreground']} />
           </View>
 
           <View className="flex-1">
-            <Text className="text-[17px] font-semibold leading-6 text-white">
+            <Text className="text-[14px] font-semibold leading-5 text-white">
               {t('checklist.allDoneTitle')}
             </Text>
-            <Text className="mt-1 text-[13px] leading-5 text-surface-muted">
+            <Text className="text-[11px] leading-4 text-surface-muted">
               {t('checklist.allDoneBody')}
             </Text>
           </View>
@@ -60,15 +59,15 @@ export function PhaseProgressCard({ phase, progress }: PhaseProgressCardProps) {
   }
 
   return (
-    <Card elevated className="flex-row items-center gap-4 border-0 bg-surface p-5">
-      <ProgressRing percent={progress.percent_complete} size={72} onDark />
+    <Card elevated className="flex-row items-center gap-3 border-0 bg-surface px-4 py-3">
+      <ProgressRing percent={progress.percent_complete} size={52} strokeWidth={5} onDark />
 
       <View className="flex-1">
-        <Text variant="label" className="text-surface-muted">
+        <Text variant="label" className="text-[10px] leading-4 text-surface-muted">
           {phaseLabel(phase, t)}
         </Text>
 
-        <Text className="mt-1.5 text-[17px] font-semibold leading-6 text-white">
+        <Text className="text-[14px] font-semibold leading-5 text-white">
           {progress.total === 0
             ? t('checklist.emptyTitle')
             : progress.completed === 0
@@ -79,7 +78,7 @@ export function PhaseProgressCard({ phase, progress }: PhaseProgressCardProps) {
                 })}
         </Text>
 
-        <Text className="mt-1 text-[13px] leading-5 text-surface-muted">
+        <Text className="text-[11px] leading-4 text-surface-muted">
           {progress.total === 0 ? hint : t('checklist.stepsToGo', { count: remaining })}
         </Text>
       </View>

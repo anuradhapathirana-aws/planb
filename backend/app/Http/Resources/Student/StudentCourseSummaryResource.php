@@ -30,6 +30,8 @@ class StudentCourseSummaryResource extends JsonResource
             'is_free' => $this->isFree(),
             // Whether this student may open the content, not whether it exists.
             'is_enrolled' => (bool) $this->getAttribute('is_enrolled'),
+            // Whether THIS student has saved it to their wishlist.
+            'is_wishlisted' => (bool) $this->getAttribute('is_wishlisted'),
             'topics_count' => (int) ($this->topics_count ?? 0),
             'videos_count' => (int) ($this->videos_count ?? 0),
             // Sum of every lesson's duration. 0 when nothing has a duration yet.

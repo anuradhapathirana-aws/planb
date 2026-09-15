@@ -1,9 +1,9 @@
 import '../global.css';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ScrollView, Text as RNText, View } from 'react-native';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { Stack, router, type ErrorBoundaryProps } from 'expo-router';
+import { Stack, router, useSegments, type ErrorBoundaryProps } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as ScreenCapture from 'expo-screen-capture';
 import * as ScreenOrientation from 'expo-screen-orientation';
@@ -12,15 +12,21 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 /*
  * Per-weight subpaths, never the package root. Each family's root index
- * `require()`s every face it ships - 18 for Inter, 9 for Noto Sans Sinhala - and
- * Metro then bundles all of them into the APK. Importing only the six we load
- * keeps about 6 MB out of the student's download.
+ * `require()`s every face it ships - 18 for Poppins, 9 for Noto Sans Sinhala -
+ * and Metro then bundles all of them into the APK. Importing only
+ * the faces we load keeps megabytes out of the student's download.
  */
 import { useFonts } from 'expo-font';
-import { Inter_400Regular } from '@expo-google-fonts/inter/400Regular';
-import { Inter_500Medium } from '@expo-google-fonts/inter/500Medium';
-import { Inter_600SemiBold } from '@expo-google-fonts/inter/600SemiBold';
-import { Inter_700Bold } from '@expo-google-fonts/inter/700Bold';
+/*
+ * Poppins, the app's typeface — the four weights `fonts.poppins` maps to. Inter
+ * used to be loaded here too and was never actually applied to anything, so
+ * every screen rendered in the system font; it is gone rather than kept as dead
+ * weight in the bundle.
+ */
+import { Poppins_400Regular } from '@expo-google-fonts/poppins/400Regular';
+import { Poppins_500Medium } from '@expo-google-fonts/poppins/500Medium';
+import { Poppins_600SemiBold } from '@expo-google-fonts/poppins/600SemiBold';
+import { Poppins_700Bold } from '@expo-google-fonts/poppins/700Bold';
 import { NotoSansSinhala_400Regular } from '@expo-google-fonts/noto-sans-sinhala/400Regular';
 import { NotoSansSinhala_600SemiBold } from '@expo-google-fonts/noto-sans-sinhala/600SemiBold';
 
@@ -132,10 +138,10 @@ export default function RootLayout() {
   const isInitialized = useAuthStore((state) => state.isInitialized);
 
   const [fontsLoaded, fontError] = useFonts({
-    Inter_400Regular,
-    Inter_500Medium,
-    Inter_600SemiBold,
-    Inter_700Bold,
+    Poppins_400Regular,
+    Poppins_500Medium,
+    Poppins_600SemiBold,
+    Poppins_700Bold,
     NotoSansSinhala_400Regular,
     NotoSansSinhala_600SemiBold,
   });
@@ -183,8 +189,20 @@ export default function RootLayout() {
    * this. Routing lives here rather than in the client so that `src/api` has no
    * dependency on navigation.
    */
+  const segments = useSegments();
+  // Widened: typed routes omit the empty tuple, but `app/index.tsx` has no segments.
+  const segmentsRef = useRef<string[]>(segments);
+  segmentsRef.current = segments;
+
   useEffect(() => {
     registerUnauthenticatedHandler(() => {
+      /*
+       * The launch gate (`app/index.tsx`, no segments) sends a signed-out
+       * student to sign-in itself once the intro has played. Redirecting from
+       * here would cut the intro off for exactly those students.
+       */
+      if (segmentsRef.current.length === 0) return;
+
       queryClient.clear();
       router.replace('/sign-in');
     });

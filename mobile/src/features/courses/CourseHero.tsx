@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { Image } from 'expo-image';
-import { BookOpen, CheckCircle2, Clock, Lock, Sparkles } from '@/components/icons';
+import { BookOpen, Clock, Lock, Sparkles } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 
 import type { StudentCourseDetail } from '@shared/types/studentCourse';
@@ -21,7 +21,8 @@ import { Text } from '@/components/ui/Text';
  * The course NAME is deliberately not in here. The reference design puts a short
  * marketing headline on the banner and the real title underneath; we only have
  * one string, and a long Sinhala course name set over a photo is the first thing
- * to become unreadable. The title lives under the banner where it always works.
+ * to become unreadable. The title lives under the banner where it always works,
+ * and the category sits beneath it for the same reason.
  */
 export function CourseHero({ course }: { course: StudentCourseDetail }) {
   const { t } = useTranslation();
@@ -53,33 +54,23 @@ export function CourseHero({ course }: { course: StudentCourseDetail }) {
       )}
 
       <View className="absolute inset-0 justify-between p-3.5">
-        <View className="flex-row items-start justify-between gap-2">
-          {course.is_new ? (
-            <Badge label={t('courses.newBadge')} tone="accent" icon={Sparkles} />
-          ) : (
-            <View />
-          )}
+        {/* Selling badges only: once enrolled, "New" and the lock have done their
+            job, and the progress bar below already says the course is theirs. */}
+        {course.is_enrolled ? (
+          <View />
+        ) : (
+          <View className="flex-row items-start justify-between gap-2">
+            {course.is_new ? (
+              <Badge label={t('courses.newBadge')} tone="accent" icon={Sparkles} />
+            ) : (
+              <View />
+            )}
 
-          {course.is_enrolled ? (
-            <Badge
-              label={t('courses.enrolledBadge')}
-              tone="success"
-              icon={CheckCircle2}
-              className="bg-card"
-            />
-          ) : (
-            <Badge
-              label={t('courses.lockedBadge')}
-              tone="locked"
-              icon={Lock}
-              className="bg-card"
-            />
-          )}
-        </View>
+            <Badge label={t('courses.lockedBadge')} tone="locked" icon={Lock} className="bg-card" />
+          </View>
+        )}
 
         <View className="flex-row flex-wrap items-center gap-2">
-          {course.category_name && <HeroChip label={course.category_name} />}
-
           {length !== '' && <HeroChip label={length} icon={Clock} />}
 
           <HeroChip

@@ -90,7 +90,6 @@ class ServiceCatalogService
     {
         return [
             'name' => $data['name'],
-            'summary' => $data['summary'] ?? null,
             // Validated against `ServiceIcon` in the Form Request. Null when the
             // admin picked nothing — the app substitutes its fallback glyph, so
             // nothing is defaulted here.

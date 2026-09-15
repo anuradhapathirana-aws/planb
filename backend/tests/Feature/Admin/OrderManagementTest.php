@@ -72,7 +72,7 @@ class OrderManagementTest extends TestCase
         $orderId = $this->postJson("/api/v1/student/courses/{$this->course->id}/enrol")->json('data.order.id');
 
         $this->postJson("/api/v1/student/orders/{$orderId}/bank-transfer", [
-            'reference_number' => 'TRX-5544',
+            'reference_number' => '55440001',
             'receipt' => UploadedFile::fake()->image('slip.jpg'),
         ])->assertCreated();
 
@@ -126,7 +126,7 @@ class OrderManagementTest extends TestCase
         $this->actingAs($this->accountant)
             ->getJson("/api/v1/admin/orders/{$payment->order_id}")
             ->assertOk()
-            ->assertJsonPath('data.payments.0.reference_number', 'TRX-5544')
+            ->assertJsonPath('data.payments.0.reference_number', '55440001')
             ->assertJsonPath('data.payments.0.is_awaiting_review', true)
             ->assertJsonPath('data.payments.0.receipt_url', fn (?string $url) => $url !== null);
     }
@@ -186,7 +186,7 @@ class OrderManagementTest extends TestCase
         // And the student can indeed submit again.
         Sanctum::actingAs($this->student, ['student'], 'student');
         $this->postJson("/api/v1/student/orders/{$payment->order_id}/bank-transfer", [
-            'reference_number' => 'TRX-5545',
+            'reference_number' => '55450001',
             'receipt' => UploadedFile::fake()->image('slip2.jpg'),
         ])->assertCreated();
     }

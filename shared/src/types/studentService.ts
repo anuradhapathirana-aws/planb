@@ -15,7 +15,6 @@ import type { StudentOrder } from './studentOrder';
 export interface StudentServiceSummary {
   id: number;
   name: string;
-  summary: string | null;
   /**
    * What the Home grid draws. Null on every service created before the field
    * existed, and on any the admin skipped — the app renders the `other` glyph

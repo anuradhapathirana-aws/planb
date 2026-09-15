@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useLogin } from '@/hooks/useAuth';
+import { useBrandLogo } from '@/hooks/useBranding';
 import { useAuthStore } from '@/stores/authStore';
 import { paths } from '@/routes/paths';
 
@@ -24,6 +25,7 @@ export function LoginPage() {
   const location = useLocation();
   const login = useLogin();
   const [serverError, setServerError] = useState<string | null>(null);
+  const logoUrl = useBrandLogo();
 
   const {
     register,
@@ -64,7 +66,7 @@ export function LoginPage() {
         />
 
         <div className="relative flex items-center gap-3">
-          <img src="/logo.png" alt="Plan B International" className="size-12 rounded-full object-cover" />
+          <img src={logoUrl} alt="Plan B International" className="size-12 rounded-full object-cover" />
           <div>
             <p className="text-lg font-semibold">Plan B International</p>
             <p className="text-xs text-primary-foreground/70">Academy</p>
@@ -91,7 +93,7 @@ export function LoginPage() {
       <div className="flex items-center justify-center p-6 sm:p-10">
         <div className="w-full max-w-sm space-y-8">
           <div className="space-y-2 text-center lg:text-left">
-            <img src="/logo.png" alt="Plan B International" className="mx-auto size-14 rounded-full object-cover lg:hidden" />
+            <img src={logoUrl} alt="Plan B International" className="mx-auto size-14 rounded-full object-cover lg:hidden" />
             <h2 className="text-2xl font-semibold">Admin sign in</h2>
             <p className="text-sm text-muted-foreground">Sign in with your Plan B staff account.</p>
           </div>

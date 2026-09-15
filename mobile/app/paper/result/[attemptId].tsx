@@ -1,11 +1,11 @@
 import { View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
-import { CheckCircle2, XCircle } from '@/components/icons';
+import { CheckCircle2, RotateCcw, XCircle } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 
 import { colors } from '@shared/theme/tokens';
-import { fetchAttemptResult } from '@/api/papers.api';
+import { fetchAttemptResult, fetchPaper } from '@/api/papers.api';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -25,13 +25,31 @@ import { Text } from '@/components/ui/Text';
  */
 export default function PaperResultScreen() {
   const { t } = useTranslation();
-  const { attemptId } = useLocalSearchParams<{ attemptId: string }>();
+  const { attemptId, courseId: courseIdParam } = useLocalSearchParams<{
+    attemptId: string;
+    courseId?: string;
+  }>();
+  const courseId = Number(courseIdParam);
 
   const { data, isLoading } = useQuery({
     queryKey: ['attempt', Number(attemptId)],
     queryFn: () => fetchAttemptResult(Number(attemptId)),
     enabled: Number.isFinite(Number(attemptId)),
   });
+
+  /*
+   * Whether a retake is allowed is the paper's call, not this attempt's — the
+   * student may have used their last try. Only asked after a fail; a pass is
+   * blocked as `already_passed` anyway. Same key the paper screen uses, which it
+   * invalidated on submit, so this is fresh.
+   */
+  const paper = useQuery({
+    queryKey: ['paper', courseId],
+    queryFn: () => fetchPaper(courseId),
+    enabled: Number.isFinite(courseId) && data?.is_passed === false,
+  });
+
+  const canRetake = data?.is_passed === false && paper.data?.can_attempt === true;
 
   if (isLoading || !data) {
     return (
@@ -73,6 +91,25 @@ export default function PaperResultScreen() {
           {t('paper.score', { score: data.score_percent })} ·{' '}
           {t('paper.passMark', { mark: data.pass_mark_snapshot })}
         </Text>
+
+        {canRetake && (
+          <Button
+            label={t('paper.retake')}
+            icon={RotateCcw}
+            variant="ghost"
+            size="sm"
+            className="mt-2"
+            // Replace, not push: back from the new attempt should return to the
+            // course, not to this stale result.
+            onPress={() => router.replace({ pathname: '/paper/[id]', params: { id: courseId } })}
+          />
+        )}
+
+        {!passed && paper.data?.blocked_reason === 'attempts_exhausted' && (
+          <Text variant="caption" className="mt-2 text-center">
+            {t('paper.blocked.attempts_exhausted')}
+          </Text>
+        )}
       </View>
 
       <View className="mt-8 gap-3">

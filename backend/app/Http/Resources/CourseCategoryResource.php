@@ -17,6 +17,7 @@ class CourseCategoryResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'description' => $this->description,
+            'icon' => $this->icon?->value,
             'is_active' => $this->is_active,
             'sort_order' => $this->sort_order,
             'programmes_count' => $this->whenCounted('programmes'),

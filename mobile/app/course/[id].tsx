@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, Share, View } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { RefreshControl, ScrollView, Share, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import * as Linking from 'expo-linking';
@@ -23,6 +23,7 @@ import { fetchCourse, fetchLearnerAvatars } from '@/api/courses.api';
 import { BrandAvatar } from '@/components/shared/BrandAvatar';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
+import { CircleButton } from '@/components/ui/CircleButton';
 import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ProgressBar } from '@/components/ui/ProgressBar';
@@ -60,12 +61,8 @@ export default function CourseDetailScreen() {
   const courseId = Number(id);
 
   const [tab, setTab] = useState<CourseTab>('lessons');
-  /*
-   * `undefined` means "the student has not touched the accordion yet", which is
-   * not the same as `null` ("they closed everything"). Without the distinction,
-   * collapsing the first topic would immediately re-open it.
-   */
-  const [openTopicId, setOpenTopicId] = useState<number | null | undefined>(undefined);
+  // Every topic starts collapsed, so the whole syllabus is visible at a glance.
+  const [expandedTopicId, setOpenTopicId] = useState<number | null>(null);
 
   // Already on the course screen, so a free enrolment must not push a second copy.
   const { enrol, pendingCourseId } = useEnrol({ navigateToCourse: false });
@@ -75,6 +72,18 @@ export default function CourseDetailScreen() {
     queryFn: () => fetchCourse(courseId),
     enabled: Number.isFinite(courseId),
   });
+
+  /*
+   * Local flag rather than `isFetching`: the course refetches on its own after a
+   * lesson or a payment, and that must not flash the pull-to-refresh spinner.
+   */
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
+  }, [refetch]);
 
   const isEnrolled = data?.is_enrolled ?? false;
 
@@ -102,7 +111,7 @@ export default function CourseDetailScreen() {
     const items: TabItem<CourseTab>[] = [{ value: 'lessons', label: t('courses.lessons') }];
 
     if (data?.description) items.push({ value: 'about', label: t('courses.tabAbout') });
-    if (data?.paper) items.push({ value: 'assessment', label: t('paper.title') });
+    if (data?.paper) items.push({ value: 'assessment', label: t('courses.tabQuiz') });
 
     return items;
   }, [data?.description, data?.paper, t]);
@@ -110,8 +119,6 @@ export default function CourseDetailScreen() {
   // A course with no description has no About tab, so a stale selection has to
   // fall back rather than render an empty panel.
   const activeTab = tabItems.some((item) => item.value === tab) ? tab : 'lessons';
-
-  const expandedTopicId = openTopicId === undefined ? (data?.topics[0]?.id ?? null) : openTopicId;
 
   function openLesson(lesson: StudentCourseVideo) {
     if (lesson.is_locked) {
@@ -155,7 +162,10 @@ export default function CourseDetailScreen() {
 
   return (
     <View className="flex-1 bg-background">
-      <View className="flex-row items-center gap-2 px-3 pb-2" style={{ paddingTop: insets.top + 4 }}>
+      <View
+        className="flex-row items-center gap-2 px-3 pb-2"
+        style={{ paddingTop: insets.top + 4 }}
+      >
         <CircleButton icon={ChevronLeft} label={t('common.back')} onPress={() => router.back()} />
 
         <Text variant="heading" numberOfLines={1} className="flex-1 text-center">
@@ -198,12 +208,30 @@ export default function CourseDetailScreen() {
             // topic of the syllabus.
             contentContainerStyle={{ paddingBottom: insets.bottom + 148 }}
             showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={() => void onRefresh()}
+                tintColor={colors.primary}
+                colors={[colors.primary]}
+              />
+            }
           >
             <CourseHero course={data} />
 
             <Text variant="title" className="mt-4">
               {data.name}
             </Text>
+
+            {data.category_name && (
+              <Text
+                variant="none"
+                numberOfLines={1}
+                className="mt-0.5 text-[12px] leading-5 text-muted-foreground"
+              >
+                {data.category_name}
+              </Text>
+            )}
 
             <View className="mt-2 flex-row flex-wrap items-center gap-x-5 gap-y-1.5">
               {length !== '' && (
@@ -239,7 +267,9 @@ export default function CourseDetailScreen() {
               <View className="flex-row items-center gap-2">
                 <LearnerStack />
                 <Text className="text-[13px] font-semibold leading-5 text-primary">
-                  {t('courses.learners', { count: formatCompactCount(proof.learners) })}
+                  {t('courses.learners', {
+                    count: formatCompactCount(proof.learners),
+                  })}
                 </Text>
               </View>
             </View>
@@ -248,7 +278,7 @@ export default function CourseDetailScreen() {
               <Tabs className="mt-4" value={activeTab} items={tabItems} onChange={setTab} />
             )}
 
-            <View className="mt-4 gap-3">
+            <View className="mt-3 gap-2">
               {activeTab === 'lessons' &&
                 (data.topics.length === 0 ? (
                   <EmptyState
@@ -263,7 +293,9 @@ export default function CourseDetailScreen() {
                       topic={topic}
                       index={index}
                       expanded={topic.id === expandedTopicId}
-                      onToggle={() => setOpenTopicId(topic.id === expandedTopicId ? null : topic.id)}
+                      onToggle={() =>
+                        setOpenTopicId(topic.id === expandedTopicId ? null : topic.id)
+                      }
                       onOpenLesson={openLesson}
                     />
                   ))
@@ -282,7 +314,12 @@ export default function CourseDetailScreen() {
               {activeTab === 'assessment' && data.paper && (
                 <CourseAssessmentCard
                   paper={data.paper}
-                  onStart={() => router.push({ pathname: '/paper/[id]', params: { id: data.id } })}
+                  onStart={() =>
+                    router.push({
+                      pathname: '/paper/[id]',
+                      params: { id: data.id },
+                    })
+                  }
                 />
               )}
             </View>
@@ -334,7 +371,12 @@ export default function CourseDetailScreen() {
                     fullWidth
                     variant={data.paper.can_attempt ? 'primary' : 'secondary'}
                     disabled={!data.paper.can_attempt && !data.paper.has_passed}
-                    onPress={() => router.push({ pathname: '/paper/[id]', params: { id: data.id } })}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/paper/[id]',
+                        params: { id: data.id },
+                      })
+                    }
                   />
                 ) : null}
               </>
@@ -360,35 +402,6 @@ export default function CourseDetailScreen() {
         </>
       )}
     </View>
-  );
-}
-
-function CircleButton({
-  icon: Icon,
-  label,
-  onPress,
-  disabled = false,
-}: {
-  icon: typeof ChevronLeft;
-  label: string;
-  onPress: () => void;
-  disabled?: boolean;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ disabled }}
-      hitSlop={10}
-      disabled={disabled}
-      onPress={onPress}
-      className={cn(
-        'h-11 w-11 items-center justify-center rounded-full border border-border bg-card active:bg-muted',
-        disabled && 'opacity-40',
-      )}
-    >
-      <Icon size={20} color={colors.foreground} />
-    </Pressable>
   );
 }
 
@@ -421,10 +434,16 @@ function LearnerStack() {
   });
 
   const faces: Array<{ key: string; uri: string | null; name: string | null }> = [
-    { key: 'me', uri: student?.profile_photo_url ?? null, name: student?.full_name ?? null },
-    ...(data ?? [])
-      .slice(0, 2)
-      .map((learner, index) => ({ key: `learner-${index}`, uri: learner.photo_url, name: null })),
+    {
+      key: 'me',
+      uri: student?.profile_photo_url ?? null,
+      name: student?.full_name ?? null,
+    },
+    ...(data ?? []).slice(0, 2).map((learner, index) => ({
+      key: `learner-${index}`,
+      uri: learner.photo_url,
+      name: null,
+    })),
   ];
 
   return (

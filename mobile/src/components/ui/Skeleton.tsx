@@ -57,7 +57,7 @@ export function ChecklistItemSkeleton() {
     <View className="flex-row overflow-hidden rounded-xl border border-border bg-card">
       <Skeleton className="w-1 rounded-none" />
 
-      <View className="flex-1 flex-row items-center gap-3 p-3">
+      <View className="flex-1 flex-row items-center gap-3 px-3 py-2.5">
         <Skeleton className="h-[26px] w-[26px] rounded-full" />
 
         <View className="flex-1 gap-2">

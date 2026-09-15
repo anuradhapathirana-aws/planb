@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 
@@ -94,6 +95,30 @@ export function useCheckout(orderId: number) {
     void queryClient.invalidateQueries({ queryKey: ['service'] });
     void queryClient.invalidateQueries({ queryKey: ['service-purchases'] });
   }, [isPaid, clearTimer]);
+
+  /*
+   * Re-ask when the student comes back to the app. The usual path is: send the
+   * transfer from a banking app, return here, and wonder whether it has been
+   * checked yet. One request on return answers that without timed polling, which
+   * would burn data for an approval that can take a working day.
+   *
+   * Only while the order is still open — a paid or cancelled order is final.
+   */
+  const status = order.data?.status;
+  const refetchOrder = order.refetch;
+
+  useEffect(() => {
+    const isOpen =
+      status === 'pending' || status === 'failed' || status === 'awaiting_verification';
+
+    if (!isOpen) return;
+
+    const subscription = AppState.addEventListener('change', (next) => {
+      if (next === 'active') void refetchOrder();
+    });
+
+    return () => subscription.remove();
+  }, [status, refetchOrder]);
 
   /* Stop waiting eventually, and say so honestly rather than spinning forever. */
   useEffect(() => {

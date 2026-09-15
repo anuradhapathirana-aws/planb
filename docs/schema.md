@@ -93,7 +93,8 @@ FR-ADM-008 (Course Module). Top-level grouping the admin picks first on the Cour
 | id | bigIncrements | |
 | name | string, unique | e.g. "UAE Migration Program" |
 | description | string(500), nullable | Short plain-text blurb shown under the category name in the admin list. |
-| is_active | boolean, default true | Inactive categories drop out of the Course form's select but stay attached to existing courses. No hard delete. |
+| icon | string(40), nullable | PHP enum `App\Enums\CourseCategoryIcon` — the glyph on the student app's Home "Top Categories" tile, picked on the admin form. A meaning (`language`, `social_media`), not an icon name. **Null means no choice yet**: the app then guesses a glyph from the name, which is how categories predating the column kept their look. Its own set, not `ServiceIcon` — categories are subjects, services are errands. |
+| is_active | boolean, default true | Inactive categories drop out of the Course form's select and **off the student app's Home category row**, but stay attached to existing courses. No hard delete. |
 | sort_order | unsignedInteger, default 0 | Display order (FR-ADM-008 reorder). |
 | created_at / updated_at | timestamps | |
 
@@ -415,6 +416,23 @@ Concrete rather than polymorphic on purpose: enrolment is a course concept. A pr
 
 **`unique(student_id, course_programme_id)`** is load-bearing: it is what makes a replayed webhook or a double-tapped button incapable of enrolling — or charging — twice.
 
+## `course_wishlists`
+
+Courses a student has saved with the heart on a course tile. One row per (student, course). Written only by `App\Services\Course\CourseWishlistService`; read into course rows by `StudentCourseService`, which sets `is_wishlisted` on every list and detail response.
+
+**The row's existence is the whole fact** — there is no state column, and un-saving deletes the row. Unlike `student_checklist_items` there is nothing worth keeping about a course a student un-hearted. Both writes are still idempotent: saving twice hits the unique index (a concurrent double tap is caught, not a 500), and removing twice deletes nothing.
+
+**A course that is later unpublished or soft-deleted keeps its rows** — the student's intent has not changed and the course may return. Student read paths filter by published status, so it simply stops showing. Only a hard delete of either side cascades.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | bigIncrements | |
+| student_id | FK → students, cascadeOnDelete | |
+| course_programme_id | FK → course_programmes, cascadeOnDelete | |
+| created_at / updated_at | timestamps | `created_at` orders the wishlist, newest save first. |
+
+`unique(student_id, course_programme_id)` — also the index every read uses ("this student's saved courses").
+
 ## `services`
 
 Premium services — paid one-off help a student buys on its own (CV writing, visa consultation). The second implementer of `App\Contracts\Purchasable`, which is what lets the whole order/payment/webhook layer sell one without a line of change.
@@ -423,7 +441,6 @@ Premium services — paid one-off help a student buys on its own (CV writing, vi
 |---|---|---|
 | id | bigIncrements | |
 | name | string, indexed | See the uniqueness note below. |
-| summary | string(300), nullable | One line for a catalogue card. |
 | description | text, nullable | Rich-text HTML, sanitized by `App\Support\HtmlSanitizer` in the Service **on write**, never on render. |
 | price_cents | unsignedBigInteger, default 0 | Smallest currency unit, integer (CLAUDE.md §4.11). **Must be above zero** — enforced in `ServiceRequest`, not by the column, since a service exists to be paid for and a free one would open an order `OrderService` refuses. |
 | currency | char(3), default `LKR` | |
@@ -476,6 +493,29 @@ Idempotency and audit for gateway callbacks.
 
 **`unique(gateway, event_id)`** is the whole point. Gateways retry until they get a 200, so the same event *will* arrive more than once; the unique index turns a replay into a duplicate-key error that `PaymentService` catches and reports as "already handled" instead of settling twice.
 
+## `company_settings`
+
+Plan B's own configuration, edited in the admin panel under **Settings > Bank Details** and **Settings > App Intro**. **A singleton — exactly one row**, inserted by its migration and managed only by `App\Services\Settings\CompanySettingsService` (`current()` recreates it if it is ever missing). Typed columns rather than a key-value table, because every value has a known shape and a validation rule.
+
+The logo is a **Media Library collection** (`logo`, single file, public disk), re-encoded to a PNG no larger than 512×512 so it keeps its transparency.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | bigIncrements | |
+| bank_transfer_enabled | boolean, default true | The off switch for bank transfer. `PaymentService::submitBankTransfer()` reads it. Can only be on when bank name, account name and account number are all set. |
+| bank_name | string(120), nullable | |
+| bank_account_name | string(120), nullable | |
+| bank_account_number | string(50), nullable | Digits, spaces and dashes only. |
+| bank_branch | string(120), nullable | |
+| bank_notes | string(500), nullable | Payment instructions shown under the account on the app. |
+| intro_is_enabled | boolean, default true | Whether the app plays the launch intro. |
+| intro_greeting_en | string(160), nullable | Required while the intro is on. |
+| intro_greeting_si | string(160), nullable | Optional. The app falls back to English. |
+| intro_animation | string(32), default `fade` | PHP enum `App\Enums\IntroAnimation`: `fade`, `zoom`, `slide_up`, `pulse`. |
+| created_at / updated_at | timestamps | `updated_at` is touched on a logo change so the app can tell its cached logo is stale. |
+
+**The bank details used to be `.env` keys** (`BANK_TRANSFER_ENABLED`, `BANK_TRANSFER_BANK_NAME` …). The migration copies any values it finds into the row once; the keys are gone from `config/payments.php`. Only `BANK_TRANSFER_MAX_RECEIPT_MB` stays in config.
+
 ### Deferred (not built yet, referenced by future features)
 
 - Payments (`Order`, `Payment`, `BankTransfer`) — Payment Gateway feature.
@@ -487,6 +527,8 @@ Idempotency and audit for gateway callbacks.
 
 | Date | Change |
 |---|---|
+| 2026-09-15 | Added `course_categories.icon` (nullable, `App\Enums\CourseCategoryIcon`), so an admin picks the glyph for a category's tile on the student app's Home screen. No backfill: null means "guess from the name". |
+| 2026-09-14 | Added `course_wishlists` — a student's saved courses, behind the heart on course tiles. Delete-on-remove rather than a nulled timestamp; rows survive unpublishing and soft deletes and are filtered out on read. |
 | 2026-09-02 | Premium Services: `services` (the second `Purchasable`) and `service_purchases` (its fulfilment queue). The order/payment/webhook layer is unchanged — only `PaymentService::settleOrder` gained a branch. |
 | 2026-08-13 | Initial schema: `users` (staff/admin auth) and `students` (Student Management). |
 | 2026-08-14 | `student_id` on single-record create is now server-generated, not admin-supplied. Profile photo upload (`profile_photo` media collection, already in the initial schema) is now wired up end-to-end via `POST/DELETE /admin/students/{student}/photo`. |
@@ -499,6 +541,7 @@ Idempotency and audit for gateway callbacks.
 | 2026-08-15 | `full_name`, `contact_number`, `address`, `date_of_birth`, `visa_status`, `industry_id`, `profession_id` are now required on the admin Add/Edit student form (client-requested; columns stay DB-nullable for CSV import / not-yet-self-registered students). |
 | 2026-08-25 | Added `checklist_items` — the Before Arrival / After Arrival checklists. Phase is a fixed PHP enum rather than an admin-managed table; each phase is saved whole, so `sort_order` comes from the submitted array's position. Student tick-off progress is still deferred. |
 | 2026-09-01 | Added `course_programmes.published_at` (nullable, indexed with `status`) — when a course first went live, for the Home search's NEW badge. Stamped once on first publish and never refreshed; backfilled from `created_at`. |
+| 2026-09-15 | Added `company_settings` — a singleton holding the bank transfer account (moved out of `.env`), the Plan B logo (Media Library `logo` collection) and the mobile launch intro (greeting EN/SI and a preset animation). |
 | 2026-09-01 | Added `home_banners` — the student app's Home hero, a singleton the admin edits under Settings. Image is a Media Library collection; the link target is a fixed enum plus one typed column per branch, so a deleted course nulls itself out instead of leaving a dead id in a text field. |
 | 2026-09-01 | Added `student_checklist_items` — the student's ticks against the arrival checklists (FR-MOB-030), unblocking the mobile Checklists tab. The row is kept and `completed_at` nulled on an un-tick rather than deleted, so tick/un-tick is one idempotent upsert and the completion date survives. Phase progress stays computed. |
 | 2026-08-25 | Added the student learning tables: `student_video_progress` and `student_programme_progress` (FR-MOB-020/025/027), `course_paper_attempts` and `course_paper_answers` (FR-MOB-024/025). `student_topic_progress` deliberately omitted — see above. Several index names are set explicitly because the generated ones exceed MySQL's 64-character limit. |

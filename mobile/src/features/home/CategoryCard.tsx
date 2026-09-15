@@ -1,6 +1,7 @@
 import { Pressable, View } from 'react-native';
 
-import { colors, radii } from '@shared/theme/tokens';
+import type { CourseCategoryIconName } from '@shared/types/course';
+import { colors } from '@shared/theme/tokens';
 import { Text } from '@/components/ui/Text';
 import { cn } from '@/lib/cn';
 import { categoryIcon } from './categoryIcons';
@@ -15,7 +16,7 @@ const ICON = 22;
  * client's reference, so it reads as sitting ON the card rather than in it.
  *
  * **Nothing actually overflows anything to get there**, the construction
- * `ServiceIconCard` uses for its own chip. React Native does not deliver
+ * `TabBar` uses to lift its disc above the bar. React Native does not deliver
  * touches to a child drawn outside its parent on Android, and Android clips
  * overflowing children inside a scrolling row far more eagerly than iOS — a
  * disc genuinely hanging off the card would be dead to the touch and
@@ -34,10 +35,26 @@ const PADDING_BOTTOM = 12;
 const GAP_UNDER_BADGE = 6;
 
 /**
- * 13px at the 1.6x Sinhala floor is 20.8, so 21 is the first whole pixel that
- * clears it (`MIN_LINE_HEIGHT_RATIO`).
+ * 16px on 12px text, ~1.33x. Tightened from 21 at the client's request, where a
+ * two-line name read as two separate labels with a gap between them, then
+ * scaled down with the label from 18-on-13 when Home's type came down a step.
+ *
+ * **Below the app's 1.6x Sinhala floor on purpose, and only for Latin text.**
+ * Poppins carries unusually tall built-in ascent and descent, so 1.6x in Poppins
+ * looks closer to 1.8x in most faces; ~1.35x is the standard setting for a
+ * short two-line label in it. The floor exists because Sinhala glyphs clip in a
+ * tight line box — and Poppins has no Sinhala glyphs at all, so a Sinhala name
+ * is drawn in the platform's Sinhala face, which still needs the room. A name
+ * containing Sinhala therefore gets `SINHALA_LINE_HEIGHT` instead; see
+ * `SINHALA`.
  */
-const LABEL_LINE_HEIGHT = 21;
+const LABEL_LINE_HEIGHT = 16;
+
+/** 12px at the 1.6x Sinhala floor is 19.2, so 20 is the first pixel that clears it. */
+const SINHALA_LINE_HEIGHT = 20;
+
+/** Any character in the Sinhala Unicode block. */
+const SINHALA = /[\u0D80-\u0DFF]/;
 
 /**
  * Two lines of label are RESERVED, so the row keeps the even baseline the
@@ -74,11 +91,9 @@ export const CATEGORY_CARD_HEIGHT = BADGE + GAP_UNDER_BADGE + LABEL_BLOCK + PADD
  *
  * **This is the one place in the app that spends more than the single accent
  * root CLAUDE.md §8 allows**, taken at the client's request against a supplied
- * reference. `features/services/ServiceIconCard.tsx` turned the same reference
- * down for its own row; the reasoning there still holds and was overruled
- * deliberately, so the two rows on this screen now differ on purpose — the
- * service cards are brand navy/gold, these are pastel. Do not "restore
- * consistency" by repainting either one without asking.
+ * reference. An earlier service row on Home turned the same reference down, and
+ * its reasoning is the two points below — overruled deliberately here, not
+ * forgotten.
  *
  * Two things about the palette that are load-bearing rather than taste:
  *
@@ -120,8 +135,10 @@ const TINTS = [
 ] as const;
 
 export interface CategoryCardProps {
-  /** The admin-authored category name — both the label and the icon key. */
+  /** The admin-authored category name — the label, and the icon guess when none is chosen. */
   name: string;
+  /** The admin's chosen icon, or null to guess one from `name`. */
+  icon: CourseCategoryIconName | null;
   /** Fixed by the strip so every tile in the row matches. */
   width: number;
   /** Position in the row — that is what picks the tint. */
@@ -136,20 +153,21 @@ export interface CategoryCardProps {
  * is a second number competing with the name in a 94px-wide box — the tile is a
  * signpost, and the list it opens is where counting belongs.
  */
-export function CategoryCard({ name, width, index, onPress }: CategoryCardProps) {
-  const Icon = categoryIcon(name);
+export function CategoryCard({ name, icon, width, index, onPress }: CategoryCardProps) {
+  const Icon = categoryIcon(name, icon);
   // Non-null: the modulo of a non-empty tuple is always in range, which the
   // index signature cannot know under `noUncheckedIndexedAccess`.
   const tint = TINTS[index % TINTS.length]!;
+
+  const lineHeight = SINHALA.test(name) ? SINHALA_LINE_HEIGHT : LABEL_LINE_HEIGHT;
 
   return (
     <Pressable
       accessibilityRole="button"
       /*
-       * The name alone. The glyph is a guess off that same name (see
-       * `categoryIcons.ts`) and carries no information the label does not
-       * already give, so announcing it would be noise at best and wrong at
-       * worst.
+       * The name alone. The glyph illustrates that same name — chosen by an
+       * admin or guessed from it (see `categoryIcons.ts`) — and carries no
+       * information the label does not already give.
        */
       accessibilityLabel={name}
       onPress={onPress}
@@ -161,13 +179,14 @@ export function CategoryCard({ name, width, index, onPress }: CategoryCardProps)
         down, rather than being the Pressable's own background with the disc
         hanging out of it. See `OVERHANG`.
 
-        The shared `radii.xl` (16), not the mobile fork's 8 — matching
-        `ServiceIconCard`, the other icon row on this screen, and the
-        reference's generous corner.
+        `rounded-2xl` — the mobile scale's 10px (`mobile/tailwind.config.js`).
+        It was the shared `radii.xl` (16) until the client asked for a tighter
+        corner. A class, not an inline radius, so it moves with the mobile scale
+        — and Home's skeleton for this row already uses the same class.
       */}
       <View
-        className={cn('absolute inset-x-0 bottom-0 border', tint.card)}
-        style={{ top: OVERHANG, borderRadius: radii.xl }}
+        className={cn('absolute inset-x-0 bottom-0 rounded-2xl border', tint.card)}
+        style={{ top: OVERHANG }}
       />
 
       {/*
@@ -198,13 +217,15 @@ export function CategoryCard({ name, width, index, onPress }: CategoryCardProps)
 
       <Text
         variant="none"
-        className="text-center text-[13px] font-medium text-foreground"
+        className="text-center text-[12px] font-medium text-foreground"
         style={{
           marginTop: GAP_UNDER_BADGE,
           marginBottom: PADDING_BOTTOM,
           paddingHorizontal: PADDING_X,
-          lineHeight: LABEL_LINE_HEIGHT,
-          minHeight: LABEL_BLOCK,
+          lineHeight,
+          // Two lines reserved at whichever leading this name uses, so a
+          // one-word name sits on the same baseline as its two-line neighbours.
+          minHeight: lineHeight * 2,
         }}
         numberOfLines={2}
       >

@@ -43,6 +43,11 @@ export interface StudentOrder {
   item: {
     type: 'course' | 'service' | null;
     id: number;
+    /**
+     * The product's artwork. Sent only by `GET /student/orders/{id}` (the
+     * checkout), absent on lists; null when the product has no image or is gone.
+     */
+    thumbnail_url?: string | null;
   };
   amount_cents: number;
   currency: string;
@@ -93,7 +98,10 @@ export interface CardCheckoutResult {
   checkout: CheckoutSession;
 }
 
-/** Where to send the money. Not secret — the student cannot pay without it. */
+/**
+ * Where to send the money, as set under Settings > Bank Details in the admin
+ * panel. Mirrors `StudentBankTransferDetailsResource`.
+ */
 export interface BankTransferDetails {
   enabled: boolean;
   account: {
@@ -101,6 +109,8 @@ export interface BankTransferDetails {
     account_name: string | null;
     account_number: string | null;
     branch: string | null;
+    /** Extra instructions from the admin, e.g. what to write as the reference. */
+    notes: string | null;
   };
   max_receipt_mb: number;
 }

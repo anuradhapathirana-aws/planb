@@ -65,6 +65,12 @@ export interface ButtonProps extends Omit<PressableProps, 'children' | 'style'> 
   iconPosition?: 'left' | 'right';
   loading?: boolean;
   fullWidth?: boolean;
+  /**
+   * `pill` for a fully rounded button. A prop rather than a `rounded-full`
+   * className: appending a class does not reliably beat the base `rounded-lg`,
+   * because the stylesheet order decides, not the string order (see `Text`).
+   */
+  shape?: 'default' | 'pill';
   className?: string;
 }
 
@@ -76,6 +82,7 @@ export function Button({
   iconPosition = 'left',
   loading = false,
   fullWidth = false,
+  shape = 'default',
   disabled,
   className,
   ...props
@@ -105,7 +112,8 @@ export function Button({
       disabled={isDisabled}
       hitSlop={size === 'sm' ? 8 : 0}
       className={cn(
-        'flex-row items-center justify-center gap-2 rounded-lg',
+        'flex-row items-center justify-center gap-2',
+        shape === 'pill' ? 'rounded-full' : 'rounded-lg',
         CONTAINER[variant],
         SIZE[size],
         fullWidth && 'w-full',

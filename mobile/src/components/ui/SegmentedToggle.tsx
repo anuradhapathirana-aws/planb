@@ -6,6 +6,8 @@ import { Text } from './Text';
 export interface SegmentedOption<T extends string> {
   value: T;
   label: string;
+  /** Shown but not choosable, e.g. a payment method that is switched off. */
+  disabled?: boolean;
 }
 
 export interface SegmentedToggleProps<T extends string> {
@@ -14,6 +16,8 @@ export interface SegmentedToggleProps<T extends string> {
   options: SegmentedOption<T>[];
   onChange: (value: T) => void;
   error?: string;
+  /** `sm`: 12px labels in a 44px track (still the minimum touch target). */
+  size?: 'default' | 'sm';
 }
 
 /**
@@ -33,7 +37,10 @@ export function SegmentedToggle<T extends string>({
   options,
   onChange,
   error,
+  size = 'default',
 }: SegmentedToggleProps<T>) {
+  const isSmall = size === 'sm';
+
   return (
     <View className="w-full">
       {label && (
@@ -50,18 +57,22 @@ export function SegmentedToggle<T extends string>({
             <Pressable
               key={option.value}
               accessibilityRole="radio"
-              accessibilityState={{ selected }}
+              accessibilityState={{ selected, disabled: option.disabled === true }}
               accessibilityLabel={option.label}
+              disabled={option.disabled}
               onPress={() => onChange(option.value)}
               className={cn(
                 // minHeight, not height — a longer Sinhala label must grow it.
-                'min-h-[40px] flex-1 items-center justify-center rounded-full px-3 py-2',
+                'flex-1 items-center justify-center rounded-full px-3',
+                isSmall ? 'min-h-[36px] py-1.5' : 'min-h-[40px] py-2',
                 selected && 'bg-background',
+                option.disabled && 'opacity-50',
               )}
             >
               <Text
                 className={cn(
-                  'text-[14px] font-semibold leading-5',
+                  isSmall ? 'text-[12px] leading-5' : 'text-[14px] leading-5',
+                  'font-semibold',
                   selected ? 'text-primary' : 'text-primary-foreground/70',
                 )}
               >

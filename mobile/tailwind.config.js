@@ -56,10 +56,6 @@ const mobileRadii = {
  * outside the token file. Every card, input and search field in the app draws
  * its own `border-border` hairline, which is what keeps white-on-white surfaces
  * distinct — a new card added without one will vanish into the page.
- *
- * One JS consumer reads the ground directly instead of through a class —
- * `src/components/shared/TabBar.tsx` — and points at `colors.card` for the same
- * reason. Change this and change that.
  */
 const mobileColors = {
   ...colors,
@@ -81,7 +77,13 @@ module.exports = {
         '2xl': `${mobileRadii['2xl']}px`,
       },
       fontFamily: {
-        sans: ['Inter', 'System'],
+        /*
+         * Documentation more than configuration: nothing applies `font-sans`.
+         * Poppins reaches the screen through `Text`, which maps each weight
+         * class to its registered family (`fonts.poppins` in the tokens) — a
+         * single family name here cannot carry weight on Android.
+         */
+        sans: ['Poppins_400Regular', 'System'],
         // Sinhala needs a face with real coverage, or it renders tofu.
         sinhala: ['NotoSansSinhala', 'System'],
       },

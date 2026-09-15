@@ -11,6 +11,7 @@
 export * from './types/api';
 export * from './types/auth';
 export * from './types/checklist';
+export * from './types/companySettings';
 export * from './types/homeBanner';
 export * from './types/course';
 export * from './types/industry';

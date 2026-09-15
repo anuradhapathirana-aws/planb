@@ -2,6 +2,7 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { Pencil, Power, PowerOff } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { RowActions } from '@/components/shared/RowActions';
+import { COURSE_CATEGORY_ICON_GLYPHS } from '@/features/admin/courseCategories/courseCategoryIcons';
 import { formatDate } from '@/lib/formatters';
 import type { CourseCategory } from '@shared/types/course';
 
@@ -19,16 +20,38 @@ export function getCourseCategoryColumns({
       id: 'name',
       header: 'Category',
       meta: { sortId: 'name' },
-      cell: ({ row }) => (
-        <div className="min-w-0">
-          <span className="font-medium">{row.original.name}</span>
-          {row.original.description && (
-            <p className="line-clamp-1 text-xs text-muted-foreground" title={row.original.description}>
-              {row.original.description}
-            </p>
-          )}
-        </div>
-      ),
+      cell: ({ row }) => {
+        const { icon } = row.original;
+        const Glyph = icon ? COURSE_CATEGORY_ICON_GLYPHS[icon] : null;
+
+        return (
+          <div className="flex min-w-0 items-center gap-2.5">
+            {/*
+              The icon the Home tile uses, so an admin scanning the list sees which
+              categories still have none. Empty categories show a dashed slot
+              rather than nothing, which would misalign the names.
+            */}
+            <span
+              className={
+                Glyph
+                  ? 'flex size-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary'
+                  : 'size-7 shrink-0 rounded-md border border-dashed border-border'
+              }
+              title={Glyph ? undefined : 'No icon — the app guesses one from the name'}
+            >
+              {Glyph && <Glyph className="size-4" aria-hidden />}
+            </span>
+            <div className="min-w-0">
+              <span className="font-medium">{row.original.name}</span>
+              {row.original.description && (
+                <p className="line-clamp-1 text-xs text-muted-foreground" title={row.original.description}>
+                  {row.original.description}
+                </p>
+              )}
+            </div>
+          </div>
+        );
+      },
     },
     {
       id: 'programmes_count',

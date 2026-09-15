@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\StudentDocumentType;
 use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\ChecklistItemController;
+use App\Http\Controllers\Admin\CompanySettingController;
 use App\Http\Controllers\Admin\CourseCategoryController;
 use App\Http\Controllers\Admin\CoursePaperController;
 use App\Http\Controllers\Admin\CourseProgrammeController;
@@ -25,6 +26,8 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1/admin')->group(function () {
     // Public (unauthenticated) admin-auth endpoints.
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:6,1');
+    // The uploaded logo, for the sign-in page. Branding only — nothing private.
+    Route::get('/branding', [CompanySettingController::class, 'branding'])->middleware('throttle:60,1');
     Route::get('/unlock/{user}', [AuthController::class, 'unlock'])
         ->name('admin.unlock')
         ->middleware('signed');
@@ -142,6 +145,17 @@ Route::prefix('v1/admin')->group(function () {
         Route::post('/home-banners/{home_banner}/image', [HomeBannerController::class, 'uploadImage']);
         Route::delete('/home-banners/{home_banner}/image', [HomeBannerController::class, 'deleteImage']);
         Route::apiResource('home-banners', HomeBannerController::class);
+
+        /*
+         * Settings > Bank Details and Settings > App Intro. One singleton row,
+         * saved in two halves with different permissions: the bank account is
+         * Super Admin only, branding is content work.
+         */
+        Route::get('/company-settings', [CompanySettingController::class, 'show']);
+        Route::put('/company-settings/bank-details', [CompanySettingController::class, 'updateBankDetails']);
+        Route::put('/company-settings/app-intro', [CompanySettingController::class, 'updateAppIntro']);
+        Route::post('/company-settings/logo', [CompanySettingController::class, 'uploadLogo']);
+        Route::delete('/company-settings/logo', [CompanySettingController::class, 'deleteLogo']);
 
         Route::get('/checklists/{phase}', [ChecklistItemController::class, 'index']);
         Route::put('/checklists/{phase}', [ChecklistItemController::class, 'update']);

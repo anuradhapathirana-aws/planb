@@ -16,7 +16,6 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Breadcrumbs } from '@/components/shared/Breadcrumbs';
 import { FieldError, FieldLabel } from '@/components/shared/FormField';
 import { FormSection } from '@/components/shared/FormSection';
@@ -24,7 +23,8 @@ import { ImageDropzone } from '@/components/shared/ImageDropzone';
 import { PageLoader } from '@/components/shared/PageLoader';
 import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { SegmentedToggle } from '@/components/shared/SegmentedToggle';
-import { ServiceIconPicker } from '@/features/admin/services/components/ServiceIconPicker';
+import { IconPicker } from '@/components/shared/IconPicker';
+import { SERVICE_ICON_GLYPHS } from '@/features/admin/services/serviceIcons';
 import {
   blankService,
   serviceFormSchema,
@@ -42,7 +42,7 @@ import { uploadServiceThumbnail } from '@/api/services.api';
 import { fromCents, toCents } from '@shared/lib/formatters';
 import { applyServerValidationErrors } from '@shared/lib/serverErrors';
 import { paths } from '@/routes/paths';
-import type { Service, ServicePayload } from '@shared/types/service';
+import { SERVICE_ICONS, type Service, type ServicePayload } from '@shared/types/service';
 
 const SERVICE_FIELD_NAMES = Object.keys(serviceFormSchema.shape);
 
@@ -54,7 +54,6 @@ const STATUS_OPTIONS = [
 function toFormValues(service: Service): ServiceFormSchema {
   return {
     name: service.name,
-    summary: service.summary ?? '',
     icon: service.icon,
     description: service.description ?? '',
     price: fromCents(service.price_cents),
@@ -154,7 +153,6 @@ export function ServiceFormPage() {
 
   const buildPayload = (values: ServiceFormSchema): ServicePayload => ({
     name: values.name,
-    summary: values.summary || null,
     icon: values.icon,
     description: values.description || null,
     // Converted here, once, from the decimal the admin typed — a price is never
@@ -262,27 +260,18 @@ export function ServiceFormPage() {
                 </div>
 
                 <div className="space-y-1 sm:col-span-2">
-                  <FieldLabel htmlFor="service-summary" icon={FileText}>
-                    Short summary
+                  <FieldLabel htmlFor="service-icon" icon={Shapes}>
+                    Icon
                   </FieldLabel>
-                  <Textarea
-                    id="service-summary"
-                    rows={2}
-                    placeholder="One line students see on the service card."
-                    aria-invalid={!!errors.summary}
-                    disabled={busy}
-                    {...register('summary')}
-                  />
-                  <FieldError message={errors.summary?.message} />
-                </div>
-
-                <div className="space-y-1 sm:col-span-2">
-                  <FieldLabel icon={Shapes}>Icon</FieldLabel>
                   <Controller
                     control={control}
                     name="icon"
                     render={({ field }) => (
-                      <ServiceIconPicker
+                      <IconPicker
+                        id="service-icon"
+                        ariaLabel="Service icon"
+                        options={SERVICE_ICONS}
+                        glyphs={SERVICE_ICON_GLYPHS}
                         value={field.value}
                         onChange={field.onChange}
                         disabled={busy}
@@ -290,8 +279,8 @@ export function ServiceFormPage() {
                     )}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Shown on the Home screen of the student app. Click the chosen icon again to
-                    clear it — services without one fall back to a generic glyph.
+                    Shown on the Home screen of the student app. Services without one fall back to a
+                    generic glyph.
                   </p>
                 </div>
 
@@ -353,7 +342,7 @@ export function ServiceFormPage() {
                     url={isEditing ? thumbnailUrl : stagedThumbnailPreview}
                     onSelect={pickThumbnail}
                     onRemove={clearThumbnail}
-                    hint="PNG or JPG, up to 2MB · cropped to 16:9"
+                    hint="Recommended 1280×720 px (16:9) · PNG or JPG, up to 2MB"
                     busy={thumbnailBusy}
                     disabled={busy}
                   />

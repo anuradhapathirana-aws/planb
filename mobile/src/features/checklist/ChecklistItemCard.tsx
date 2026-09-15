@@ -70,12 +70,14 @@ export function ChecklistItemCard({
         done ? 'bg-muted' : 'bg-card',
       )}
     >
-      {/* The rail is the at-a-glance state: gold means outstanding, green done.
+      {/* The rail is the at-a-glance state: gold means outstanding, navy done.
           It reads down the list as progress without any text to scan. */}
-      <View className={cn('w-1', done ? 'bg-success' : 'bg-accent')} />
+      <View className={cn('w-1', done ? 'bg-primary' : 'bg-accent')} />
 
       <View className="flex-1">
-        <View className="flex-row items-start gap-1 py-2 pl-1 pr-2">
+        {/* The 44px checkbox and chevron targets set the row's floor, so the
+            padding around them is kept to almost nothing. */}
+        <View className="flex-row items-center py-0.5 pr-0.5">
           <Checkbox
             checked={done}
             onChange={onToggleCompleted}
@@ -92,11 +94,11 @@ export function ChecklistItemCard({
             accessibilityLabel={item.title}
             accessibilityHint={hasDescription ? t('checklist.readSteps') : t('checklist.markDone')}
             onPress={onRowPress}
-            className="min-h-[44px] flex-1 justify-center py-1.5"
+            className="min-h-[44px] flex-1 justify-center py-1"
           >
             <Text
               className={cn(
-                'text-[15px] font-medium leading-[22px]',
+                'text-[13px] font-medium leading-5',
                 done ? 'text-muted-foreground line-through' : 'text-foreground',
               )}
             >
@@ -104,7 +106,7 @@ export function ChecklistItemCard({
             </Text>
 
             {meta !== null && (
-              <Text className="mt-0.5 text-[12px] leading-[18px] text-muted-foreground">{meta}</Text>
+              <Text className="text-[11px] leading-4 text-muted-foreground">{meta}</Text>
             )}
           </Pressable>
 
@@ -119,8 +121,12 @@ export function ChecklistItemCard({
             >
               {/* Rotating the chevron rather than swapping the icon keeps the
                   open/close relationship obvious. */}
-              <View style={{ transform: [{ rotate: expanded ? '180deg' : '0deg' }] }}>
-                <ChevronDown size={18} color={colors['muted-foreground']} />
+              <View
+                style={{
+                  transform: [{ rotate: expanded ? '180deg' : '0deg' }],
+                }}
+              >
+                <ChevronDown size={16} color={colors['muted-foreground']} />
               </View>
             </Pressable>
           )}
@@ -130,11 +136,13 @@ export function ChecklistItemCard({
           <Animated.View
             entering={reduceMotion ? undefined : FadeIn.duration(160)}
             exiting={reduceMotion ? undefined : FadeOut.duration(120)}
-            className="border-t border-border px-4 pb-4 pt-3.5"
+            className="border-t border-border px-3 pb-3 pt-2.5"
           >
-            <View className="mb-2.5 flex-row items-center gap-1.5">
+            <View className="mb-1.5 flex-row items-center gap-1.5">
               <ListChecks size={13} color={colors['muted-foreground']} />
-              <Text variant="label">{t('checklist.howTo')}</Text>
+              <Text variant="label" className="text-[10px]">
+                {t('checklist.howTo')}
+              </Text>
             </View>
 
             <RichText html={item.description} />
@@ -149,7 +157,7 @@ export function ChecklistItemCard({
               variant={done ? 'outline' : 'secondary'}
               size="sm"
               fullWidth
-              className="mt-4"
+              className="mt-3"
               onPress={() => onToggleCompleted(!done)}
             />
           </Animated.View>

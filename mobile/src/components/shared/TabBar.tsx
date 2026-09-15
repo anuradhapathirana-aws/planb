@@ -1,60 +1,85 @@
-import { useEffect } from 'react';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Platform, Pressable, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import Animated, {
+  Easing,
+  Extrapolation,
+  interpolate,
   ReduceMotion,
+  useAnimatedProps,
   useAnimatedStyle,
   useSharedValue,
+  withDelay,
+  withSequence,
   withSpring,
+  withTiming,
+  type SharedValue,
 } from 'react-native-reanimated';
+import Svg, { Path } from 'react-native-svg';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Tabs } from 'expo-router';
 import type { ComponentProps } from 'react';
 
 import { colors, MIN_TOUCH_TARGET } from '@shared/theme/tokens';
 
-/** The raised disc, the white ring around it, and the icon inside. */
-const DISC_SIZE = 52;
-const HALO = 5;
-const PUCK = DISC_SIZE + HALO * 2;
-const ICON_SIZE = 24;
+const AnimatedPath = Animated.createAnimatedComponent(Path);
+
+/** Inset of the floating bar from the screen's sides. Matches Home's page gutter. */
+const SIDE_INSET = 16;
+
+/** Space under the bar on a phone with no home indicator (no bottom safe area). */
+const BOTTOM_GAP = 8;
 
 /**
- * The bar's own height, above the safe-area inset.
- *
- * Deliberately equal to `PUCK`: at rest the puck exactly fills the bar's
- * vertical extent, which is what centres every icon in the bar without a magic
- * padding number. Change one and change the other.
+ * Room above the bar for the raised circle and its flight. The circle rests with
+ * its top 20px above the bar and rises `FLIGHT_LIFT` more mid-flight, so this is
+ * the smallest number that keeps the whole animation inside the component —
+ * nothing is drawn outside its own bounds, which Android would be entitled to
+ * clip. The strip is transparent and passes touches through to the page.
  */
-const BAR_HEIGHT = PUCK;
+const TOP = 28;
+
+/** The navy bar itself. Trimmed from 60 at the client's request. */
+const BAR_HEIGHT = 54;
+const BAR_RADIUS = 20;
 
 /**
- * How far the active disc rises above the bar's top edge.
+ * Horizontal padding inside the bar, before the five tab slots.
  *
- * Nothing overflows anything to get there, and that is deliberate: React Native
- * does not deliver touches to a child drawn outside its parent's bounds on
- * Android, so a disc hanging over the bar's edge would be dead across its whole
- * top half. The row is instead `LIFT` taller than the bar and the navy starts
- * `LIFT` down from the component's top, so the disc stays inside its own
- * Pressable.
- *
- * The white ring is what separates the disc from the bar — both are navy, so
- * without it the disc's lower half would simply vanish into the bar.
- *
- * Ring and disc are concentric, so `HALO` px of white shows around the disc at
- * every lift and nothing clips. This only sets how much of that assembly clears
- * the bar: at 12 the ring breaks the edge by 12px and the disc by 7.
+ * Wider than it looks necessary, and that is load-bearing: the wave needs
+ * straight bar edge on BOTH sides of a tab to rise out of, and the outermost
+ * tabs sit next to the rounded corners. See `SHOULDER_MAX`.
  */
-const LIFT = 12;
+const BAR_PADDING_X = 28;
+
+/** The raised circle, and the glyphs in and under it. */
+const DISC = 50;
+const DISC_ICON = 24;
+const BAR_ICON = 22;
+
+/** The white ring separating the navy circle from the navy bar. */
+const DISC_RING = 3;
+
+/** How bright the unselected icons are — white at this opacity. */
+const BAR_ICON_OPACITY = 0.7;
+
+/** How far below the bar's top edge the circle's centre rests. */
+const DISC_DROP = 5;
+
+/** How far above the bar's edge the wave peaks, behind the circle. */
+const WAVE_HEIGHT = 13;
 
 /**
- * Honours the OS "reduce motion" setting rather than overriding it — a bar that
- * springs on every tap is exactly the kind of movement that setting exists for.
+ * Half-width of the wave at the bar's edge — how far the curve's "shoulders"
+ * sweep out either side of the circle.
+ *
+ * Capped per screen at the room the outermost tab actually has before the
+ * rounded corner begins (`shoulder`, in `TabBar`). A wave on the first tab that started
+ * inside the corner would bend the bar's outline back on itself.
  */
-const SPRING = {
-  damping: 15,
-  stiffness: 160,
-  mass: 0.9,
-  reduceMotion: ReduceMotion.System,
-};
+const SHOULDER_MAX = 38;
+
+/** How much higher the circle rises while it travels between tabs. */
+const FLIGHT_LIFT = 10;
 
 /**
  * Derived from the public `Tabs` export rather than deep-imported from
@@ -68,103 +93,376 @@ type TabBarProps = Parameters<NonNullable<ComponentProps<typeof Tabs>['tabBar']>
 type TabBarIcon = NonNullable<TabBarProps['descriptors'][string]>['options']['tabBarIcon'];
 
 /**
- * The Plan B tab bar — a navy bar where the open tab rises into a ringed disc,
- * to a client-supplied reference.
+ * The bar's outline as one SVG path: a rounded rectangle whose top edge rises
+ * into a wave centred on `cx`.
  *
- * Replaces React Navigation's own bar rather than restyling it. The disc has to
- * break the bar's top edge, and every way of doing that with the built-in bar
- * ends in the Android clipping problem described on `LIFT`.
+ * One path rather than a rectangle with a bump laid over it: the wave has to be
+ * part of the bar's own silhouette, so the iOS shadow drawn from its alpha
+ * follows the curve instead of stopping where a second shape would begin.
  *
- * **The raised disc is the active tab, not a fixed centre button.** The
- * reference parks a search button in the middle; here the lift *is* the
- * selected state, so it travels to whichever tab the student opens. That keeps
- * five tabs and five routes — no sixth target, and nothing to reverse the
- * "five tabs, no centre search button" decision in `docs/CHANGELOG.md` over.
+ * Coordinates are inset half a pixel, a leftover of the hairline stroke the
+ * white version needed. Kept because the corner clearance in `shoulder` is
+ * measured against it.
+ */
+function wavePath(width: number, cx: number, waveHeight: number, shoulder: number): string {
+  'worklet';
+
+  const inset = 0.5;
+  const left = inset;
+  const right = width - inset;
+  const top = TOP;
+  const bottom = TOP + BAR_HEIGHT - inset;
+  const r = BAR_RADIUS;
+  const peak = top - waveHeight;
+  const from = cx - shoulder;
+  const to = cx + shoulder;
+
+  return [
+    `M ${left + r} ${top}`,
+    `L ${from} ${top}`,
+    // Leaves the edge flat and turns up into the peak — tangents horizontal at
+    // both ends, so the wave has no corner where it meets the bar.
+    `C ${from + shoulder * 0.55} ${top} ${cx - shoulder * 0.45} ${peak} ${cx} ${peak}`,
+    `C ${cx + shoulder * 0.45} ${peak} ${to - shoulder * 0.55} ${top} ${to} ${top}`,
+    `L ${right - r} ${top}`,
+    `A ${r} ${r} 0 0 1 ${right} ${top + r}`,
+    `L ${right} ${bottom - r}`,
+    `A ${r} ${r} 0 0 1 ${right - r} ${bottom}`,
+    `L ${left + r} ${bottom}`,
+    `A ${r} ${r} 0 0 1 ${left} ${bottom - r}`,
+    `L ${left} ${top + r}`,
+    `A ${r} ${r} 0 0 1 ${left + r} ${top}`,
+    'Z',
+  ].join(' ');
+}
+
+/** Space below the bar: the home-indicator inset, or a small gap without one. */
+function bottomGap(safeAreaBottom: number): number {
+  return safeAreaBottom > 0 ? safeAreaBottom : BOTTOM_GAP;
+}
+
+/**
+ * How much of the bottom of the screen the floating bar covers — the padding a
+ * tab screen's scrolling content must end with so its last row can scroll clear.
+ *
+ * Includes the transparent strip above the bar, because the raised circle sits
+ * in it. Read from the same constants and the same safe-area inset the bar lays
+ * itself out with, so the two cannot disagree.
+ */
+export function useTabBarClearance(): number {
+  const insets = useSafeAreaInsets();
+
+  return TOP + BAR_HEIGHT + bottomGap(insets.bottom);
+}
+
+/**
+ * The Plan B tab bar — a floating navy bar where the open tab rides a raised,
+ * white-ringed navy circle cradled in a wave of the bar, to a client-supplied
+ * reference.
+ *
+ * **Bar and circle are the same navy, at the client's request, and the white
+ * ring is what makes that work.** Without it the circle's lower half would sink
+ * invisibly into the wave it sits in, and mid-flight — with the wave flattened —
+ * the whole circle would be navy on navy. The ring outlines it on the bar; above
+ * the bar it merges into the white page, where the navy is already contrast
+ * enough.
+ *
+ * **The circle IS the selected tab, and it travels.** Tapping another tab lifts
+ * the circle out of the bar — the wave under it flattens as it leaves — carries
+ * it in an arc to the new tab, and drops it in with a bounce as the wave rises
+ * again beneath it. The tab it left gets its grey icon back, growing into the
+ * empty slot; the tab it lands on gives its grey icon up. Every icon it passes
+ * over on the way dips out of its path and back, which is what makes the travel
+ * read as one continuous movement rather than a jump.
+ *
+ * All of it is driven by ONE number, `position` — the circle's place along the
+ * bar as a fractional tab index. The wave's centre, the circle's `x`, each grey
+ * icon's size and which icon the circle carries are all read off it. They cannot
+ * drift apart mid-flight because nothing else is animating them.
+ *
+ * **Reduce motion is honoured**: with the OS setting on, the circle moves
+ * straight to the new tab with no flight, lift or bounce.
  *
  * **There are no labels**, at the client's request. That makes every tab an
  * icon-only control, so `accessibilityLabel` carries the screen's title and is
  * not optional here (mobile/CLAUDE.md §4) — it is the only thing a screen
  * reader has to go on.
  *
- * Colours are Plan B navy throughout, not the reference's blue. The disc is the
- * bar's own navy and the glyph on it is white — ~14:1 — so selection is carried
- * by the lift and the white ring rather than by a second colour.
+ * **Floating over the screen, absolutely positioned**, at the client's request.
+ * It used to sit in flow with its gutters painted white, and the white strip the
+ * circle rises into cut off the bottom of Home's last row. Now everything round
+ * the navy bar is transparent and content scrolls behind it.
+ *
+ * **The price is that tab screens no longer get the bar's height taken off for
+ * them.** Every tab screen's scrolling content must end with
+ * `useTabBarClearance()` of bottom padding, or its last row sits under the bar
+ * with no way to scroll it clear. A new tab screen has to do the same.
  */
 export function TabBar({ state, descriptors, navigation, insets }: TabBarProps) {
+  const [width, setWidth] = useState(0);
+  const count = state.routes.length;
+
+  const position = useSharedValue(state.index);
+  const from = useSharedValue(state.index);
+  const to = useSharedValue(state.index);
+  const lift = useSharedValue(0);
+  const scale = useSharedValue(1);
+  const wave = useSharedValue(1);
+
+  const previousIndex = useRef(state.index);
+
+  /*
+   * The trip in progress, or null once the circle has landed.
+   *
+   * **This React state, not the shared values, decides what is drawn at rest**,
+   * and that is the fix for icons doubling up inside the circle on Android. The
+   * animated opacities live on the UI thread only. When a pushed screen (All
+   * Courses, a course) covers the tabs, Android detaches the bar's native views,
+   * and the animation state they come back with cannot be trusted — the next
+   * trip could land with both the old and the new glyph half-visible in the
+   * circle until another tab was tapped.
+   *
+   * So animated layers exist ONLY for the length of a trip. At rest the circle
+   * holds one plain, non-animated glyph for the open tab, and each bar icon is a
+   * plain view whose visibility comes from `focused` — nothing on screen at rest
+   * depends on a UI-thread value surviving a detach.
+   */
+  const [flight, setFlight] = useState<{ from: number; to: number } | null>(null);
+  const landing = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  useEffect(() => () => clearTimeout(landing.current), []);
+
+  useEffect(() => {
+    const target = state.index;
+    const origin = previousIndex.current;
+
+    if (target === origin) return;
+    previousIndex.current = target;
+
+    from.value = origin;
+    to.value = target;
+    setFlight({ from: origin, to: target });
+
+    /*
+     * Longer for a longer trip, so crossing four tabs does not look like a
+     * teleport and moving one does not drag. Capped well under a second — this
+     * is navigation, and the screen has already changed underneath.
+     */
+    const travel = 360 + 70 * Math.abs(target - origin);
+
+    position.value = withTiming(target, {
+      duration: travel,
+      easing: Easing.inOut(Easing.cubic),
+      reduceMotion: ReduceMotion.System,
+    });
+
+    // Up and out of the bar on the way, then dropped in with a bounce on arrival.
+    lift.value = withSequence(
+      withTiming(-FLIGHT_LIFT, {
+        duration: travel * 0.45,
+        easing: Easing.out(Easing.quad),
+        reduceMotion: ReduceMotion.System,
+      }),
+      withSpring(0, { damping: 9, stiffness: 190, reduceMotion: ReduceMotion.System }),
+    );
+
+    scale.value = withSequence(
+      withTiming(0.86, { duration: travel * 0.45, reduceMotion: ReduceMotion.System }),
+      withSpring(1, { damping: 8, stiffness: 200, reduceMotion: ReduceMotion.System }),
+    );
+
+    /*
+     * The wave flattens as the circle leaves, travels flat, and swells back
+     * under the circle just before it lands — so it reads as the bar letting go
+     * of the circle and catching it again, not as a bump sliding along.
+     */
+    wave.value = withSequence(
+      withTiming(0, { duration: 140, reduceMotion: ReduceMotion.System }),
+      withDelay(
+        Math.max(0, travel * 0.7 - 140),
+        withSpring(1, { damping: 10, stiffness: 170, reduceMotion: ReduceMotion.System }),
+      ),
+    );
+
+    /*
+     * Lands the trip from the JS side on a timer, deliberately not from the
+     * animation's completion callback: an animation interrupted by a detach may
+     * never report finishing, and a trip that never lands would keep the
+     * animated layers — the thing that broke — on screen indefinitely.
+     *
+     * The margin past `travel` covers the drop-in bounce. Snapping `position`
+     * is a no-op when the animation did finish, and puts the circle where it
+     * belongs when it did not. A newer tap clears this timer and starts its own.
+     */
+    clearTimeout(landing.current);
+    landing.current = setTimeout(() => {
+      position.value = target;
+      from.value = target;
+      to.value = target;
+      setFlight(null);
+    }, travel + 250);
+  }, [state.index, position, from, to, lift, scale, wave]);
+
+  /** The `tabBarIcon` a tab's screen supplies, by position in the bar. */
+  const iconAt = (index: number): TabBarIcon => {
+    const route = state.routes[index];
+
+    return route ? descriptors[route.key]?.options.tabBarIcon : undefined;
+  };
+
+  const slot = width > 0 ? (width - BAR_PADDING_X * 2) / count : 0;
+  /*
+   * The first tab's centre, minus the corner: the room the wave has on its left.
+   * Less 1px, because the outline is inset half a pixel for the stroke — without
+   * it the wave on the outermost tabs starts half a pixel INSIDE the corner arc.
+   */
+  const shoulder = Math.min(SHOULDER_MAX, BAR_PADDING_X + slot / 2 - BAR_RADIUS - 1);
+
+  const barProps = useAnimatedProps(() => ({
+    d: wavePath(
+      width,
+      BAR_PADDING_X + slot * (position.value + 0.5),
+      WAVE_HEIGHT * wave.value,
+      shoulder,
+    ),
+  }));
+
+  const discStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: BAR_PADDING_X + slot * (position.value + 0.5) - DISC / 2 },
+      { translateY: lift.value },
+      { scale: scale.value },
+    ],
+  }));
+
   return (
     /*
-     * The strip above the navy — the one the white ring rises into — is painted
-     * `background` rather than left transparent ON PURPOSE. Left transparent it
-     * shows whatever the navigator paints behind the bar, and with no
-     * `ThemeProvider` at the root that is React Navigation's own
-     * `DefaultTheme.background`, `rgb(242,242,242)` — a grey band noticeably
-     * darker than any screen above it. Painting it the app's own ground makes it
-     * continuous with the screen, which is what "transparent" has to mean here.
-     * The alternative, theming the navigator, would repaint every scene in the
-     * app to fix one strip.
+     * Absolute, so the screen above fills the whole height and shows through
+     * everywhere the navy bar is not. That also retires the grey band a
+     * transparent in-flow strip used to show: nothing of the navigator is behind
+     * this any more, only the screen itself.
      *
-     * `colors.card`, NOT `colors.background`: the phone's page ground is forked
-     * to white in `mobile/tailwind.config.js`, and this JS read of the shared
-     * token would otherwise keep the old slate and reopen the band described
-     * above. Keep the two pointed at the same token.
+     * `box-none` on both wrappers: they take no touches themselves, so a tap in
+     * the gutters or the strip above the bar reaches the page underneath. Only
+     * the tab slots, which cover the navy bar exactly, respond.
      */
     <View
-      style={{ paddingBottom: insets.bottom, backgroundColor: colors.card }}
       accessibilityRole="tablist"
+      pointerEvents="box-none"
+      style={{
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        bottom: 0,
+        paddingHorizontal: SIDE_INSET,
+        paddingBottom: bottomGap(insets.bottom),
+      }}
     >
-      {/*
-        Painted behind the row rather than as its background, so the disc can sit
-        above the bar's top edge while staying inside the component's own bounds.
-        `rounded-t-[16px]` matches `Sheet` and the sign-in panel — the app's two
-        other full-width bottom surfaces.
-      */}
       <View
-        className="absolute inset-x-0 bottom-0 rounded-t-[16px] bg-primary"
-        style={{ top: LIFT }}
-      />
+        pointerEvents="box-none"
+        style={{ height: TOP + BAR_HEIGHT }}
+        onLayout={(event: LayoutChangeEvent) => setWidth(event.nativeEvent.layout.width)}
+      >
+        {width > 0 && (
+          <>
+            {/*
+              iOS draws the shadow from the SVG's own alpha, so it follows the
+              wave. Android's `elevation` needs an opaque rectangular background
+              and would cast a box under the curve, so Android gets none — a navy
+              bar on a white page needs no shadow to be seen.
 
-      <View className="flex-row items-end" style={{ height: LIFT + BAR_HEIGHT }}>
-        {state.routes.map((route, index) => {
-          // Indexing a Record is `T | undefined` under `noUncheckedIndexedAccess`;
-          // in practice every route has a descriptor.
-          const descriptor = descriptors[route.key];
-          if (!descriptor) return null;
+              No stroke: the light hairline the white bar needed would read as a
+              pale outline round a dark shape.
+            */}
+            <View style={[StyleSheet.absoluteFill, styles.barShadow]} pointerEvents="none">
+              <Svg width={width} height={TOP + BAR_HEIGHT}>
+                <AnimatedPath animatedProps={barProps} fill={colors.primary} />
+              </Svg>
+            </View>
 
-          const { options } = descriptor;
-          const isFocused = state.index === index;
+            {/*
+              The glyphs are CHILDREN of the circle, not stacked siblings over it.
+              Android paints by elevation rather than document order, so an
+              elevated circle drawn as a sibling would paint over its own icon;
+              as children they elevate with it.
+            */}
+            <Animated.View pointerEvents="none" style={[styles.disc, discStyle]}>
+              {flight === null ? (
+                // At rest: the open tab's glyph, and nothing animated — see `flight`.
+                <View style={[StyleSheet.absoluteFill, styles.discIcon]}>
+                  {discGlyph(iconAt(state.index))}
+                </View>
+              ) : (
+                /*
+                 * Mid-trip: only the two glyphs the circle crossfades between,
+                 * keyed by the trip so a tap that interrupts one mounts fresh
+                 * layers rather than inheriting the last trip's opacities.
+                 */
+                [flight.from, flight.to].map((index) => (
+                  <DiscIcon
+                    key={`${flight.from}-${flight.to}-${index}`}
+                    index={index}
+                    from={from}
+                    to={to}
+                    position={position}
+                    icon={iconAt(index)}
+                  />
+                ))
+              )}
+            </Animated.View>
+          </>
+        )}
 
-          const onPress = () => {
-            const event = navigation.emit({
-              type: 'tabPress',
-              target: route.key,
-              canPreventDefault: true,
-            });
+        <View style={styles.row}>
+          {state.routes.map((route, index) => {
+            // Indexing a Record is `T | undefined` under `noUncheckedIndexedAccess`;
+            // in practice every route has a descriptor.
+            const descriptor = descriptors[route.key];
+            if (!descriptor) return null;
 
-            if (!isFocused && !event.defaultPrevented) {
-              navigation.navigate(route.name, route.params);
-            }
-          };
+            const { options } = descriptor;
+            const isFocused = state.index === index;
 
-          return (
-            <TabItem
-              key={route.key}
-              focused={isFocused}
-              icon={options.tabBarIcon}
-              // The only thing a screen reader has left now that the labels are
-              // gone. `title` is still set per screen in `(tabs)/_layout.tsx`.
-              label={options.title ?? route.name}
-              onPress={onPress}
-              onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
-            />
-          );
-        })}
+            const onPress = () => {
+              const event = navigation.emit({
+                type: 'tabPress',
+                target: route.key,
+                canPreventDefault: true,
+              });
+
+              if (!isFocused && !event.defaultPrevented) {
+                navigation.navigate(route.name, route.params);
+              }
+            };
+
+            return (
+              <TabSlot
+                key={route.key}
+                index={index}
+                focused={isFocused}
+                position={position}
+                animating={flight !== null}
+                icon={options.tabBarIcon}
+                // The only thing a screen reader has, with no visible labels.
+                // `title` is still set per screen in `(tabs)/_layout.tsx`.
+                label={options.title ?? route.name}
+                onPress={onPress}
+                onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
+              />
+            );
+          })}
+        </View>
       </View>
     </View>
   );
 }
 
-interface TabItemProps {
+interface TabSlotProps {
+  index: number;
   focused: boolean;
+  position: SharedValue<number>;
+  /** A trip is in progress, so the icon follows the circle; otherwise it is static. */
+  animating: boolean;
   icon: TabBarIcon;
   label: string;
   onPress: () => void;
@@ -172,37 +470,41 @@ interface TabItemProps {
 }
 
 /**
- * One tab. Rises into the ringed disc when it becomes the open one, and settles
- * back into the bar when another is opened.
+ * One tab's touch target, and its grey icon in the bar.
  *
- * The glyph is white in both states, so it is drawn once and never animated.
- * It used to be navy on a gold disc, which needed two stacked copies
- * crossfading — a lucide icon takes a plain colour prop, and switching it
- * outright turned the glyph navy while the disc behind it was still scaling up,
- * navy on navy for the length of the spring. One colour, one icon, no crossfade.
+ * The icon's presence is its DISTANCE from the circle: fully there when the
+ * circle is a tab or more away, shrunk and sunk out of sight when the circle is
+ * over it. That single rule is what gives the tab being left its icon back, takes
+ * it from the tab being landed on, and makes each icon in between duck as the
+ * circle passes over.
  *
- * Styles here are plain objects rather than `className`. NativeWind styles the
- * RN core components; `Animated.View` is a wrapper around them, and the colours
- * below still come from `@shared/theme/tokens` rather than being hand-mixed, so
- * the one-brand-change-one-file rule (mobile/CLAUDE.md §2) holds either way.
+ * The touch target covers the navy bar exactly and nothing above it. The strip
+ * the circle rises into is transparent, so a target reaching into it would
+ * steal taps meant for the page content showing through. The bar is 54px, so no
+ * slot is under 44 (mobile/CLAUDE.md §4).
  */
-function TabItem({ focused, icon, label, onPress, onLongPress }: TabItemProps) {
-  const progress = useSharedValue(focused ? 1 : 0);
+function TabSlot({
+  index,
+  focused,
+  position,
+  animating,
+  icon,
+  label,
+  onPress,
+  onLongPress,
+}: TabSlotProps) {
+  const iconStyle = useAnimatedStyle(() => {
+    const distance = Math.abs(position.value - index);
 
-  useEffect(() => {
-    progress.value = withSpring(focused ? 1 : 0, SPRING);
-  }, [focused, progress]);
-
-  const puckStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: -LIFT * progress.value }],
-  }));
-
-  // Scales up from most of its size rather than from nothing — growing from a
-  // dot reads as a popping bubble, which is louder than a tab change deserves.
-  const discStyle = useAnimatedStyle(() => ({
-    opacity: progress.value,
-    transform: [{ scale: 0.7 + 0.3 * progress.value }],
-  }));
+    return {
+      // Peaks at `BAR_ICON_OPACITY`, not 1 — see the icon below.
+      opacity: interpolate(distance, [0.2, 0.75], [0, BAR_ICON_OPACITY], Extrapolation.CLAMP),
+      transform: [
+        { translateY: interpolate(distance, [0.2, 0.75], [10, 0], Extrapolation.CLAMP) },
+        { scale: interpolate(distance, [0.2, 0.75], [0.4, 1], Extrapolation.CLAMP) },
+      ],
+    };
+  });
 
   return (
     <Pressable
@@ -211,79 +513,145 @@ function TabItem({ focused, icon, label, onPress, onLongPress }: TabItemProps) {
       accessibilityRole="tab"
       accessibilityState={{ selected: focused }}
       accessibilityLabel={label}
-      className="flex-1 items-center justify-end self-stretch"
-      style={{ minHeight: MIN_TOUCH_TARGET }}
+      style={styles.slot}
     >
-      <Animated.View style={[styles.puck, puckStyle]}>
-        {/* The white ring, and the navy disc inside it, scaling in together. */}
-        <Animated.View style={[styles.halo, discStyle]}>
-          <View style={styles.disc} />
-        </Animated.View>
-
+      {/*
+        Animated only while the circle travels. At rest the icon is a plain style
+        — hidden under the open tab, shown elsewhere — the same values the
+        animation ends on, so the swap between the two is invisible, and a detach
+        on Android has no UI-thread state to lose. See `flight` in `TabBar`.
+      */}
+      <Animated.View
+        style={animating ? iconStyle : focused ? styles.barIconHidden : styles.barIconShown}
+      >
         {/*
-          White whether the tab is open or not. The lift and the ringed disc are
-          what mark the open one, so the glyph does not also have to change.
+          White dimmed by the view's opacity, not a grey token. `muted-foreground`
+          on navy is 3.2:1 — scraping the 3:1 floor for graphical objects, and a
+          22px outline icon at that contrast is hard to pick out on a phone in
+          daylight. White at 70% blends to 8.2:1 on this navy and still sits a clear step below the
+          circle's full-white glyph: one strong mark on the bar, four quiet ones.
         */}
-        <View style={styles.icon}>
-          {icon?.({ focused, color: colors['primary-foreground'], size: ICON_SIZE })}
-        </View>
+        {icon?.({ focused: false, color: colors['primary-foreground'], size: BAR_ICON })}
       </Animated.View>
     </Pressable>
   );
 }
 
+/** A glyph as the circle draws it: white on navy, ~15:1. */
+function discGlyph(icon: TabBarIcon) {
+  return icon?.({ focused: true, color: colors['primary-foreground'], size: DISC_ICON });
+}
+
+interface DiscIconProps {
+  index: number;
+  from: SharedValue<number>;
+  to: SharedValue<number>;
+  position: SharedValue<number>;
+  icon: TabBarIcon;
+}
+
+/**
+ * One of the two glyphs the circle crossfades between during a trip. Mounted
+ * only while a trip is in progress — at rest the circle draws a plain glyph
+ * instead (see `flight` in `TabBar`).
+ *
+ * Mid-flight the circle swaps from the tab it left to the tab it is heading for,
+ * crossfading over the middle of the trip. It deliberately does NOT show the
+ * icons of tabs it passes over — those are still in the bar, ducking out of its
+ * way, and the circle flashing through them too would be noise.
+ */
+function DiscIcon({ index, from, to, position, icon }: DiscIconProps) {
+  const style = useAnimatedStyle(() => {
+    const span = to.value - from.value;
+    const progress =
+      span === 0 ? 1 : Math.min(1, Math.max(0, (position.value - from.value) / span));
+    const arriving = interpolate(progress, [0.35, 0.65], [0, 1], Extrapolation.CLAMP);
+
+    let opacity = 0;
+    if (index === to.value) opacity = arriving;
+    else if (index === from.value) opacity = 1 - arriving;
+
+    return { opacity };
+  });
+
+  return (
+    <Animated.View style={[StyleSheet.absoluteFill, styles.discIcon, style]}>
+      {discGlyph(icon)}
+    </Animated.View>
+  );
+}
+
 const styles = StyleSheet.create({
-  puck: {
-    width: PUCK,
-    height: PUCK,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  halo: {
-    position: 'absolute',
-    width: PUCK,
-    height: PUCK,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: PUCK / 2,
-    // White, so the disc reads as cut out of the bar rather than stuck on it.
-    // `primary-foreground` is the token for white-on-navy specifically, which is
-    // exactly what this is.
-    backgroundColor: colors['primary-foreground'],
-  },
-  disc: {
-    width: DISC_SIZE,
-    height: DISC_SIZE,
-    borderRadius: DISC_SIZE / 2,
-    /*
-     * The bar's own navy, so the open tab reads as a bubble of the menu itself
-     * lifting out rather than a separate gold token. The white ring is what
-     * separates the two — without it the disc's lower half would vanish into
-     * the bar, since they are now the same colour.
-     *
-     * It also fixes a contrast problem the gold had: the glyph is white, and
-     * white on gold is ~2.6:1, under both the 4.5:1 text threshold and the 3:1
-     * floor for graphical objects. White on navy is ~14:1.
-     */
-    backgroundColor: colors.primary,
-    /*
-     * iOS only, and deliberately no Android `elevation`. Android paints by
-     * elevation rather than document order, so an elevated disc would paint over
-     * the two icon layers that follow it and hide the glyph entirely. iOS keeps
-     * document order regardless of shadow, so it is safe there. The disc sits on
-     * its own white ring either way, which already separates it from the bar.
-     */
+  barShadow: {
     ...Platform.select({
       ios: {
         shadowColor: colors.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.1,
+        shadowRadius: 14,
       },
       default: {},
     }),
   },
-  icon: {
+  disc: {
     position: 'absolute',
+    left: 0,
+    top: TOP + DISC_DROP - DISC / 2,
+    width: DISC,
+    height: DISC,
+    borderRadius: DISC / 2,
+    backgroundColor: colors.primary,
+    /*
+     * The white ring. Drawn INSIDE the 52px — React Native borders do not add to
+     * a view's size — so the circle's footprint, the flight bounds and the wave
+     * geometry are all unchanged. `primary-foreground` is the token for
+     * white-on-navy, which is exactly what this is.
+     */
+    borderWidth: DISC_RING,
+    borderColor: colors['primary-foreground'],
+    /*
+     * A shadow is right here, under root CLAUDE.md §8: the circle genuinely
+     * floats above the bar, which is the case that rule reserves shadows for.
+     * Navy-tinted rather than black so it reads as the circle's own depth.
+     */
+    ...Platform.select({
+      ios: {
+        shadowColor: colors.primary,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.35,
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 6,
+        shadowColor: colors.primary,
+      },
+      default: {},
+    }),
+  },
+  discIcon: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // The resting ends of the bar icon's animation — see `TabSlot`.
+  barIconShown: {
+    opacity: BAR_ICON_OPACITY,
+  },
+  barIconHidden: {
+    opacity: 0,
+  },
+  row: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: TOP,
+    height: BAR_HEIGHT,
+    flexDirection: 'row',
+    paddingHorizontal: BAR_PADDING_X,
+  },
+  slot: {
+    flex: 1,
+    minHeight: MIN_TOUCH_TARGET,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

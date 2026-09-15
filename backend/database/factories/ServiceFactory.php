@@ -20,7 +20,6 @@ class ServiceFactory extends Factory
     {
         return [
             'name' => 'Service '.$this->faker->unique()->numberBetween(1, 99999),
-            'summary' => $this->faker->sentence(),
             // Left null by default so the fallback path is what tests get for
             // free; `withIcon()` is there for the cases that care.
             'icon' => null,

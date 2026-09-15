@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
+import { useTabBarClearance } from '@/components/shared/TabBar';
 import { GraduationCap, Plus, SearchX, WifiOff } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -32,6 +33,8 @@ import { Text } from '@/components/ui/Text';
 export default function CoursesScreen() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  // The tab bar floats over this screen; see `useTabBarClearance`.
+  const tabBarClearance = useTabBarClearance();
   const [query, setQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
@@ -123,7 +126,7 @@ export default function CoursesScreen() {
             <CourseListRow course={item} onPress={() => openCourse(item)} />
           )}
           contentContainerClassName="px-4 gap-2.5"
-          contentContainerStyle={{ paddingBottom: 16, flexGrow: 1 }}
+          contentContainerStyle={{ paddingBottom: tabBarClearance + 16, flexGrow: 1 }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           refreshControl={

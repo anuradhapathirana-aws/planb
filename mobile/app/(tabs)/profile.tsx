@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { ChevronRight, LogOut, Mail, Phone, Receipt, ShieldCheck } from '@/components/icons';
+import { useTabBarClearance } from '@/components/shared/TabBar';
+import { ChevronRight, Heart, LogOut, Mail, Phone, Receipt, ShieldCheck } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 
 import { colors } from '@shared/theme/tokens';
@@ -17,13 +17,15 @@ import { ContinueLearningCard } from '@/features/profile/ContinueLearningCard';
 import { ProfileHeader } from '@/features/profile/ProfileHeader';
 import { ProfileStats } from '@/features/profile/ProfileStats';
 import { useServicePurchases } from '@/features/services/useServices';
+import { useWishlist } from '@/features/wishlist/useWishlist';
 import { queryClient } from '@/lib/queryClient';
 import { useStatusBarStyle } from '@/lib/useStatusBarStyle';
 import { useAuthStore } from '@/stores/authStore';
 
 export default function ProfileScreen() {
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
+  // The tab bar floats over this screen; see `useTabBarClearance`.
+  const tabBarClearance = useTabBarClearance();
 
   // `ProfileHeader`'s navy panel carries its own top inset so it runs under the
   // clock, which is the one place on a tab screen white glyphs are correct.
@@ -59,6 +61,9 @@ export default function ProfileScreen() {
   const courses = useQuery({ queryKey: ['courses'], queryFn: () => fetchCourses() });
   const checklists = useChecklistOverview();
   const purchases = useServicePurchases();
+  // Warms the wishlist screen and gives its row a count.
+  const wishlist = useWishlist();
+  const wishlistCount = wishlist.data?.length;
 
   useEffect(() => {
     if (data) setStudent(data);
@@ -86,7 +91,7 @@ export default function ProfileScreen() {
     <View className="flex-1 bg-background">
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
+        contentContainerStyle={{ paddingBottom: tabBarClearance + 24 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -134,13 +139,41 @@ export default function ProfileScreen() {
           </View>
 
           {/*
+            Beside Payment history and built the same way: a list students open
+            now and then, behind a row rather than a tab. The count appears once
+            the list has loaded and is left off at zero — "0" next to a row reads
+            as a warning, and the screen it opens says the list is empty anyway.
+          */}
+          <PressableCard
+            accessibilityLabel={
+              wishlistCount
+                ? `${t('wishlist.title')}. ${t('wishlist.count', { count: wishlistCount })}`
+                : t('wishlist.title')
+            }
+            onPress={() => router.push('/profile/wishlist')}
+            className="mt-4 flex-row items-center gap-3 p-4"
+          >
+            <Heart size={18} color={colors['muted-foreground']} />
+
+            <Text className="flex-1 font-medium">{t('wishlist.title')}</Text>
+
+            {wishlistCount ? (
+              <Text variant="caption" className="tabular-nums">
+                {wishlistCount}
+              </Text>
+            ) : null}
+
+            <ChevronRight size={20} color={colors['muted-foreground']} />
+          </PressableCard>
+
+          {/*
             Payment history lives behind a row rather than a fourth tab: students
             check it rarely, and a tab bar earns its space on what people open daily.
           */}
           <PressableCard
             accessibilityLabel={t('payment.historyTitle')}
             onPress={() => router.push('/profile/payments')}
-            className="mt-4 flex-row items-center gap-3 p-4"
+            className="mt-3 flex-row items-center gap-3 p-4"
           >
             <Receipt size={18} color={colors['muted-foreground']} />
 

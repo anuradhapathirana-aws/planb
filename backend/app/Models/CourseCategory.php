@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\CourseCategoryIcon;
 use Database\Factories\CourseCategoryFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -17,6 +18,7 @@ class CourseCategory extends Model
     protected $fillable = [
         'name',
         'description',
+        'icon',
         'is_active',
         'sort_order',
     ];
@@ -34,6 +36,10 @@ class CourseCategory extends Model
     {
         return [
             'is_active' => 'boolean',
+            // Nullable, so `?CourseCategoryIcon` — an unset icon stays unset
+            // rather than becoming `Other`, which is what lets the app tell "no
+            // choice yet" (guess from the name) from "neutral on purpose".
+            'icon' => CourseCategoryIcon::class,
         ];
     }
 

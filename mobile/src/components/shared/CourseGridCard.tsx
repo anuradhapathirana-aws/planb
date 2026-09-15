@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
-import { BookOpen, Lock, ShoppingCart, Star } from '@/components/icons';
+import { BookOpen, Heart, Lock, ShoppingCart, Star } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 
 import type { StudentCourseSummary } from '@shared/types/studentCourse';
@@ -32,6 +32,28 @@ export interface CourseGridCardProps {
    * describe a different card than the one on screen.
    */
   showPurchase?: boolean;
+  /**
+   * One type step smaller, for Home's Popular Courses strip only — at the
+   * client's request, as part of bringing all of Home's type down a step.
+   *
+   * A prop rather than a changed default because this tile is shared: the
+   * `/browse/courses` grid and Home's search sheet draw it two-up at full width,
+   * where the larger title is still the right size. Only the title moves. The
+   * category tag (9px) and the rating (10px) are already at the smallest sizes
+   * that stay legible over artwork and are left alone.
+   */
+  compact?: boolean;
+  /**
+   * Draws the price and a wishlist heart on the tile's last row — price left,
+   * heart right — and is called when the heart is tapped. Home's Popular Courses
+   * strip passes it, at the client's request.
+   *
+   * Independent of `showPurchase`: a tile can carry the heart without the buy
+   * button, which is exactly Home's case. The heart's state is read from
+   * `course.is_wishlisted`, never held here, so an optimistic update to the
+   * cached course redraws every tile showing it (`useWishlistToggle`).
+   */
+  onToggleWishlist?: () => void;
 }
 
 /**
@@ -68,6 +90,8 @@ export function CourseGridCard({
   onEnrol,
   enrolling = false,
   showPurchase = true,
+  compact = false,
+  onToggleWishlist,
 }: CourseGridCardProps) {
   const { t } = useTranslation();
   const [thumbnailFailed, setThumbnailFailed] = useState(false);
@@ -103,15 +127,21 @@ export function CourseGridCard({
    */
   const scrimId = `courseTileScrim-${course.id}`;
 
+  const showWishlist = onToggleWishlist !== undefined;
+  // The last row draws when either thing that lives on it does — and so the price
+  // is both drawn and announced whenever this is true.
+  const showFooter = showPurchase || showWishlist;
+  const wishlisted = course.is_wishlisted;
+
   return (
     <PressableCard
       onPress={onPress}
       accessibilityLabel={
-        // The price is announced only when it is also drawn — see `showPurchase`.
+        // The price is announced only when it is also drawn — see `showFooter`.
         [
           course.name,
           locked ? t('courses.lockedBadge') : t('courses.tabEnrolled'),
-          ...(showPurchase ? [price] : []),
+          ...(showFooter ? [price] : []),
         ].join('. ')
       }
       /*
@@ -229,7 +259,28 @@ export function CourseGridCard({
         style={{ flexGrow: 1, flexBasis: 'auto', justifyContent: 'space-between' }}
       >
         <View className="gap-0.5">
-          <Text className="text-[13px] font-semibold leading-[18px] text-primary" numberOfLines={2}>
+          {/*
+            Medium (500), down from semibold, at the client's request: in Poppins
+            a 600 title at 13px outweighed the 19px section heading above the
+            strip, which inverts the page's hierarchy. It still reads as the
+            thing to look at on the tile — navy against the grey category label,
+            and heavier than it — so the emphasis comes from colour and contrast
+            with its neighbours rather than from weight alone.
+          */}
+          {/*
+            `variant="none"`: the class string is the whole treatment, so the two
+            arbitrary sizes cannot lose to the `body` variant's `text-[15px]` on
+            stylesheet order (see `Text`). Both keep the same ~1.4x leading.
+          */}
+          <Text
+            variant="none"
+            className={
+              compact
+                ? 'text-[12px] font-medium leading-[17px] text-primary'
+                : 'text-[13px] font-medium leading-[18px] text-primary'
+            }
+            numberOfLines={2}
+          >
             {course.name}
           </Text>
 
@@ -245,36 +296,84 @@ export function CourseGridCard({
           </Text>
         </View>
 
-        {showPurchase && (
+        {showFooter && (
           <View className="flex-row items-center justify-between gap-1.5">
-            <Text className="shrink text-[15px] font-bold leading-5 text-primary" numberOfLines={1}>
+            {/*
+              `variant="none"` so the size in the string is the size drawn — see
+              the title above. The compact tile's price drops a step with its
+              title, on 21px leading: the Sinhala floor at 13px, since a
+              localised "Free" can land here. The standard size is unchanged.
+            */}
+            <Text
+              variant="none"
+              className={
+                compact
+                  ? 'shrink text-[13px] font-bold leading-[21px] text-primary'
+                  : 'shrink text-[15px] font-bold leading-5 text-primary'
+              }
+              numberOfLines={1}
+            >
               {price}
             </Text>
 
-            {onEnrol !== undefined && (
-              /*
-               * Nested inside the card's own Pressable: React Native gives the
-               * press to the innermost responder, so this does not also open the
-               * course. 34px of paint with hitSlop past 44 — mobile/CLAUDE.md §4
-               * requires the touchable to clear 44, not the pixels you can see,
-               * and a 44px block would crowd the price at tile width.
-               */
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`${t('enrol.action')}. ${course.name}. ${price}`}
-                accessibilityState={{ disabled: enrolling, busy: enrolling }}
-                disabled={enrolling}
-                onPress={onEnrol}
-                hitSlop={8}
-                className="h-[34px] w-[34px] shrink-0 items-center justify-center rounded-lg bg-primary active:opacity-80"
-              >
-                {enrolling ? (
-                  <ActivityIndicator size="small" color={colors['primary-foreground']} />
-                ) : (
-                  <ShoppingCart size={16} color={colors['primary-foreground']} />
-                )}
-              </Pressable>
-            )}
+            <View className="flex-row items-center gap-1.5">
+              {showWishlist && (
+                /*
+                 * Nested inside the card's own Pressable, like the buy button:
+                 * React Native gives the press to the innermost responder, so a
+                 * tap on the heart does not also open the course. 32px of paint
+                 * with `hitSlop` taking the touchable past 44 (mobile/CLAUDE.md
+                 * §4) — a 44px circle would crowd the price at tile width.
+                 *
+                 * Navy, filled when saved and outlined when not. Not the usual
+                 * red: `destructive` means danger here (root CLAUDE.md §8 caps
+                 * the semantic colours), and a red heart beside a price would
+                 * read as a warning about it. The fill, not the colour, carries
+                 * the state, which also keeps it legible without colour vision.
+                 */
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`${
+                    wishlisted ? t('wishlist.remove') : t('wishlist.add')
+                  }. ${course.name}`}
+                  accessibilityState={{ selected: wishlisted }}
+                  onPress={onToggleWishlist}
+                  hitSlop={6}
+                  className="h-8 w-8 shrink-0 items-center justify-center rounded-full active:bg-muted"
+                >
+                  <Heart
+                    size={18}
+                    color={colors.primary}
+                    fill={wishlisted ? colors.primary : 'transparent'}
+                  />
+                </Pressable>
+              )}
+
+              {showPurchase && onEnrol !== undefined && (
+                /*
+                 * Nested inside the card's own Pressable: React Native gives the
+                 * press to the innermost responder, so this does not also open the
+                 * course. 34px of paint with hitSlop past 44 — mobile/CLAUDE.md §4
+                 * requires the touchable to clear 44, not the pixels you can see,
+                 * and a 44px block would crowd the price at tile width.
+                 */
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`${t('enrol.action')}. ${course.name}. ${price}`}
+                  accessibilityState={{ disabled: enrolling, busy: enrolling }}
+                  disabled={enrolling}
+                  onPress={onEnrol}
+                  hitSlop={8}
+                  className="h-[34px] w-[34px] shrink-0 items-center justify-center rounded-lg bg-primary active:opacity-80"
+                >
+                  {enrolling ? (
+                    <ActivityIndicator size="small" color={colors['primary-foreground']} />
+                  ) : (
+                    <ShoppingCart size={16} color={colors['primary-foreground']} />
+                  )}
+                </Pressable>
+              )}
+            </View>
           </View>
         )}
       </View>

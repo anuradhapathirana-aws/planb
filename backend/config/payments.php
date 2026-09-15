@@ -36,21 +36,14 @@ return [
     | Bank transfer
     |--------------------------------------------------------------------------
     |
-    | Manual verification (FR-MOB-033/034, FR-ADM-018-021). The account details
-    | are shown to the student so they know where to send the money; they are not
-    | secret. Receipt size is capped per FR-MOB-033.
+    | Manual verification (FR-MOB-033/034, FR-ADM-018-021). Receipt size is
+    | capped per FR-MOB-033. The account details and the on/off switch live in
+    | `company_settings`, edited under Settings > Bank Details.
     |
     */
 
     'bank_transfer' => [
-        'enabled' => (bool) env('BANK_TRANSFER_ENABLED', true),
         'max_receipt_mb' => (int) env('BANK_TRANSFER_MAX_RECEIPT_MB', 5),
-        'account' => [
-            'bank_name' => env('BANK_TRANSFER_BANK_NAME'),
-            'account_name' => env('BANK_TRANSFER_ACCOUNT_NAME'),
-            'account_number' => env('BANK_TRANSFER_ACCOUNT_NUMBER'),
-            'branch' => env('BANK_TRANSFER_BRANCH'),
-        ],
     ],
 
     /*

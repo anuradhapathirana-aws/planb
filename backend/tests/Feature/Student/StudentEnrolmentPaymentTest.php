@@ -7,6 +7,7 @@ namespace Tests\Feature\Student;
 use App\Enums\CourseStatus;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
+use App\Models\CompanySetting;
 use App\Models\CourseProgramme;
 use App\Models\CourseTopic;
 use App\Models\CourseVideo;
@@ -256,14 +257,14 @@ class StudentEnrolmentPaymentTest extends TestCase
         $orderId = $this->postJson("/api/v1/student/courses/{$this->paidCourse->id}/enrol")->json('data.order.id');
 
         $this->postJson("/api/v1/student/orders/{$orderId}/bank-transfer", [
-            'reference_number' => 'TRX-99001122',
+            'reference_number' => '99001122',
             'receipt' => UploadedFile::fake()->image('slip.jpg'),
         ])
             ->assertCreated()
             ->assertJsonPath('data.payment.status', PaymentStatus::Pending->value)
             ->assertJsonPath('data.order.status', OrderStatus::AwaitingVerification->value);
 
-        // Money is only recognised once an admin confirms it (CLAUDE.md §7.10).
+        // Money is only recognised once an admin confirms it (CLAUDE.md Â§7.10).
         $this->assertDatabaseCount('enrolments', 0);
     }
 
@@ -276,6 +277,96 @@ class StudentEnrolmentPaymentTest extends TestCase
             ->assertJsonValidationErrors(['reference_number', 'receipt']);
     }
 
+    public function test_a_bank_transfer_reference_must_be_4_to_30_digits(): void
+    {
+        Storage::fake('public');
+
+        $orderId = $this->postJson("/api/v1/student/courses/{$this->paidCourse->id}/enrol")->json('data.order.id');
+
+        foreach (['TRX-5544', '12AB34', '123', str_repeat('9', 31), '12 34'] as $reference) {
+            $this->postJson("/api/v1/student/orders/{$orderId}/bank-transfer", [
+                'reference_number' => $reference,
+                'receipt' => UploadedFile::fake()->image('slip.jpg'),
+            ])
+                ->assertStatus(422)
+                ->assertJsonValidationErrors('reference_number');
+        }
+
+        $this->assertDatabaseCount('payments', 0);
+    }
+
+    public function test_a_bank_transfer_reference_keeps_its_leading_zeros(): void
+    {
+        Storage::fake('public');
+
+        $orderId = $this->postJson("/api/v1/student/courses/{$this->paidCourse->id}/enrol")->json('data.order.id');
+
+        $this->postJson("/api/v1/student/orders/{$orderId}/bank-transfer", [
+            'reference_number' => '0048712',
+            'receipt' => UploadedFile::fake()->image('slip.png'),
+        ])->assertCreated();
+
+        $this->assertDatabaseHas('payments', ['reference_number' => '0048712']);
+    }
+
+    public function test_a_bank_transfer_slip_may_be_a_pdf(): void
+    {
+        Storage::fake('public');
+
+        $orderId = $this->postJson("/api/v1/student/courses/{$this->paidCourse->id}/enrol")->json('data.order.id');
+
+        $this->postJson("/api/v1/student/orders/{$orderId}/bank-transfer", [
+            'reference_number' => '88776655',
+            // Real PDF bytes: the media collection sniffs the content, so an empty
+            // fake file would be refused as `application/x-empty`.
+            'receipt' => UploadedFile::fake()->createWithContent(
+                'slip.pdf',
+                "%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n",
+            ),
+        ])->assertCreated();
+
+        $this->assertDatabaseHas('media', ['mime_type' => 'application/pdf']);
+    }
+
+    public function test_a_bank_transfer_slip_must_be_a_jpg_png_or_pdf(): void
+    {
+        Storage::fake('public');
+
+        $orderId = $this->postJson("/api/v1/student/courses/{$this->paidCourse->id}/enrol")->json('data.order.id');
+
+        $files = [
+            UploadedFile::fake()->create('slip.txt', 10, 'text/plain'),
+            UploadedFile::fake()->image('slip.gif'),
+            UploadedFile::fake()->create('slip.docx', 10, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'),
+        ];
+
+        foreach ($files as $file) {
+            $this->postJson("/api/v1/student/orders/{$orderId}/bank-transfer", [
+                'reference_number' => '88776655',
+                'receipt' => $file,
+            ])
+                ->assertStatus(422)
+                ->assertJsonValidationErrors('receipt');
+        }
+
+        $this->assertDatabaseCount('payments', 0);
+    }
+
+    public function test_a_bank_transfer_is_refused_while_an_admin_has_it_switched_off(): void
+    {
+        Storage::fake('public');
+        CompanySetting::query()->update(['bank_transfer_enabled' => false]);
+
+        $orderId = $this->postJson("/api/v1/student/courses/{$this->paidCourse->id}/enrol")->json('data.order.id');
+
+        $this->postJson("/api/v1/student/orders/{$orderId}/bank-transfer", [
+            'reference_number' => '10000001',
+            'receipt' => UploadedFile::fake()->image('slip.jpg'),
+        ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('method');
+    }
+
     public function test_only_one_bank_transfer_may_wait_in_the_queue_at_a_time(): void
     {
         Storage::fake('public');
@@ -283,7 +374,7 @@ class StudentEnrolmentPaymentTest extends TestCase
         $orderId = $this->postJson("/api/v1/student/courses/{$this->paidCourse->id}/enrol")->json('data.order.id');
 
         $submit = fn () => $this->postJson("/api/v1/student/orders/{$orderId}/bank-transfer", [
-            'reference_number' => 'TRX-1',
+            'reference_number' => '10000001',
             'receipt' => UploadedFile::fake()->image('slip.jpg'),
         ]);
 

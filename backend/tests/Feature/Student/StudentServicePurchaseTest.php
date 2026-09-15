@@ -99,18 +99,14 @@ class StudentServicePurchaseTest extends TestCase
         $this->getJson("/api/v1/student/services/{$this->service->id}")->assertNotFound();
     }
 
-    public function test_the_catalogue_is_searchable_by_name_and_summary(): void
+    public function test_the_catalogue_is_searchable_by_name(): void
     {
-        Service::factory()->published()->create(['name' => 'Visa Consultation', 'summary' => 'One hour call.']);
+        Service::factory()->published()->create(['name' => 'Visa Consultation']);
 
         $this->getJson('/api/v1/student/services?search=visa')
             ->assertOk()
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.name', 'Visa Consultation');
-
-        $this->getJson('/api/v1/student/services?search=one hour')
-            ->assertOk()
-            ->assertJsonCount(1, 'data');
     }
 
     /** `%` is a LIKE wildcard; typed by a student it is a literal character. */
@@ -129,7 +125,9 @@ class StudentServicePurchaseTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.id', $this->service->id)
             ->assertJsonPath('data.latest_purchase', null)
-            ->assertJsonStructure(['data' => ['id', 'name', 'summary', 'description', 'price_cents', 'currency']]);
+            ->assertJsonStructure(['data' => ['id', 'name', 'description', 'price_cents', 'currency']])
+            // The summary field was removed along with its column.
+            ->assertJsonMissingPath('data.summary');
     }
 
     /** The app draws its delivery tracker from this, so it must not need a second request. */

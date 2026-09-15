@@ -24,15 +24,17 @@ const PRESENTATION: Record<
 
 export function ServiceStatusBadge({
   status,
+  size,
   className,
 }: {
   status: ServicePurchaseStatus;
+  size?: 'default' | 'sm';
   className?: string;
 }) {
   const { t } = useTranslation();
   const { key, tone, icon } = PRESENTATION[status];
 
-  return <Badge label={t(key)} tone={tone} icon={icon} className={className} />;
+  return <Badge label={t(key)} tone={tone} icon={icon} size={size} className={className} />;
 }
 
 /**

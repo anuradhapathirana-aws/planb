@@ -24,9 +24,15 @@ const PRESENTATION: Record<
   refunded: { key: 'payment.statusRefunded', tone: 'neutral', icon: RotateCcw },
 };
 
-export function OrderStatusBadge({ status }: { status: OrderStatus }) {
+export function OrderStatusBadge({
+  status,
+  size,
+}: {
+  status: OrderStatus;
+  size?: 'default' | 'sm';
+}) {
   const { t } = useTranslation();
   const { key, tone, icon } = PRESENTATION[status];
 
-  return <Badge label={t(key)} tone={tone} icon={icon} />;
+  return <Badge label={t(key)} tone={tone} icon={icon} size={size} />;
 }

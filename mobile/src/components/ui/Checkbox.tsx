@@ -8,7 +8,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Check } from '@/components/icons';
 
-import { MIN_TOUCH_TARGET } from '@shared/theme/tokens';
+import { colors, MIN_TOUCH_TARGET } from '@shared/theme/tokens';
 import { cn } from '@/lib/cn';
 import { useReduceMotion } from '@/lib/useReduceMotion';
 
@@ -80,16 +80,16 @@ export function Checkbox({
         style={{ width: CIRCLE, height: CIRCLE, borderRadius: CIRCLE / 2 }}
         className={cn(
           'items-center justify-center border-2',
-          checked ? 'border-success' : 'border-border bg-card',
+          checked ? 'border-primary' : 'border-border bg-card',
         )}
       >
         <Animated.View
           style={[{ borderRadius: CIRCLE / 2 }, fillStyle]}
-          className="absolute inset-0 bg-success"
+          className="absolute inset-0 bg-primary"
         />
 
         <Animated.View style={tickStyle}>
-          <Check size={15} color="#ffffff" strokeWidth={3.5} />
+          <Check size={15} color={colors['primary-foreground']} strokeWidth={3.5} />
         </Animated.View>
       </View>
     </Pressable>

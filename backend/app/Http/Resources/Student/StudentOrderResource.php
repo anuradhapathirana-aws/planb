@@ -7,6 +7,7 @@ namespace App\Http\Resources\Student;
 use App\Models\CourseProgramme;
 use App\Models\Order;
 use App\Models\Service;
+use App\Support\PublicUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -42,6 +43,15 @@ class StudentOrderResource extends JsonResource
             'item' => [
                 'type' => self::ITEM_TYPES[$this->purchasable_type] ?? null,
                 'id' => (int) $this->purchasable_id,
+                /*
+                 * Artwork for the checkout header. Only when the caller eager-loaded
+                 * `purchasable`, so a history list never lazy-loads one product
+                 * per row. Null once the product is withdrawn or has no image.
+                 */
+                'thumbnail_url' => $this->whenLoaded(
+                    'purchasable',
+                    fn (): ?string => PublicUrl::forRequest($this->purchasable?->thumbnail_url, $request),
+                ),
             ],
             'amount_cents' => (int) $this->amount_cents,
             'currency' => $this->currency,

@@ -22,7 +22,6 @@ abstract class ServiceRequest extends FormRequest
     {
         return [
             'name' => $this->nameRules(),
-            'summary' => ['nullable', 'string', 'max:300'],
 
             /*
              * One of a fixed set, never free text: the app resolves this to a

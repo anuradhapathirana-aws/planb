@@ -2,7 +2,7 @@ import { useId } from 'react';
 import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
-import { Bell, Hash, Layers, Pencil } from '@/components/icons';
+import { Bell, Hash, Pencil } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 
 import type { StudentProfile } from '@shared/types/studentAuth';
@@ -14,6 +14,8 @@ import { VerifiedBadge } from '@/features/profile/VerifiedBadge';
 const AVATAR_SIZE = 92;
 /** How far the photo hangs past the panel: a little over half of it. */
 const OVERLAP = AVATAR_SIZE / 2 + 6;
+/** Navy left below the student ID chip in the panel's bottom-right corner. */
+const PANEL_BOTTOM = 12;
 
 /*
  * The ribbon artwork is drawn in this fixed space and stretched to whatever the
@@ -44,17 +46,16 @@ export interface ProfileHeaderProps {
  * `useStatusBarStyle('light')` — it is the one tab screen where white system
  * glyphs are correct, and the app-wide default is dark for all the rest.
  *
- * Photo left with the name beside it, rather than both centred: it puts the name
- * on the same baseline as the photo instead of below it, which buys back a whole
- * line of vertical space on a 390px screen — and a long Sinhala name wraps into
- * the width left over rather than pushing the rest of the page down.
+ * Below the photo, left-aligned with it, come the name, the profession and the
+ * bio, in that order — at the client's request, so the name reads as the heading
+ * of the bio paragraph. The student ID sits in the panel's bottom-right corner,
+ * across from the photo.
  *
  * Gradient and ribbons are `react-native-svg`, already a dependency for the
  * progress ring and both card scrims. No gradient package for a background.
  *
- * The chips are the student's ID and their industry; profession is the line under
- * the name. Nothing here is invented — a student with none of them set simply
- * gets no chip row, and the panel still looks deliberate.
+ * Industry is deliberately not shown here, at the client's request. Nothing here
+ * is invented — a student without a profession or ID simply gets no line or chip.
  */
 export function ProfileHeader({ student, onEdit, onNotifications }: ProfileHeaderProps) {
   const { t } = useTranslation();
@@ -69,16 +70,11 @@ export function ProfileHeader({ student, onEdit, onNotifications }: ProfileHeade
   const panelId = `ph-panel-${uid}`;
   const glowId = `ph-glow-${uid}`;
 
-  const chips = [
-    student?.student_id ? { icon: Hash, label: student.student_id } : null,
-    student?.industry?.name ? { icon: Layers, label: student.industry.name } : null,
-  ].filter((chip): chip is { icon: typeof Hash; label: string } => chip !== null);
-
   return (
     <View>
       <View
         className="w-full overflow-hidden rounded-b-2xl px-5"
-        style={{ paddingTop: insets.top + 10, paddingBottom: OVERLAP + 18 }}
+        style={{ paddingTop: insets.top + 10, paddingBottom: PANEL_BOTTOM }}
       >
         <View className="absolute inset-0" pointerEvents="none">
           <Svg
@@ -143,60 +139,70 @@ export function ProfileHeader({ student, onEdit, onNotifications }: ProfileHeade
           <GlassButton icon={Bell} label={t('notifications.title')} onPress={onNotifications} />
           <GlassButton icon={Pencil} label={t('profile.edit')} onPress={onEdit} />
         </View>
-      </View>
 
-      {/*
-        `items-end` sits the name on the photo's lower half — the half that is
-        over the page rather than over the panel — so the name is navy on white
-        and never has to survive being half on each.
-      */}
-      <View className="flex-row items-end gap-3 px-5" style={{ marginTop: -OVERLAP }}>
-        {/* The ring is the page colour, not white: it reads as the photo being
-            cut out of the panel rather than as a border drawn around it. */}
-        <View className="rounded-full border-4 border-background bg-background">
-          <Avatar uri={student?.profile_photo_url} name={student?.full_name} size={AVATAR_SIZE} />
-        </View>
-
-        <View className="flex-1 pb-1">
-          {/*
-            `shrink` on the name and `shrink-0` inside the badge: a long name
-            gives up width and wraps, rather than pushing the tick off the edge
-            of a 390px screen. The badge only renders once there is a student —
-            it must never sit beside the "—" placeholder the header shows while
-            the profile is still loading.
-          */}
-          <View className="flex-row items-center gap-1.5">
-            <Text variant="title" numberOfLines={2} className="shrink">
-              {student?.full_name ?? '—'}
-            </Text>
-
-            {student ? <VerifiedBadge /> : null}
-          </View>
-
-          {student?.profession?.name ? (
-            <Text variant="caption" numberOfLines={1}>
-              {student.profession.name}
-            </Text>
+        {/*
+          The ID row ends PANEL_BOTTOM above the navy's edge, right-aligned into
+          the corner. Its `minHeight` keeps the photo — which hangs up OVERLAP
+          into the panel — clear of the header row, with or without an ID.
+        */}
+        <View
+          className="mt-3 flex-row items-end justify-end"
+          style={{ minHeight: OVERLAP - PANEL_BOTTOM + 4 }}
+        >
+          {student?.student_id ? (
+            <View className="flex-row items-center gap-1 rounded-full bg-white/10 px-2.5 py-1">
+              <Hash size={12} color={colors['primary-foreground']} />
+              <Text className="text-[12px] font-medium leading-5 text-primary-foreground">
+                {student.student_id}
+              </Text>
+            </View>
           ) : null}
         </View>
       </View>
 
-      {chips.length > 0 && (
-        <View className="mt-3 flex-row flex-wrap gap-2 px-5">
-          {chips.map(({ icon: Icon, label }) => (
-            <View
-              key={label}
-              className="flex-row items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1.5"
-            >
-              <Icon size={12} color={colors['muted-foreground']} />
-              <Text className="text-[12px] font-medium leading-4 text-foreground">{label}</Text>
-            </View>
-          ))}
+      <View className="px-5" style={{ marginTop: -OVERLAP }}>
+        {/* The ring is the page colour, not white: it reads as the photo being
+            cut out of the panel rather than as a border drawn around it. */}
+        <View className="self-start rounded-full border-4 border-background bg-background">
+          <Avatar uri={student?.profile_photo_url} name={student?.full_name} size={AVATAR_SIZE} />
         </View>
-      )}
+
+        {/*
+          The badge only renders once there is a student — it must never sit
+          beside the "—" placeholder shown while the profile is still loading.
+
+          The name used to lose its last letters on Android: a `shrink` Text in
+          a row is measured with the "highQuality" break strategy, which
+          under-measures Poppins and clips the final glyphs instead of wrapping
+          them. `simple` measures what is actually drawn.
+
+          One line, at the client's request: a long full name shrinks to fit the
+          width rather than wrapping or ending in an ellipsis.
+        */}
+        <View className="mt-2 flex-row items-center gap-1.5">
+          <Text
+            variant="none"
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.6}
+            textBreakStrategy="simple"
+            className="shrink text-[19px] font-semibold leading-8 text-primary"
+          >
+            {student?.full_name ?? '—'}
+          </Text>
+
+          {student ? <VerifiedBadge /> : null}
+        </View>
+
+        {student?.profession?.name ? (
+          <Text variant="bodyStrong" numberOfLines={1}>
+            {student.profession.name}
+          </Text>
+        ) : null}
+      </View>
 
       {student?.bio ? (
-        <Text variant="caption" className="mt-3 px-5 leading-5">
+        <Text variant="caption" className="mt-2 px-5 leading-5">
           {student.bio}
         </Text>
       ) : (

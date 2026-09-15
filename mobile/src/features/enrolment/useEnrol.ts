@@ -41,6 +41,8 @@ export function useEnrol({ navigateToCourse = true }: UseEnrolOptions = {}) {
         // Access changed, so every view of this course is stale.
         await queryClient.invalidateQueries({ queryKey: ['courses'] });
         await queryClient.invalidateQueries({ queryKey: ['course', courseId] });
+        // The wishlist carries `is_enrolled` too, and a course is often bought from it.
+        await queryClient.invalidateQueries({ queryKey: ['wishlist'] });
 
         toast.success(t('enrol.done'));
 

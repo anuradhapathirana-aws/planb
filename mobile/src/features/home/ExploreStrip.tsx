@@ -22,6 +22,8 @@ const PEEK = 20;
 export interface ExploreStripProps {
   courses: StudentCourseSummary[];
   onSelect: (course: StudentCourseSummary) => void;
+  /** Heart tapped on a tile. Omit to draw the tiles without the price/heart row. */
+  onToggleWishlist?: (course: StudentCourseSummary) => void;
 }
 
 /**
@@ -43,7 +45,7 @@ export interface ExploreStripProps {
  * `['courses']` response with `/browse/courses` and the Courses tab, so a
  * Home-specific page size would either shrink theirs or need its own query key.
  */
-export function ExploreStrip({ courses, onSelect }: ExploreStripProps) {
+export function ExploreStrip({ courses, onSelect, onToggleWishlist }: ExploreStripProps) {
   const { width } = useWindowDimensions();
 
   /*
@@ -70,7 +72,13 @@ export function ExploreStrip({ courses, onSelect }: ExploreStripProps) {
         keyExtractor={(course) => String(course.id)}
         renderItem={({ item }) => (
           <View style={{ width: tileWidth }}>
-            <CourseGridCard course={item} onPress={() => onSelect(item)} showPurchase={false} />
+            <CourseGridCard
+              course={item}
+              onPress={() => onSelect(item)}
+              showPurchase={false}
+              compact
+              onToggleWishlist={onToggleWishlist ? () => onToggleWishlist(item) : undefined}
+            />
           </View>
         )}
         showsHorizontalScrollIndicator={false}

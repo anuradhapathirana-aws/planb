@@ -18,6 +18,7 @@ import {
   Mic,
   Palette,
   Plane,
+  Share2,
   ShieldCheck,
   Smartphone,
   Sparkles,
@@ -27,26 +28,53 @@ import {
   Wrench,
   type LucideIcon,
 } from '@/components/icons';
+import type { CourseCategoryIconName } from '@shared/types/course';
 
 /**
- * A glyph for a course category, matched on its NAME.
+ * What each course category icon an admin picks *means* → the glyph that draws it.
  *
- * **This is deliberately a stand-in, and it is worth knowing why rather than
- * copying the approach.** `services` solves the same problem properly: the
- * server stores a MEANING (`backend/app/Enums/ServiceIcon.php`), the admin
- * picks it, and `features/services/serviceIcons.ts` maps that meaning to a
- * glyph — so a renamed service keeps its icon and a new one is never iconless.
- * `course_categories` has no such column, so there is nothing to read: the app
- * has only the free-text `category_name` off each course summary, and it has to
- * guess from that.
+ * **Must stay identical to `web/src/features/admin/courseCategories/
+ * courseCategoryIcons.ts`**, which draws the admin picker: the admin is choosing
+ * what a student sees here, so the two maps showing different pictures would
+ * make the field a guess. `Record<CourseCategoryIconName, …>` makes a missing
+ * entry a compile error rather than a blank tile.
+ */
+const CHOSEN: Record<CourseCategoryIconName, LucideIcon> = {
+  migration: Plane,
+  language: Languages,
+  career: Briefcase,
+  interview: Mic,
+  writing: FileText,
+  legal: ShieldCheck,
+  culture: Building2,
+  finance: Landmark,
+  healthcare: Stethoscope,
+  hospitality: UtensilsCrossed,
+  construction: HardHat,
+  technical: Wrench,
+  digital: Smartphone,
+  social_media: Share2,
+  design: Palette,
+  sales: Handshake,
+  skills: Sparkles,
+  education: GraduationCap,
+  certification: Award,
+  getting_started: Compass,
+  other: BookOpen,
+};
+
+/**
+ * The name-based GUESS, used only for a category no admin has picked an icon for.
  *
- * The consequence to expect: an admin renaming "Visa & Immigration" to
- * "Immigration Support" keeps its icon (both match `/immigration/`), but
- * renaming it to something with no keyword in it silently falls back to the
- * pool below. That is a cosmetic downgrade rather than a broken tile, which is
- * why it is an acceptable stand-in — but it is NOT a pattern to reach for
- * again. The fix is an `icon` enum column on `course_categories` mirroring
- * `ServiceIcon`, plus a student-facing endpoint; see `docs/CHANGELOG.md`.
+ * Categories carry an admin-chosen icon now (`CHOSEN` above), and that always
+ * wins. This stays as the fallback, at the client's request, so the categories
+ * that existed before the field did kept their glyphs on day one instead of all
+ * turning into the same neutral icon until someone edited each one.
+ *
+ * It is still a guess, with a guess's failure mode: a category named with no
+ * keyword in it falls to the name-hashed pool below. That is a reason for an
+ * admin to pick an icon, not for this list to grow — do not add rules here to
+ * rescue a specific category; set its icon in the admin panel.
  *
  * Matching is on the category name lowercased, first rule wins, so ORDER IS
  * SIGNIFICANT — the specific rules come before the broad ones. "Interview
@@ -142,7 +170,16 @@ function hash(value: string): number {
 }
 
 /** The glyph for a category name. Never null — every tile gets a picture. */
-export function categoryIcon(name: string): LucideIcon {
+/**
+ * The glyph for a category tile: the admin's chosen icon when there is one,
+ * otherwise a guess from the name. Never null — every tile gets a picture.
+ *
+ * An unrecognised icon name (a newer backend adding a case this build predates)
+ * is treated as no choice and guessed, rather than crashing the row.
+ */
+export function categoryIcon(name: string, icon: CourseCategoryIconName | null): LucideIcon {
+  if (icon !== null && icon in CHOSEN) return CHOSEN[icon];
+
   const key = name.toLowerCase();
 
   for (const [pattern, icon] of BY_KEYWORD) {

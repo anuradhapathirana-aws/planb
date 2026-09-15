@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, RefreshControl, View } from 'react-native';
+import { useTabBarClearance } from '@/components/shared/TabBar';
 import { ListChecks, WifiOff } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,11 +8,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { ChecklistPhase } from '@shared/types/checklist';
 import { colors } from '@shared/theme/tokens';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { SegmentedToggle } from '@/components/ui/SegmentedToggle';
 import { ChecklistItemSkeleton } from '@/components/ui/Skeleton';
 import { Text } from '@/components/ui/Text';
 import { ChecklistItemCard } from '@/features/checklist/ChecklistItemCard';
 import { PhaseProgressCard } from '@/features/checklist/PhaseProgressCard';
+import { PhaseSwitch } from '@/features/checklist/PhaseSwitch';
 import { phaseLabel, useChecklists } from '@/features/checklist/useChecklists';
 
 /**
@@ -28,6 +29,8 @@ import { phaseLabel, useChecklists } from '@/features/checklist/useChecklists';
 export default function ChecklistScreen() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  // The tab bar floats over this screen; see `useTabBarClearance`.
+  const tabBarClearance = useTabBarClearance();
 
   const { phases, isLoading, isError, refetch, toggle } = useChecklists();
 
@@ -59,7 +62,7 @@ export default function ChecklistScreen() {
       <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
         <Header phase={phase} onChange={setPhase} />
 
-        <View className="gap-3 px-5">
+        <View className="gap-2 px-4">
           <ChecklistItemSkeleton />
           <ChecklistItemSkeleton />
           <ChecklistItemSkeleton />
@@ -88,16 +91,23 @@ export default function ChecklistScreen() {
         )}
         ListHeaderComponent={
           active === undefined || isError ? null : (
-            <View className="pb-4">
+            <View className="pb-2">
               <PhaseProgressCard phase={active.phase} progress={active.progress} />
             </View>
           )
         }
-        contentContainerClassName="px-5 gap-2.5"
-        contentContainerStyle={{ paddingBottom: 24, flexGrow: 1 }}
+        contentContainerClassName="px-4 gap-2"
+        contentContainerStyle={{
+          paddingBottom: tabBarClearance + 16,
+          flexGrow: 1,
+        }}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+          />
         }
         ListEmptyComponent={
           isError ? (
@@ -131,15 +141,17 @@ function Header({ phase, onChange }: HeaderProps) {
   const { t } = useTranslation();
 
   return (
-    <View className="gap-3 px-5 pb-4 pt-4">
+    <View className="gap-2.5 px-4 pb-3 pt-3">
       <View>
-        <Text variant="display">{t('checklist.title')}</Text>
-        <Text variant="caption" className="mt-1">
+        <Text variant="display" className="text-[22px] leading-8">
+          {t('checklist.title')}
+        </Text>
+        <Text variant="caption" className="text-[12px] leading-[18px]">
           {t('checklist.subtitle')}
         </Text>
       </View>
 
-      <SegmentedToggle<ChecklistPhase>
+      <PhaseSwitch
         value={phase}
         onChange={onChange}
         options={[

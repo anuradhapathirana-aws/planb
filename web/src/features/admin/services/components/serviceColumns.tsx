@@ -36,14 +36,7 @@ export function getServiceColumns({
           ) : (
             <ImagePlaceholder className="h-9 w-16 shrink-0" />
           )}
-          <div className="min-w-0">
-            <span className="font-medium">{row.original.name}</span>
-            {row.original.summary && (
-              <p className="line-clamp-1 text-xs text-muted-foreground" title={row.original.summary}>
-                {row.original.summary}
-              </p>
-            )}
-          </div>
+          <span className="min-w-0 font-medium">{row.original.name}</span>
         </div>
       ),
     },

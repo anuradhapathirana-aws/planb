@@ -90,7 +90,11 @@ export default function PaperScreen() {
       void queryClient.invalidateQueries({ queryKey: ['course', courseId] });
       void queryClient.invalidateQueries({ queryKey: ['courses'] });
 
-      router.replace({ pathname: '/paper/result/[attemptId]', params: { attemptId: result.id } });
+      // The result carries no course id, and the result screen needs one to offer a retake.
+      router.replace({
+        pathname: '/paper/result/[attemptId]',
+        params: { attemptId: result.id, courseId },
+      });
     },
     onError: (error) => toast.error(errorMessage(error, t('common.genericError'))),
   });

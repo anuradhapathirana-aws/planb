@@ -21,8 +21,10 @@ export interface HomeSearchBarProps {
  * — tap it and you are typing — but the actual `TextInput` lives in the sheet
  * this opens. That is deliberate on three counts:
  *
- * 1. A `TextInput` pinned above a `ScrollView` steals focus back every time
- *    Home re-renders around it, which it does on every query settle.
+ * 1. A `TextInput` on Home — pinned above the scroll view or inside it — loses
+ *    focus every time Home re-renders around it, which it does on every query
+ *    settle. The bar now scrolls with the page, which makes a real input there
+ *    worse, not better.
  * 2. The keyboard would cover the results with Home still behind them, and the
  *    results are the point.
  * 3. Home previously carried a live search field with a dropdown, and that

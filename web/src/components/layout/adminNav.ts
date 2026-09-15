@@ -16,6 +16,8 @@ import {
   BarChart3,
   Settings,
   Image,
+  Landmark,
+  Sparkle,
   type LucideIcon,
 } from 'lucide-react';
 import { paths } from '@/routes/paths';
@@ -90,9 +92,10 @@ export const adminNavGroups: AdminNavGroup[] = [
       {
         label: 'Settings',
         icon: Settings,
-        // Home Banner moved out to Mobile Configuration; this group keeps its
-        // shape for the app-wide settings that will land here.
-        children: [{ label: 'General', icon: Settings, comingSoon: true }],
+        children: [
+          { label: 'Bank Details', icon: Landmark, href: paths.admin.settingsBankDetails },
+          { label: 'App Intro', icon: Sparkle, href: paths.admin.settingsAppIntro },
+        ],
       },
     ],
   },

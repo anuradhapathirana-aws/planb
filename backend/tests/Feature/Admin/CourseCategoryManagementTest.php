@@ -57,6 +57,38 @@ class CourseCategoryManagementTest extends TestCase
             ->assertJsonPath('data.is_active', true);
     }
 
+    public function test_admin_can_set_and_clear_a_category_icon(): void
+    {
+        $id = $this->actingAs($this->contentManager)
+            ->postJson('/api/v1/admin/course-categories', [
+                'name' => 'Language & Communication',
+                'icon' => 'language',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.icon', 'language')
+            ->json('data.id');
+
+        // Cleared back to "no choice", which the app answers by guessing from the name.
+        $this->actingAs($this->contentManager)
+            ->putJson("/api/v1/admin/course-categories/{$id}", [
+                'name' => 'Language & Communication',
+                'icon' => null,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.icon', null);
+    }
+
+    public function test_a_category_icon_must_come_from_the_list(): void
+    {
+        $this->actingAs($this->superAdmin)
+            ->postJson('/api/v1/admin/course-categories', [
+                'name' => 'Social Media',
+                'icon' => 'rocket',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('icon');
+    }
+
     public function test_category_names_must_be_unique(): void
     {
         CourseCategory::factory()->create(['name' => 'UAE Migration Program']);

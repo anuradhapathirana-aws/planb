@@ -26,7 +26,6 @@ class ServiceResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
-            'summary' => $this->summary,
             // Null when the admin never picked one. Left null rather than
             // defaulted here, so the form shows "none chosen" instead of
             // pre-selecting a choice nobody made.

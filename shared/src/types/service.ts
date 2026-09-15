@@ -10,16 +10,22 @@
 export type ServiceStatus = 'draft' | 'published';
 
 /**
- * The glyph a service shows on the app's "Get My Service" grid.
+ * The glyph an admin picks for a service.
+ *
+ * **Currently shown nowhere in the student app.** It drew the cards on Home's
+ * "Get My Service" row, which was removed at the client's request along with
+ * the mobile glyph map (`mobile/src/features/services/serviceIcons.ts`, in git
+ * history). The admin panel still offers and previews the choice, and the API
+ * still returns it, so a future student surface can use it without a backend
+ * change — restore that map rather than inventing a second one.
  *
  * **These are meanings, not icon names** — `passport`, not `id-card`. Each
  * client maps the meaning to whatever its icon set calls that picture, so a
  * Lucide rename costs one line in a map instead of a data migration. Mirrors
  * `backend/app/Enums/ServiceIcon.php`, which is the validation authority;
- * adding a case means editing both, plus the two client maps in
- * `web/src/features/admin/services/serviceIcons.ts` and
- * `mobile/src/features/services/serviceIcons.ts`. Both maps are exhaustive
- * `Record<ServiceIconName, …>`s, so TypeScript fails the build on a miss.
+ * adding a case means editing both, plus the client map in
+ * `web/src/features/admin/services/serviceIcons.ts`, which is an exhaustive
+ * `Record<ServiceIconName, …>`, so TypeScript fails the build on a miss.
  */
 export type ServiceIconName =
   | 'passport'
@@ -88,8 +94,6 @@ export const SERVICE_ICONS: ReadonlyArray<{ value: ServiceIconName; label: strin
 export interface Service {
   id: number;
   name: string;
-  /** One line for a catalogue card. */
-  summary: string | null;
   /** Null when the admin never picked one; clients fall back to `other`. */
   icon: ServiceIconName | null;
   /** Sanitized HTML authored in the rich-text editor. */
@@ -114,7 +118,6 @@ export interface Service {
 /** What the Add/Edit Service form posts. The thumbnail goes up separately. */
 export interface ServicePayload {
   name: string;
-  summary?: string | null;
   icon?: ServiceIconName | null;
   description?: string | null;
   price_cents: number;

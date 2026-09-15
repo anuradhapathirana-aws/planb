@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, View } from 'react-native';
 import { router } from 'expo-router';
+import { useTabBarClearance } from '@/components/shared/TabBar';
 import { Plus, SearchX, Sparkles, WifiOff } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,8 +21,8 @@ import { useServicePurchases } from '@/features/services/useServices';
  * reason: the All / My-services toggle went at the client's request, and the
  * catalogue with it. Everything Plan B offers now lives on `/browse/services`,
  * reached from this screen's header button and its empty state. One tab, one
- * question — "where has my request got to?" — which is what the status badge
- * and delivery track on each row answer.
+ * question — "where has my request got to?" — which is what the status line
+ * on each row answers.
  *
  * The search box filters the bought list in place; there is no catalogue here
  * to query.
@@ -29,6 +30,8 @@ import { useServicePurchases } from '@/features/services/useServices';
 export default function ServicesScreen() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  // The tab bar floats over this screen; see `useTabBarClearance`.
+  const tabBarClearance = useTabBarClearance();
   const [query, setQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
@@ -97,9 +100,9 @@ export default function ServicesScreen() {
       </View>
 
       {purchases.isLoading ? (
-        <View className="gap-2.5 px-4">
+        <View className="gap-2 px-4">
           {[0, 1, 2, 3, 4, 5].map((row) => (
-            <Skeleton key={row} className="h-[94px] w-full rounded-xl" />
+            <Skeleton key={row} className="h-[80px] w-full rounded-xl" />
           ))}
         </View>
       ) : (
@@ -117,8 +120,8 @@ export default function ServicesScreen() {
               onPress={item.service?.is_available ? () => openService(item.service!.id) : undefined}
             />
           )}
-          contentContainerClassName="px-4 gap-2.5"
-          contentContainerStyle={{ paddingBottom: 16, flexGrow: 1 }}
+          contentContainerClassName="px-4 gap-2"
+          contentContainerStyle={{ paddingBottom: tabBarClearance + 16, flexGrow: 1 }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           refreshControl={

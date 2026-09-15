@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { TextInput, View, type TextInputProps } from 'react-native';
 import type { LucideIcon } from '@/components/icons';
 
-import { colors } from '@shared/theme/tokens';
+import { colors, fonts } from '@shared/theme/tokens';
 import { cn } from '@/lib/cn';
 import { Text } from './Text';
 
@@ -12,6 +12,11 @@ export interface InputProps extends Omit<TextInputProps, 'className' | 'style'> 
   hint?: string;
   icon?: LucideIcon;
   required?: boolean;
+  /**
+   * `sm` is for dense forms (checkout): smaller type and a 44px box — still the
+   * minimum touch target. `cn` is a plain join, so sizes branch rather than append.
+   */
+  size?: 'default' | 'sm';
 }
 
 /**
@@ -27,6 +32,7 @@ export function Input({
   hint,
   icon: Icon,
   required = false,
+  size = 'default',
   multiline = false,
   onFocus,
   onBlur,
@@ -34,32 +40,47 @@ export function Input({
 }: InputProps) {
   const [focused, setFocused] = useState(false);
   const hasError = Boolean(error);
+  const isSmall = size === 'sm';
 
   return (
     <View className="w-full">
-      <View className="mb-1.5 flex-row items-center gap-1">
-        <Text variant="label" className="text-foreground">
-          {label}
-        </Text>
+      <View className={cn('flex-row items-center gap-1', isSmall ? 'mb-1' : 'mb-1.5')}>
+        {isSmall ? (
+          <Text className="text-[12px] font-medium leading-5 text-foreground">{label}</Text>
+        ) : (
+          <Text variant="label" className="text-foreground">
+            {label}
+          </Text>
+        )}
         {required && <Text className="text-[11px] font-semibold text-destructive">*</Text>}
       </View>
 
       <View
         className={cn(
           // minHeight, not height — the field grows with the system font size.
-          'w-full flex-row gap-2 rounded-lg border bg-card px-3.5',
+          'w-full flex-row rounded-lg border bg-card',
+          isSmall ? 'gap-1.5 px-3' : 'gap-2 px-3.5',
           // A multiline field grows downwards, so its icon and its first line
           // have to sit at the top rather than centred against four lines of text.
-          multiline ? 'items-start min-h-[104px] py-1' : 'items-center min-h-[52px]',
-          hasError
-            ? 'border-destructive'
-            : focused
-              ? 'border-primary'
-              : 'border-border',
+          multiline
+            ? 'items-start min-h-[104px] py-1'
+            : isSmall
+              ? 'items-center min-h-[44px]'
+              : 'items-center min-h-[52px]',
+          hasError ? 'border-destructive' : focused ? 'border-primary' : 'border-border',
         )}
       >
         {Icon && (
-          <Icon size={18} color={hasError ? colors.destructive : colors['muted-foreground']} />
+          <Icon
+            size={isSmall ? 15 : 18}
+            color={
+              hasError
+                ? colors.destructive
+                : focused
+                  ? colors.primary
+                  : colors['muted-foreground']
+            }
+          />
         )}
 
         <TextInput
@@ -76,7 +97,15 @@ export function Input({
           multiline={multiline}
           // Android centres multiline text vertically without this; iOS ignores it.
           textAlignVertical={multiline ? 'top' : undefined}
-          className="flex-1 py-3 text-[15px] leading-6 text-foreground"
+          // A `TextInput` renders its own text, outside `Text`, so it does not get
+          // the Poppins translation there — the face is set here directly. Regular
+          // weight, and no `font-*` class, for the Android fallback reason in
+          // `fonts` (shared/src/theme/tokens.ts).
+          style={{ fontFamily: fonts.poppins[400] }}
+          className={cn(
+            'flex-1 text-foreground',
+            isSmall ? 'py-2 text-[13px] leading-5' : 'py-3 text-[15px] leading-6',
+          )}
           onFocus={(event) => {
             setFocused(true);
             onFocus?.(event);
@@ -95,7 +124,10 @@ export function Input({
       */}
       {(error ?? hint) && (
         <Text
-          className={cn('mt-1.5 text-[13px] leading-5', hasError ? 'text-destructive' : 'text-muted-foreground')}
+          className={cn(
+            isSmall ? 'mt-1 text-[11px] leading-4' : 'mt-1.5 text-[13px] leading-5',
+            hasError ? 'text-destructive' : 'text-muted-foreground',
+          )}
         >
           {error ?? hint}
         </Text>
