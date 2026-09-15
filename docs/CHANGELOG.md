@@ -5,6 +5,13 @@ All notable changes to this project are documented here. Format loosely follows 
 ## Unreleased
 
 ### Added
+- **Privacy Policy (`/privacy`) and Terms of Use (`/terms`)**, public pages on the backend in the same layout as `/account-deletion`, with all three pages linking to each other in the footer. **Drafts for the client to approve.** They describe what the app actually does today, in plain English:
+  - **Privacy:** what is collected; that CVs and profiles are shared with UAE employers or agencies only with the student's agreement; service providers; storage outside Sri Lanka; how data is protected; retention (payment records 7 years); rights under Sri Lanka's PDPA No. 9 of 2022; 18+ only.
+  - **Terms:** 18+; account rules; courses and the no-skip rule; no job or visa guarantee; payments; **no refund once a lesson is opened or a service has started**; fair use; Sri Lankan law.
+  - **Company details:** new `LEGAL_COMPANY_ADDRESS` and `LEGAL_COMPANY_REGISTRATION_NUMBER` in `config/legal.php`. Blank lines are left out, not shown as placeholders. The "Last updated" date is `legal.policies_updated_at`.
+  - **API:** `GET /student/app-config` gains `legal: { privacy_url, terms_url, account_deletion_url, support_email }`, so the pages can move without an app release.
+  - **Mobile:** Profile has a new "Help & legal" card with Privacy policy, Terms of use and Contact support (the last opens the mail app, and only shows once a support address is set). The sign-in screen ends with "By continuing, you agree to our Terms of Use and Privacy Policy, and confirm you are 18 or older." with both tappable. Links fall back to the API host's own pages if app-config hasn't loaded. New `useLegalLinks` hook; English strings under `legal.*` and `auth.legalConsent`.
+  - 5 feature tests.
 - **Public account-deletion page at `/account-deletion`** — the "Delete account URL" Google Play asks for. Served by the backend (no separate website), mobile-friendly, in Plan B colours, no login. It names the app and the developer, gives the in-app steps, lets someone without the app ask by email from their account's address (done within 30 days), and lists what is deleted and what is kept: payment records and bank slips for **7 years**, for accounting. Values live in the new `config/legal.php` (support address from `MAIL_SUPPORT_ADDRESS`, `LEGAL_PAYMENT_RETENTION_YEARS`, `LEGAL_DELETION_REQUEST_DAYS`), which the privacy policy and terms (P1-4) will reuse, along with the new `resources/views/legal/layout.blade.php`. With no support address set, it shows "coming soon" rather than a broken link. 3 feature tests.
 - **Real, Plan B-branded emails.** The sign-in code, account-deletion code and admin "account locked" emails now use a branded layout (`resources/views/emails/`): navy header with the Plan B Academy logo and a gold rule, the code in a large box, a support line and company footer, and a plain-text part for mail apps that don't show HTML. Built with tables and inline styles, since Gmail and Outlook strip stylesheets.
   - **The logo is embedded in the email** (`resources/images/email-logo.png`, 144px, 32KB) instead of linked, so it shows without a public URL and without the reader allowing remote images.
@@ -20,6 +27,9 @@ All notable changes to this project are documented here. Format loosely follows 
   - **Database:** migration `2026_09_16_100000_add_account_deletion_fields` adds `students.anonymised_at` and `student_login_codes.purpose` (`sign_in` / `delete_account`). Existing codes become `sign_in`. A code only works for its own purpose, and requesting a sign-in code no longer voids a pending deletion code.
   - **Refactor:** code issuing and checking moved from `StudentAuthService` into `StudentLoginCodeService`, shared by sign-in and deletion. Sign-in behaviour is unchanged (all existing auth tests pass).
   - 11 feature tests (`StudentAccountDeletionTest`).
+
+### Changed
+- **The App Intro greeting is now optional.** Admins can save Settings > App Intro with the English greeting empty, even while the intro is on. The mobile splash shows the greeting only when one is set (blank or spaces-only counts as empty); otherwise it plays the logo on its own. 1 new feature test.
 
 ### Changed
 - **Service Details: bigger service name, tighter spacing under it, and a pill-shaped Buy button.** The name is 20px bold (was 17px). The name and the section below it ("How it works", or the tracker once bought) are grouped 4px apart, down from the page's 12px. The footer "Buy now" / "Buy again" button is fully rounded via a new `shape="pill"` prop on `Button`. It is a prop rather than a `rounded-full` class because an appended class does not reliably override the base `rounded-lg`.

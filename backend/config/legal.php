@@ -22,6 +22,20 @@ return [
     'app_name' => env('LEGAL_APP_NAME', 'Plan B Academy'),
 
     /*
+     * Registered details, shown in the privacy policy's "Who we are". Blank
+     * lines are left out rather than printed as placeholders. The client must
+     * supply both before launch.
+     */
+    'company_address' => env('LEGAL_COMPANY_ADDRESS'),
+    'company_registration_number' => env('LEGAL_COMPANY_REGISTRATION_NUMBER'),
+
+    /*
+     * The date printed as "Last updated" on the privacy policy and terms. Change
+     * it in the same commit as any change to what those pages say.
+     */
+    'policies_updated_at' => '2026-09-16',
+
+    /*
      * Where students write for help or to ask for deletion without the app.
      * The same inbox as the email footer, so there is one address to change.
      */

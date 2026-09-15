@@ -29,6 +29,18 @@ class StudentAppConfigResource extends JsonResource
                 'greeting_si' => $this->intro_greeting_si,
                 'animation' => $this->intro_animation->value,
             ],
+            /*
+             * Links the app shows on Profile and the sign-in screen. Sent from
+             * here rather than built in the app, so the pages can move (to a
+             * Plan B website, say) without an app release. Built from the
+             * request's own host, so a phone on the LAN gets a reachable URL.
+             */
+            'legal' => [
+                'privacy_url' => route('legal.privacy'),
+                'terms_url' => route('legal.terms'),
+                'account_deletion_url' => route('legal.account-deletion'),
+                'support_email' => config('legal.support_address'),
+            ],
             // Lets the app tell a cached logo is out of date.
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];

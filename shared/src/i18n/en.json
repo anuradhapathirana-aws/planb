@@ -44,7 +44,15 @@
     "signUpHint": "New to Plan B? Continue with Google and we'll set up your account.",
     "noAccount": "We couldn't sign you in. If you're a Plan B student, contact support to check the email address on your record.",
     "signOut": "Sign out",
-    "signOutConfirm": "Sign out of Plan B on this device?"
+    "signOutConfirm": "Sign out of Plan B on this device?",
+    "legalConsent": "By continuing, you agree to our <terms>Terms of Use</terms> and <privacy>Privacy Policy</privacy>, and confirm you are 18 or older."
+  },
+  "legal": {
+    "sectionTitle": "Help & legal",
+    "privacy": "Privacy policy",
+    "terms": "Terms of use",
+    "support": "Contact support",
+    "supportSubject": "Plan B app support"
   },
   "account": {
     "delete": "Delete account",

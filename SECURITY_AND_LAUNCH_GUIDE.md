@@ -226,7 +226,18 @@ account URL".
 
 **Done when:** page reachable without login over HTTPS, readable on a phone.
 
-### [ ] P1-4 Privacy Policy & Terms pages + in-app links
+### [x] P1-4 Privacy Policy & Terms pages + in-app links — code done 2026-09-16, client approval pending
+
+**Built:** `/privacy`, `/terms` (`resources/views/legal/`), `legal` block on `GET /student/app-config`,
+Profile "Help & legal" card and sign-in consent line (`mobile/src/features/legal/useLegalLinks.ts`),
+5 tests. Decisions (user, 2026-09-16): data **shared with UAE employers/agencies only with the
+student's agreement**; **no refund once a lesson is opened / service started**; **Sri Lankan law**;
+company address and registration number left blank for the client (`LEGAL_COMPANY_ADDRESS`,
+`LEGAL_COMPANY_REGISTRATION_NUMBER`).
+**Before launch:** client approves both texts; fill company details and `MAIL_SUPPORT_ADDRESS`;
+Sinhala strings from the client. **Keep in sync:** P3-11 (Sentry) must add "crash logs" to the
+privacy policy; switching payments on must re-check the payment and refund sections; the Data
+safety form must mark name/contact/CV/video as **Shared** (employers).
 
 **Do:**
 1. Blade views `GET /privacy` and `GET /terms` with a shared minimal layout (Plan B brand, mobile

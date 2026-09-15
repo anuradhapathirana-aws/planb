@@ -132,10 +132,22 @@ class CompanySettingManagementTest extends TestCase
 
         $this->putJson('/api/v1/admin/company-settings/app-intro', $this->introPayload([
             'intro_animation' => 'spin',
-            'intro_greeting_en' => '',
         ]))
             ->assertStatus(422)
-            ->assertJsonValidationErrors(['intro_animation', 'intro_greeting_en']);
+            ->assertJsonValidationErrors(['intro_animation']);
+    }
+
+    public function test_the_app_intro_saves_without_a_greeting(): void
+    {
+        $this->actingAsRole(RoleName::SuperAdmin);
+
+        $this->putJson('/api/v1/admin/company-settings/app-intro', $this->introPayload([
+            'intro_greeting_en' => null,
+            'intro_greeting_si' => null,
+        ]))
+            ->assertOk()
+            ->assertJsonPath('data.intro_is_enabled', true)
+            ->assertJsonPath('data.intro_greeting_en', null);
     }
 
     public function test_the_logo_is_uploaded_re_encoded_and_removed(): void

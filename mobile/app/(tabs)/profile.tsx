@@ -1,9 +1,18 @@
 import { useEffect, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Linking, Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useTabBarClearance } from '@/components/shared/TabBar';
-import { ChevronRight, Heart, LogOut, Mail, Phone, Receipt, ShieldCheck } from '@/components/icons';
+import {
+  ChevronRight,
+  FileText,
+  Heart,
+  LogOut,
+  Mail,
+  Phone,
+  Receipt,
+  ShieldCheck,
+} from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 
 import { colors } from '@shared/theme/tokens';
@@ -14,12 +23,14 @@ import { Card, PressableCard } from '@/components/ui/Card';
 import { Text } from '@/components/ui/Text';
 import { useChecklistOverview } from '@/features/checklist/useChecklists';
 import { ContinueLearningCard } from '@/features/profile/ContinueLearningCard';
+import { useLegalLinks } from '@/features/legal/useLegalLinks';
 import { DeleteAccountSheet } from '@/features/profile/DeleteAccountSheet';
 import { ProfileHeader } from '@/features/profile/ProfileHeader';
 import { ProfileStats } from '@/features/profile/ProfileStats';
 import { useServicePurchases } from '@/features/services/useServices';
 import { useWishlist } from '@/features/wishlist/useWishlist';
 import { queryClient } from '@/lib/queryClient';
+import { openExternalUrl } from '@/lib/webBrowser';
 import { useStatusBarStyle } from '@/lib/useStatusBarStyle';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -35,6 +46,7 @@ export default function ProfileScreen() {
   const setStudent = useAuthStore((state) => state.setStudent);
   const cached = useAuthStore((state) => state.student);
   const [deleteSheetOpen, setDeleteSheetOpen] = useState(false);
+  const legal = useLegalLinks();
 
   /*
    * Read the profile from the server rather than from the auth store.
@@ -185,6 +197,40 @@ export default function ProfileScreen() {
           </PressableCard>
 
           {/*
+            Google Play wants the privacy policy reachable from inside the app,
+            not only from the store listing. The pages open in an in-app browser
+            tab; support opens the student's own mail app.
+          */}
+          <Text variant="label" className="mb-2 ml-1 mt-6">
+            {t('legal.sectionTitle')}
+          </Text>
+
+          <Card className="divide-y divide-border">
+            <LinkRow
+              icon={ShieldCheck}
+              label={t('legal.privacy')}
+              onPress={() => void openExternalUrl(legal.privacyUrl)}
+            />
+            <LinkRow
+              icon={FileText}
+              label={t('legal.terms')}
+              onPress={() => void openExternalUrl(legal.termsUrl)}
+            />
+            {legal.supportEmail ? (
+              <LinkRow
+                icon={Mail}
+                label={t('legal.support')}
+                onPress={() =>
+                  // Not `openExternalUrl`: a browser tab cannot open `mailto:`.
+                  void Linking.openURL(
+                    `mailto:${legal.supportEmail}?subject=${encodeURIComponent(t('legal.supportSubject'))}`,
+                  ).catch(() => undefined)
+                }
+              />
+            ) : null}
+          </Card>
+
+          {/*
             Sign out is the only button on the page. Editing is the pencil in the
             navy header — a second, full-width way into the same screen made the
             footer read as the primary action when it is the rarer one.
@@ -224,6 +270,29 @@ export default function ProfileScreen() {
         onClose={() => setDeleteSheetOpen(false)}
       />
     </View>
+  );
+}
+
+function LinkRow({
+  icon: Icon,
+  label,
+  onPress,
+}: {
+  icon: typeof Mail;
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="link"
+      accessibilityLabel={label}
+      onPress={onPress}
+      className="min-h-[52px] flex-row items-center gap-3 px-4 py-3 active:bg-muted"
+    >
+      <Icon size={18} color={colors['muted-foreground']} />
+      <Text className="flex-1 font-medium">{label}</Text>
+      <ChevronRight size={20} color={colors['muted-foreground']} />
+    </Pressable>
   );
 }
 

@@ -11,3 +11,5 @@ Route::get('/', function () {
  * links to these from the store listing, so anyone must be able to open them.
  */
 Route::view('/account-deletion', 'legal.account-deletion')->name('legal.account-deletion');
+Route::view('/privacy', 'legal.privacy')->name('legal.privacy');
+Route::view('/terms', 'legal.terms')->name('legal.terms');

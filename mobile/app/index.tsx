@@ -69,9 +69,10 @@ export default function LaunchScreen() {
   }, [introDone, isSuccess, isError, data, setStudent]);
 
   if (showIntro && intro) {
-    // Sinhala falls back to English when the admin has not translated it.
-    const greeting =
-      i18n.language === 'si' && intro.greeting_si ? intro.greeting_si : intro.greeting_en;
+    // Sinhala falls back to English when the admin has not translated it. The
+    // greeting is optional: blank means the splash shows only the logo.
+    const si = intro.greeting_si?.trim();
+    const greeting = (i18n.language === 'si' && si ? si : intro.greeting_en?.trim()) || null;
 
     return (
       <IntroSplash

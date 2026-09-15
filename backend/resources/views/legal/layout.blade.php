@@ -157,7 +157,10 @@
             padding: 0 16px 32px;
             color: #64748b;
             font-size: 13px;
+            line-height: 2;
         }
+
+        footer a { color: #475569; }
     </style>
 </head>
 <body>
@@ -176,6 +179,9 @@
     </main>
 
     <footer>
+        <a href="{{ route('legal.privacy') }}">Privacy Policy</a> ·
+        <a href="{{ route('legal.terms') }}">Terms of Use</a> ·
+        <a href="{{ route('legal.account-deletion') }}">Delete your account</a><br>
         &copy; {{ now()->year }} {{ config('legal.company_name') }}
     </footer>
 </body>

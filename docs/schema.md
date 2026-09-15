@@ -518,7 +518,7 @@ The logo is a **Media Library collection** (`logo`, single file, public disk), r
 | bank_branch | string(120), nullable | |
 | bank_notes | string(500), nullable | Payment instructions shown under the account on the app. |
 | intro_is_enabled | boolean, default true | Whether the app plays the launch intro. |
-| intro_greeting_en | string(160), nullable | Required while the intro is on. |
+| intro_greeting_en | string(160), nullable | Optional. Null means the intro shows the logo only. |
 | intro_greeting_si | string(160), nullable | Optional. The app falls back to English. |
 | intro_animation | string(32), default `fade` | PHP enum `App\Enums\IntroAnimation`: `fade`, `zoom`, `slide_up`, `pulse`. |
 | created_at / updated_at | timestamps | `updated_at` is touched on a logo change so the app can tell its cached logo is stale. |

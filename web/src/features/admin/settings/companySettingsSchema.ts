@@ -40,22 +40,12 @@ export const bankDetailsFormSchema = z
 export type BankDetailsFormSchema = z.infer<typeof bankDetailsFormSchema>;
 
 /** UX validation for Settings > App Intro. Mirrors `UpdateAppIntroRequest`. */
-export const appIntroFormSchema = z
-  .object({
-    intro_is_enabled: z.boolean(),
-    intro_greeting_en: z.string().max(160, 'Keep the greeting under 160 characters.'),
-    intro_greeting_si: z.string().max(160, 'Keep the greeting under 160 characters.'),
-    intro_animation: z.enum(INTRO_ANIMATIONS as [IntroAnimation, ...IntroAnimation[]]),
-  })
-  .superRefine((values, ctx) => {
-    if (values.intro_is_enabled && values.intro_greeting_en.trim() === '') {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['intro_greeting_en'],
-        message: 'Enter the greeting message in English.',
-      });
-    }
-  });
+export const appIntroFormSchema = z.object({
+  intro_is_enabled: z.boolean(),
+  intro_greeting_en: z.string().max(160, 'Keep the greeting under 160 characters.'),
+  intro_greeting_si: z.string().max(160, 'Keep the greeting under 160 characters.'),
+  intro_animation: z.enum(INTRO_ANIMATIONS as [IntroAnimation, ...IntroAnimation[]]),
+});
 
 export type AppIntroFormSchema = z.infer<typeof appIntroFormSchema>;
 

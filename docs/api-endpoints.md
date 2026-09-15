@@ -336,7 +336,7 @@ Settings > Bank Details and Settings > App Intro in the admin panel. One singlet
 | GET | `/admin/branding` | **public** | `{ logo_url }` for the admin sign-in page. Rate-limited 60/min. |
 | GET | `/admin/company-settings` | any admin role | Every field, plus `logo_url` and `updated_at`. |
 | PUT | `/admin/company-settings/bank-details` | **Super Admin** | `{ bank_transfer_enabled, bank_name, bank_account_name, bank_account_number, bank_branch, bank_notes }`. Switching bank transfer on needs name, account name and number (422 otherwise). |
-| PUT | `/admin/company-settings/app-intro` | Super Admin, Content Manager | `{ intro_is_enabled, intro_greeting_en, intro_greeting_si, intro_animation }`. English greeting required while the intro is on. Animation is `fade`, `zoom`, `slide_up` or `pulse`. |
+| PUT | `/admin/company-settings/app-intro` | Super Admin, Content Manager | `{ intro_is_enabled, intro_greeting_en, intro_greeting_si, intro_animation }`. Both greetings are optional; with none, the intro shows the logo only. Animation is `fade`, `zoom`, `slide_up` or `pulse`. |
 | POST | `/admin/company-settings/logo` | Super Admin, Content Manager | `multipart/form-data`, field `logo`. PNG/JPG/WebP up to 2 MB, re-encoded to PNG within 512×512. |
 | DELETE | `/admin/company-settings/logo` | Super Admin, Content Manager | Clears the logo; clients fall back to the bundled one. |
 | GET | `/student/app-config` | **public** | `{ logo_url, intro: { enabled, greeting_en, greeting_si, animation }, updated_at }`. Read on launch, before sign-in. Branding only, never bank details. Rate-limited 60/min. |
