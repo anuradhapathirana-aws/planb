@@ -209,7 +209,15 @@ from client — falls back to EN). Differences from the plan below, decided with
 **Done when:** end-to-end on a device: delete → signed out → sign in again with same email gives an
 empty new profile.
 
-### [ ] P1-3 Public account-deletion web page
+### [x] P1-3 Public account-deletion web page — done 2026-09-16
+
+**Built:** `GET /account-deletion` (`routes/web.php`, `resources/views/legal/account-deletion.blade.php`,
+shared `resources/views/legal/layout.blade.php` for P1-4), values in `config/legal.php`, logo at
+`public/images/planb-logo.png`, 3 tests in `tests/Feature/Legal/AccountDeletionPageTest.php`.
+Decisions (user, 2026-09-16): no-app route is **email support** (staff delete by hand, within 30
+days), payment records kept **7 years**, hosted on the backend (no Plan B website yet).
+**Before launch:** set `MAIL_SUPPORT_ADDRESS` (the page shows "coming soon" without it) and have
+the client approve the wording.
 
 **Do:** Blade view at `GET /account-deletion` (`backend/routes/web.php`): app name, steps to delete
 in-app (Profile → Delete account), a support email for people who no longer have the app, what is

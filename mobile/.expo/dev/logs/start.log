@@ -53278,3 +53278,53 @@
 {"_e":"metro:client_log","_t":1789469363336,"level":"warn","data":["[googleAuth] platform=android clientId=965400269132…(72 chars) enabled=true providerLoaded=true -> button SHOWN"]}
 {"_e":"metro:client_log","_t":1789469363336,"level":"warn","data":["Linking found multiple possible URI schemes in your Expo config.\nUsing 'planb'. Ignoring: lk.planbinternational.academydevelopment, lk.planbinternational.academy.development, lk.planbinternational.academydevelopment.\nProvide the preferred URI scheme to the Linking API."]}
 {"_e":"metro:client_log","_t":1789469367835,"level":"warn","data":["[googleAuth] env=bare redirectUri=lk.planbinternational.academydevelopment:/oauthredirect clientId=965400269132…"]}
+{"_e":"metro:bundling:started","_t":1789473524713,"id":"3","platform":"android","environment":null,"entry":"node_modules\\expo-router\\entry.js"}
+{"_e":"metro:bundling:progress","_t":1789473524755,"id":"3","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789473525372,"id":"3","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789473525474,"id":"3","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789473525589,"id":"3","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789473527067,"id":"3","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789473546599,"id":"3","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789473546703,"id":"3","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789473546803,"id":"3","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789473546903,"id":"3","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789473547003,"id":"3","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789473547106,"id":"3","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789473547207,"id":"3","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789473547307,"id":"3","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789473547415,"id":"3","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789473547515,"id":"3","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789473547619,"id":"3","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789473547729,"id":"3","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789473547830,"id":"3","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789473547932,"id":"3","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789473548032,"id":"3","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789473548146,"id":"3","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789473548246,"id":"3","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789473548346,"id":"3","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789473548449,"id":"3","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789473548553,"id":"3","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789473548668,"id":"3","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789473548768,"id":"3","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789473548871,"id":"3","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789473548970,"id":"3","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789473549076,"id":"3","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:done","_t":1789473549927,"id":"3","total":1,"ms":25188.7568}
+{"_e":"metro:client_log","_t":1789473559464,"level":"warn","data":["[startup] root layout evaluated"]}
+{"_e":"metro:client_log","_t":1789473559466,"level":"warn","data":["[googleAuth] platform=android clientId=965400269132…(72 chars) enabled=true providerLoaded=true -> button SHOWN"]}
+{"_e":"metro:client_log","_t":1789473559466,"level":"warn","data":["Linking found multiple possible URI schemes in your Expo config.\nUsing 'planb'. Ignoring: lk.planbinternational.academydevelopment, lk.planbinternational.academy.development, lk.planbinternational.academydevelopment.\nProvide the preferred URI scheme to the Linking API."]}
+{"_e":"metro:client_log","_t":1789473701684,"level":"warn","data":["[googleAuth] env=bare redirectUri=lk.planbinternational.academydevelopment:/oauthredirect clientId=965400269132…"]}
+{"_e":"metro:client_log","_t":1789473774554,"level":"warn","data":["[googleAuth] env=bare redirectUri=lk.planbinternational.academydevelopment:/oauthredirect clientId=965400269132…"]}
+{"_e":"metro:client_log","_t":1789473774954,"level":"warn","data":["[googleAuth] env=bare redirectUri=lk.planbinternational.academydevelopment:/oauthredirect clientId=965400269132…"]}
+{"_e":"metro:client_log","_t":1789473775380,"level":"warn","data":["[googleAuth] env=bare redirectUri=lk.planbinternational.academydevelopment:/oauthredirect clientId=965400269132…"]}
+{"_e":"metro:client_log","_t":1789473775842,"level":"warn","data":["[googleAuth] env=bare redirectUri=lk.planbinternational.academydevelopment:/oauthredirect clientId=965400269132…"]}
+{"_e":"metro:client_log","_t":1789473776729,"level":"warn","data":["[googleAuth] env=bare redirectUri=lk.planbinternational.academydevelopment:/oauthredirect clientId=965400269132…"]}
+{"_e":"metro:client_log","_t":1789473777196,"level":"warn","data":["[googleAuth] env=bare redirectUri=lk.planbinternational.academydevelopment:/oauthredirect clientId=965400269132…"]}
+{"_e":"metro:client_log","_t":1789473777649,"level":"warn","data":["[googleAuth] env=bare redirectUri=lk.planbinternational.academydevelopment:/oauthredirect clientId=965400269132…"]}
+{"_e":"metro:bundling:started","_t":1789475150904,"id":"4","platform":"android","environment":null,"entry":"node_modules\\expo-router\\entry.js"}
+{"_e":"metro:bundling:progress","_t":1789475150929,"id":"4","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1789475151487,"id":"4","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:done","_t":1789475152763,"id":"4","total":1,"ms":1846.7732}
+{"_e":"metro:client_log","_t":1789475163852,"level":"warn","data":["[startup] root layout evaluated"]}
+{"_e":"metro:client_log","_t":1789475163852,"level":"warn","data":["[googleAuth] platform=android clientId=965400269132…(72 chars) enabled=true providerLoaded=true -> button SHOWN"]}
+{"_e":"metro:client_log","_t":1789475163852,"level":"warn","data":["Linking found multiple possible URI schemes in your Expo config.\nUsing 'planb'. Ignoring: lk.planbinternational.academydevelopment, lk.planbinternational.academy.development, lk.planbinternational.academydevelopment.\nProvide the preferred URI scheme to the Linking API."]}
