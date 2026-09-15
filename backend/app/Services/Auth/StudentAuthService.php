@@ -4,13 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services\Auth;
 
+use App\Enums\LoginCodePurpose;
 use App\Models\Student;
 use App\Notifications\StudentLoginCodeNotification;
 use App\Services\Student\StudentIdGenerator;
 use Illuminate\Database\QueryException;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\NewAccessToken;
 use Laravel\Sanctum\TransientToken;
@@ -34,6 +33,7 @@ class StudentAuthService
     public function __construct(
         private readonly GoogleIdTokenVerifier $google,
         private readonly StudentIdGenerator $studentIds,
+        private readonly StudentLoginCodeService $codes,
     ) {}
 
     /**
@@ -51,20 +51,8 @@ class StudentAuthService
         $config = config('students.login_code');
         $student = $this->findByEmail($email);
 
-        if ($student !== null && $student->canSignIn() && ! $this->hasHitDailyCap($student)) {
-            $code = $this->generateCode((int) $config['length']);
-
-            DB::transaction(function () use ($student, $email, $code, $ip, $config): void {
-                // At most one live code per student: a resend supersedes the old one.
-                $student->loginCodes()->live()->update(['voided_at' => now()]);
-
-                $student->loginCodes()->create([
-                    'email' => mb_strtolower($email),
-                    'code_hash' => Hash::make($code),
-                    'expires_at' => now()->addMinutes((int) $config['ttl_minutes']),
-                    'request_ip' => $ip,
-                ]);
-            });
+        if ($student !== null && $student->canSignIn() && ! $this->codes->hasHitDailyCap($student)) {
+            $code = $this->codes->issue($student, $email, LoginCodePurpose::SignIn, $ip);
 
             // Queued (CLAUDE.md §4.7). A worker MUST be running or nobody can sign in.
             $student->notify(new StudentLoginCodeNotification($code, (int) $config['ttl_minutes']));
@@ -87,34 +75,12 @@ class StudentAuthService
 
         // Same message whether the student doesn't exist or the code is wrong.
         if ($student === null) {
-            throw $this->invalidCode();
+            throw $this->codes->invalidCode();
         }
 
         $this->assertCanSignIn($student);
 
-        $record = $student->loginCodes()
-            ->live()
-            ->where('email', mb_strtolower($email))
-            ->latest('id')
-            ->first();
-
-        if ($record === null || ! $record->isUsable()) {
-            throw $this->invalidCode();
-        }
-
-        if (! Hash::check($code, $record->code_hash)) {
-            $record->increment('attempts');
-
-            // Burn the code once guessing has clearly started. The response is
-            // identical to an expired one — never reveal attempts remaining.
-            if ($record->attempts + 1 >= (int) config('students.login_code.max_attempts')) {
-                $record->forceFill(['voided_at' => now()])->save();
-            }
-
-            throw $this->invalidCode();
-        }
-
-        $record->forceFill(['consumed_at' => now()])->save();
+        $this->codes->consume($student, $email, LoginCodePurpose::SignIn, $code);
 
         $this->markVerified($student, verifiedEmail: true);
 
@@ -346,26 +312,5 @@ class StudentAuthService
                 'Your account has been suspended. Please contact Plan B support.',
             );
         }
-    }
-
-    private function hasHitDailyCap(Student $student): bool
-    {
-        return $student->loginCodes()
-            ->where('created_at', '>=', Carbon::today())
-            ->count() >= (int) config('students.login_code.daily_cap');
-    }
-
-    private function generateCode(int $length): string
-    {
-        $max = (10 ** $length) - 1;
-
-        return str_pad((string) random_int(0, $max), $length, '0', STR_PAD_LEFT);
-    }
-
-    private function invalidCode(): ValidationException
-    {
-        return ValidationException::withMessages([
-            'code' => 'That code is not valid or has expired. Request a new one.',
-        ]);
     }
 }

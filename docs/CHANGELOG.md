@@ -4,6 +4,14 @@ All notable changes to this project are documented here. Format loosely follows 
 
 ## Unreleased
 
+### Added
+- **Students can delete their own account** (backend only; the mobile screen is the next task). Google Play requires in-app account deletion for any app that creates accounts.
+  - **Two steps:** `POST /student/account/deletion-code` emails a confirmation code, then `DELETE /student/account` with that code deletes. Holding an unlocked, signed-in phone is not enough on its own.
+  - **Anonymised, not hard-deleted.** Profile details, photo, CV, profile video, lesson progress, paper attempts, checklist ticks, wishlist and every sign-in token are removed. Orders, payments (with receipts and bank reference), enrolments and the `PB-#####` student ID are kept for finance. The row is blocked and soft-deleted, and the email is freed so the person can register again as a new student.
+  - **Database:** migration `2026_09_16_100000_add_account_deletion_fields` adds `students.anonymised_at` and `student_login_codes.purpose` (`sign_in` / `delete_account`). Existing codes become `sign_in`. A code only works for its own purpose, and requesting a sign-in code no longer voids a pending deletion code.
+  - **Refactor:** code issuing and checking moved from `StudentAuthService` into `StudentLoginCodeService`, shared by sign-in and deletion. Sign-in behaviour is unchanged (all existing auth tests pass).
+  - 11 feature tests (`StudentAccountDeletionTest`).
+
 ### Changed
 - **Service Details: bigger service name, tighter spacing under it, and a pill-shaped Buy button.** The name is 20px bold (was 17px). The name and the section below it ("How it works", or the tracker once bought) are grouped 4px apart, down from the page's 12px. The footer "Buy now" / "Buy again" button is fully rounded via a new `shape="pill"` prop on `Button`. It is a prop rather than a `rounded-full` class because an appended class does not reliably override the base `rounded-lg`.
 - **Service Details: "How it works" uses the standard section title**: 16px medium navy, the same as Home's section headings, placed above its card. It replaces the small gray uppercase label that sat inside the card.

@@ -71,6 +71,7 @@ class Student extends Authenticatable implements HasMedia
             'is_blocked' => 'boolean',
             'registered_at' => 'datetime',
             'email_verified_at' => 'datetime',
+            'anonymised_at' => 'datetime',
         ];
     }
 
@@ -178,6 +179,17 @@ class Student extends Authenticatable implements HasMedia
     public function isRegistered(): bool
     {
         return $this->registered_at !== null;
+    }
+
+    /** The student deleted their own account. Such a row is kept only for its finance records. */
+    public function isAnonymised(): bool
+    {
+        return $this->anonymised_at !== null;
+    }
+
+    public function wishlist(): HasMany
+    {
+        return $this->hasMany(CourseWishlist::class);
     }
 
     public function loginCodes(): HasMany

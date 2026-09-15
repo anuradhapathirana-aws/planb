@@ -45,6 +45,14 @@ class AppServiceProvider extends ServiceProvider
          */
         RateLimiter::for('student-progress', fn (Request $request) => Limit::perMinute(60)
             ->by('progress:'.($request->user()?->getAuthIdentifier() ?? $request->ip())));
+
+        // Account deletion: each code request sends an email, and each delete
+        // attempt is a guess at a six-digit code, so both are keyed per student.
+        RateLimiter::for('student-account-deletion-request', fn (Request $request) => Limit::perMinutes(10, 3)
+            ->by('acct-del-req:'.($request->user()?->getAuthIdentifier() ?? $request->ip())));
+
+        RateLimiter::for('student-account-deletion', fn (Request $request) => Limit::perMinute(6)
+            ->by('acct-del:'.($request->user()?->getAuthIdentifier() ?? $request->ip())));
     }
 
     /** Case-insensitive, so `A@x.com` and `a@x.com` share one bucket. */

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\CourseStatus;
+use App\Http\Controllers\Student\AccountController;
 use App\Http\Controllers\Student\AppConfigController;
 use App\Http\Controllers\Student\AuthController;
 use App\Http\Controllers\Student\ChecklistController;
@@ -92,6 +93,16 @@ Route::middleware(['auth:student', 'student.actor', 'student.active'])->group(fu
     Route::put('profile', [ProfileController::class, 'update']);
     Route::post('profile/photo', [ProfileController::class, 'uploadPhoto']);
     Route::delete('profile/photo', [ProfileController::class, 'deletePhoto']);
+
+    /*
+     * Account deletion (Google Play policy). Two steps: email a confirmation
+     * code, then delete with it — holding the signed-in phone is not enough on
+     * its own. Limited per student, since every code request sends an email.
+     */
+    Route::post('account/deletion-code', [AccountController::class, 'requestDeletionCode'])
+        ->middleware('throttle:student-account-deletion-request');
+    Route::delete('account', [AccountController::class, 'destroy'])
+        ->middleware('throttle:student-account-deletion');
 
     /*
      * Home. Only what no other tab already serves — the screen's two progress

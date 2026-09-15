@@ -212,6 +212,19 @@ Notes:
 | POST | `/student/profile/photo` | Multipart `photo` (jpeg/png, ≤2MB). Re-encoded 600×600 before storage. |
 | DELETE | `/student/profile/photo` | |
 
+### Account deletion (Google Play policy)
+
+| Method | Path | Notes |
+|---|---|---|
+| POST | `/student/account/deletion-code` | No body. Emails a 6-digit **deletion** code to the address on the account → `200 { data: { expires_in_seconds, resend_after_seconds } }`. 422 on `email` if the account has no email (contact support), 422 on `code` if the daily code cap is reached. Throttled 3 per 10 min per student. |
+| DELETE | `/student/account` | `{ code }` → **204**. Anonymises the account (see `schema.md`, `students`). 422 on `code` for a wrong, expired, used or sign-in-purpose code, with the same message as sign-in. Throttled 6/min per student. |
+
+- **Two steps on purpose.** Holding a signed-in phone is not enough: the mailbox has to confirm. A deletion code only works here, and a sign-in code never works here.
+- Unlike sign-in, these may explain their failures: the caller is already authenticated as the account holder, so there is nothing to enumerate.
+- **Every token on every device is revoked**, so the app must treat 204 as signed out. A replayed request gets 401.
+- Removed: profile details, photo, CV, profile video, lesson progress, paper attempts, checklist ticks, wishlist. **Kept for finance:** orders, payments (receipts and bank reference), enrolments, service purchases, and the `student_id`.
+- The email address is freed: the same person can register again as a new, empty account with Google.
+
 **Not editable, and silently ignored if sent:** `email` (it is the credential — changing it needs a verify-old-then-verify-new flow, so it goes through support for now), `student_id` and `full_name` (admin-owned identity), `visa_status` (admin-verified), `is_blocked`, `registered_at`. `profession_id` must belong to `industry_id`. Minimum age 18, matching the admin form.
 
 ## Student Courses
