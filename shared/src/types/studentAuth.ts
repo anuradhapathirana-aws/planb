@@ -93,6 +93,20 @@ export interface StudentSession {
   student: StudentProfile;
 }
 
+/**
+ * `POST /student/account/deletion-code` — same timings as a sign-in code.
+ *
+ * Unlike `RequestCodeResponse` this one is only returned when a code really was
+ * sent: the caller is already signed in as the account holder, so there is no
+ * address to protect and failures come back as a 422 with a real message.
+ */
+export type DeletionCodeResponse = RequestCodeResponse;
+
+/** `DELETE /student/account`. Answers 204; every token on every device is revoked. */
+export interface DeleteAccountPayload {
+  code: string;
+}
+
 /** `refresh` rotates the token without re-reading the student record. */
 export interface RefreshedToken {
   token: string;

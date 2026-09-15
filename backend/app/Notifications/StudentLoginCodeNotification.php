@@ -50,13 +50,18 @@ class StudentLoginCodeNotification extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
+        // The code stays out of the subject and preheader: both show on a locked
+        // phone's notification, where anyone holding the phone could read it.
         return (new MailMessage)
             ->subject('Your Plan B sign-in code')
-            ->greeting('Your sign-in code')
-            ->line('Enter this code in the Plan B app:')
-            ->line('**'.$this->code.'**')
-            ->line("This code expires in {$this->ttlMinutes} minutes and can be used once.")
-            ->line('If you did not try to sign in, you can ignore this email — nobody can '
-                .'access your account without the code.');
+            ->view(['emails.code', 'emails.code-text'], [
+                'preheader' => 'Use this code to sign in to the Plan B app.',
+                'heading' => 'Your sign-in code',
+                'intro' => 'Enter this code in the Plan B app to sign in:',
+                'code' => $this->code,
+                'ttlMinutes' => $this->ttlMinutes,
+                'warning' => "If you didn't try to sign in, you can ignore this email. "
+                    .'Nobody can get into your account without this code.',
+            ]);
     }
 }

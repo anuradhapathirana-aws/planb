@@ -44,13 +44,18 @@ class StudentAccountDeletionCodeNotification extends Notification implements Sho
 
     public function toMail(object $notifiable): MailMessage
     {
+        // As with the sign-in code, the code never appears in the subject or preheader.
         return (new MailMessage)
             ->subject('Confirm deleting your Plan B account')
-            ->greeting('Delete your Plan B account?')
-            ->line('Enter this code in the Plan B app to permanently delete your account:')
-            ->line('**'.$this->code.'**')
-            ->line("This code expires in {$this->ttlMinutes} minutes and can be used once.")
-            ->line('If you did not ask to delete your account, ignore this email. Your account '
-                .'stays as it is, and nobody can delete it without this code.');
+            ->view(['emails.code', 'emails.code-text'], [
+                'preheader' => 'Someone asked to delete your Plan B account.',
+                'heading' => 'Delete your Plan B account?',
+                'intro' => 'Enter this code in the Plan B app to permanently delete your account. '
+                    ."This can't be undone.",
+                'code' => $this->code,
+                'ttlMinutes' => $this->ttlMinutes,
+                'warning' => "If you didn't ask to delete your account, ignore this email. "
+                    .'Your account stays as it is, and nobody can delete it without this code.',
+            ]);
     }
 }

@@ -31,8 +31,9 @@
    - `php artisan test` + `./vendor/bin/pint` (backend) / `npx tsc --noEmit` + `npm run lint`
      (mobile, web),
    - `docs/CHANGELOG.md` updated; `docs/api-endpoints.md` / `docs/schema.md` if touched,
-   - a Conventional Commit on a `fix/…` or `feat/…` branch (e.g. `fix(payment): store receipts on
-     private disk`),
+   - **no git commit, branch or push by the agent.** The user reviews the changes and commits
+     them manually. Leave the work uncommitted, list the changed files, and suggest a
+     Conventional Commit message (e.g. `fix(payment): store receipts on private disk`),
    - ticking the task's checkbox in this file and adding the date.
 6. User-facing strings go through `t('key')` with EN + SI entries in `shared/src/i18n`.
 
@@ -177,7 +178,21 @@ delete endpoint exists (`backend/routes/api_student.php`).
 **Done when:** feature tests prove tokens revoked, PII null, media removed, orders kept, wrong code
 → 422, other student unaffected, sign-in with the old email creates a *new* student.
 
-### [ ] P1-2 Account deletion (mobile)
+### [x] P1-2 Account deletion (mobile) — code done 2026-09-16, device test pending
+
+**Built:** red text link under Sign out (`app/(tabs)/profile.tsx`) → `DeleteAccountSheet`
+(what's deleted / kept, "Email me a code") → full screen `app/profile/delete-account.tsx` (OTP,
+resend timer, destructive confirm) → local sign-out + `queryClient.clear()` → `/sign-in`.
+API in `src/api/account.api.ts`; types `DeletionCodeResponse`, `DeleteAccountPayload` in
+`shared/src/types/studentAuth.ts`; strings `account.*` in `shared/src/i18n/en.json` (SI pending
+from client — falls back to EN). Differences from the plan below, decided with the user:
+- The code is entered on a **full screen**, not inside the sheet (a `Modal` sheet doesn't move with
+  the keyboard on Android).
+- The entry point is a **small red text link**, not a full-width button.
+- No server logout call after deleting: the server already revoked every token.
+
+**Still to do before ticking "done when":** run it end-to-end on a device (needs
+`php artisan migrate` for P1-1 and a running `queue:work` so the code email is sent).
 
 **Where:** `mobile/app/(tabs)/profile.tsx` (only "Sign out" exists today, ~line 190).
 

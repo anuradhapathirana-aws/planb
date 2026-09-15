@@ -29,8 +29,19 @@ class AdminAccountLockedNotification extends Notification implements ShouldQueue
 
         return (new MailMessage)
             ->subject('Your Plan B Admin Account Has Been Locked')
-            ->line('Your admin panel account was locked after 5 consecutive failed sign-in attempts.')
-            ->action('Unlock My Account', $unlockUrl)
-            ->line('This link expires in 24 hours. If you did not attempt to sign in, please contact a Super Admin.');
+            ->view(['emails.action', 'emails.action-text'], [
+                'preheader' => 'Your admin account was locked after 5 failed sign-in attempts.',
+                'heading' => 'Your admin account is locked',
+                'lines' => [
+                    'Your admin panel account was locked after 5 failed sign-in attempts in a row.',
+                ],
+                'actionText' => 'Unlock my account',
+                'actionUrl' => $unlockUrl,
+                'outroLines' => [
+                    'This link expires in 24 hours.',
+                    "If you didn't try to sign in, someone may be guessing your password. "
+                        .'Tell a Super Admin before unlocking.',
+                ],
+            ]);
     }
 }

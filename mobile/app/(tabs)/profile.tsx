@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useTabBarClearance } from '@/components/shared/TabBar';
@@ -14,6 +14,7 @@ import { Card, PressableCard } from '@/components/ui/Card';
 import { Text } from '@/components/ui/Text';
 import { useChecklistOverview } from '@/features/checklist/useChecklists';
 import { ContinueLearningCard } from '@/features/profile/ContinueLearningCard';
+import { DeleteAccountSheet } from '@/features/profile/DeleteAccountSheet';
 import { ProfileHeader } from '@/features/profile/ProfileHeader';
 import { ProfileStats } from '@/features/profile/ProfileStats';
 import { useServicePurchases } from '@/features/services/useServices';
@@ -33,6 +34,7 @@ export default function ProfileScreen() {
   const signOutLocal = useAuthStore((state) => state.signOut);
   const setStudent = useAuthStore((state) => state.setStudent);
   const cached = useAuthStore((state) => state.student);
+  const [deleteSheetOpen, setDeleteSheetOpen] = useState(false);
 
   /*
    * Read the profile from the server rather than from the auth store.
@@ -197,8 +199,30 @@ export default function ProfileScreen() {
             loading={signOut.isPending}
             onPress={() => signOut.mutate()}
           />
+
+          {/*
+            Google Play requires deleting an account to be possible from inside
+            the app. A quiet red link rather than a second full-width button, so
+            it is easy to find but never mistaken for Sign out.
+          */}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('account.delete')}
+            hitSlop={8}
+            disabled={signOut.isPending}
+            onPress={() => setDeleteSheetOpen(true)}
+            className="mt-3 min-h-[44px] items-center justify-center self-center rounded-lg px-4 active:bg-destructive-soft"
+          >
+            <Text className="font-medium text-destructive">{t('account.delete')}</Text>
+          </Pressable>
         </View>
       </ScrollView>
+
+      <DeleteAccountSheet
+        visible={deleteSheetOpen}
+        email={student?.email}
+        onClose={() => setDeleteSheetOpen(false)}
+      />
     </View>
   );
 }

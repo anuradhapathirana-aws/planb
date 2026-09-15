@@ -46,6 +46,22 @@
     "signOut": "Sign out",
     "signOutConfirm": "Sign out of Plan B on this device?"
   },
+  "account": {
+    "delete": "Delete account",
+    "deleteTitle": "Delete your account?",
+    "deleteWarning": "This can't be undone. You won't be able to get your account back.",
+    "deletedHeading": "We will delete",
+    "deletedItems": "Your profile details, photo, CV and profile video, your lesson progress and assessment results, your checklist ticks and your wishlist.",
+    "keptHeading": "We will keep",
+    "keptItems": "Records of courses and services you paid for, including any bank slips you uploaded. We must keep these for accounting.",
+    "sendCode": "Email me a code",
+    "sendCodeHint": "To make sure it's you, we'll send a code to {{email}}.",
+    "confirmTitle": "Confirm deletion",
+    "confirmSubtitle": "Enter the {{length}}-digit code we sent to {{email}}. It expires in {{minutes}} minutes.",
+    "confirmButton": "Delete my account",
+    "deleted": "Your account has been deleted.",
+    "codeSent": "We've sent a code to your email."
+  },
   "wishlist": {
     "title": "My wishlist",
     "add": "Save to wishlist",
