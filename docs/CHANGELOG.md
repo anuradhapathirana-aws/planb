@@ -29,6 +29,7 @@ All notable changes to this project are documented here. Format loosely follows 
   - 11 feature tests (`StudentAccountDeletionTest`).
 
 ### Changed
+- **Android permissions trimmed and auto-backup switched off** (`mobile/app.config.ts`), before the Play submission. `RECORD_AUDIO` (added by the image picker for video-with-sound we never record), `READ_MEDIA_IMAGES` / `READ_MEDIA_VIDEO` (screenshot *detection* we never use, and the trigger for Google's "Photo and video permissions" declaration) and `SYSTEM_ALERT_WINDOW` ("Display over other apps", from Expo's default template) are now blocked, and `expo-image-picker` gets `microphonePermission: false` — which also removes the microphone prompt text from iOS. `android.allowBackup: false` stops Android copying the app's data — the cached course/profile data in AsyncStorage — to the student's Google Drive. The legacy storage permissions are deliberately kept: the picker still asks for them on Android 12 and below, and blocking them would break "Choose photo" on those phones.
 - **The App Intro greeting is now optional.** Admins can save Settings > App Intro with the English greeting empty, even while the intro is on. The mobile splash shows the greeting only when one is set (blank or spaces-only counts as empty); otherwise it plays the logo on its own. 1 new feature test.
 
 ### Changed

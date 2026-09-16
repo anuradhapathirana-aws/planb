@@ -253,7 +253,37 @@ safety form must mark name/contact/CV/video as **Shared** (employers).
 
 **Done when:** all links open from a release build; strings in EN + SI.
 
-### [ ] P1-5 Remove unused Android permissions + disable backup
+### [x] P1-5 Remove unused Android permissions + disable backup — done 2026-09-16
+
+**Built:** `mobile/app.config.ts` — `expo-image-picker` gets `microphonePermission: false`,
+`android.allowBackup: false`, and `android.blockedPermissions` for `RECORD_AUDIO`,
+`READ_MEDIA_IMAGES`, `READ_MEDIA_VIDEO` and `SYSTEM_ALERT_WINDOW`. Verified with
+`npx expo config --type introspect`: all four appear as `tools:node="remove"` and the application
+tag carries `android:allowBackup="false"`. `microphonePermission: false` also drops
+`NSMicrophoneUsageDescription` from the iOS plist.
+
+**Three deviations from the plan below, after reading the libraries' own manifests and Kotlin:**
+
+- **`READ_EXTERNAL_STORAGE` / `WRITE_EXTERNAL_STORAGE` are NOT blocked.** `ImagePickerModule.kt`
+  (`getMediaLibraryPermissions`) returns an empty array on Android 13+ but asks for these two below
+  it, so blocking them denies "Choose photo" on every pre-Android-13 phone — and the camera below
+  Android 10 — which the "Done when" here explicitly requires to keep working. Both are already
+  capped at `maxSdkVersion="32"`, which is why they do not trigger the Play photo/video declaration.
+- **`DETECT_SCREEN_CAPTURE` is NOT blocked** (it was not in the plan, and should not be added):
+  `ScreenCaptureModule` calls `registerScreenCaptureCallback` on every launch on Android 14+, which
+  throws a `SecurityException` without it. Normal, install-time, auto-granted.
+- **`SYSTEM_ALERT_WINDOW` IS blocked, and the reason in the plan is wrong.** It is not merely in
+  React Native's debug manifest — Expo's own prebuild template
+  (`@expo/config-plugins/build/plugins/withAndroidBaseMods.js`) puts it in the main manifest, so it
+  ships in release. `VIBRATE` comes from the same template and is deliberately kept: push
+  notifications are planned and a channel's vibration pattern silently dies without it.
+
+`READ_MEDIA_IMAGES` came from `expo-screen-capture` (Android 13 only, for screenshot *detection*).
+The app only calls `preventScreenCaptureAsync` / `allowScreenCaptureAsync`, which set `FLAG_SECURE`
+and need no permission, so nothing is lost.
+
+**Still to do:** confirm on the next build — `aapt dump permissions` on the AAB, plus "Choose photo"
+and "Take photo" on an Android 13+ device and an Android 10 device.
 
 **Where:** `mobile/app.config.ts`.
 
