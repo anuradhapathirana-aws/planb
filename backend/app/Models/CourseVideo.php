@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\VideoProcessingStatus;
 use App\Enums\VideoProvider;
 use Database\Factories\CourseVideoFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -30,14 +31,27 @@ class CourseVideo extends Model implements HasMedia
         'title',
         'provider',
         'external_url',
+        'external_id',
+        'processing_status',
         'duration_seconds',
         'sort_order',
+    ];
+
+    /**
+     * Mirrors the column defaults in memory. A row created without these — the
+     * Course form saves lesson rows before any file exists — would otherwise
+     * carry null until it was read back, and the enum cast has nothing to cast.
+     */
+    protected $attributes = [
+        'provider' => 'upload',
+        'processing_status' => 'ready',
     ];
 
     protected function casts(): array
     {
         return [
             'provider' => VideoProvider::class,
+            'processing_status' => VideoProcessingStatus::class,
             'duration_seconds' => 'integer',
         ];
     }
@@ -66,9 +80,27 @@ class CourseVideo extends Model implements HasMedia
         return $this->getFirstMedia(self::VIDEO_COLLECTION);
     }
 
+    /** True for a Bunny-hosted lesson, whatever state its encoding is in. */
+    public function isRemotelyHosted(): bool
+    {
+        return $this->provider === VideoProvider::External && $this->external_id !== null;
+    }
+
+    /**
+     * "There is a lesson here to play." Deliberately blind to *where* it lives:
+     * callers asking this question — publishing checks, the stream endpoint, the
+     * Resource's `has_file` — care that a student would get a video, not which
+     * host serves it.
+     */
     public function hasVideoFile(): bool
     {
-        return $this->videoMedia() !== null;
+        return $this->isRemotelyHosted() || $this->videoMedia() !== null;
+    }
+
+    /** Uploaded, encoded and actually playable right now. */
+    public function isPlayable(): bool
+    {
+        return $this->hasVideoFile() && $this->processing_status->isPlayable();
     }
 
     public function getThumbnailUrlAttribute(): ?string

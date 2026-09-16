@@ -69,6 +69,14 @@ export function VideoRow({
   };
 
   const hasUploadedFile = !!existing?.has_file;
+  /*
+   * A Bunny upload exists before it is watchable — the file is there, the
+   * encoded versions are not. Showing it as ready would let an admin hit
+   * Preview and get an error, and publishing is blocked server-side anyway.
+   */
+  const isEncoding =
+    hasUploadedFile && (existing.processing_status === 'pending' || existing.processing_status === 'processing');
+  const hasFailed = hasUploadedFile && existing.processing_status === 'failed';
 
   return (
     <div className="space-y-2 rounded-md border bg-background p-2">
@@ -144,11 +152,24 @@ export function VideoRow({
         <FileChip
           icon={FileVideo}
           name={existing.file_name ?? 'Uploaded video'}
-          meta={`${formatBytes(existing.file_size_bytes)} · ${formatDuration(existing.duration_seconds)}`}
-          tone="ready"
+          meta={
+            isEncoding
+              ? 'Processing — this lesson can be published once it finishes'
+              : hasFailed
+                ? 'Processing failed. Upload this lesson again.'
+                : `${formatBytes(existing.file_size_bytes)} · ${formatDuration(existing.duration_seconds)}`
+          }
+          tone={isEncoding ? 'pending' : hasFailed ? 'error' : 'ready'}
           actions={
             <>
-              <Button type="button" size="icon-xs" variant="ghost" aria-label="Preview video" onClick={onPreview}>
+              <Button
+                type="button"
+                size="icon-xs"
+                variant="ghost"
+                aria-label="Preview video"
+                disabled={isEncoding || hasFailed}
+                onClick={onPreview}
+              >
                 <Play className="size-3.5" />
               </Button>
               <Button
@@ -223,18 +244,25 @@ function FileChip({
   icon: typeof FileVideo;
   name: string;
   meta: string;
-  /** `pending` = chosen but not uploaded yet; `ready` = already on the server. */
-  tone: 'pending' | 'ready';
+  /**
+   * `pending` = chosen but not uploaded yet, or uploaded and still encoding;
+   * `ready` = watchable; `error` = the host could not process it.
+   */
+  tone: 'pending' | 'ready' | 'error';
   actions: React.ReactNode;
 }) {
+  const toneClasses = {
+    pending: { border: 'border-warning/40 bg-warning/5', icon: 'text-warning' },
+    ready: { border: 'border-success/40 bg-success/5', icon: 'text-success' },
+    error: {
+      border: 'border-destructive/40 bg-destructive/5',
+      icon: 'text-destructive',
+    },
+  }[tone];
+
   return (
-    <div
-      className={cn(
-        'flex items-center gap-2 rounded-md border px-2.5 py-1.5',
-        tone === 'pending' ? 'border-warning/40 bg-warning/5' : 'border-success/40 bg-success/5',
-      )}
-    >
-      <Icon className={cn('size-4 shrink-0', tone === 'pending' ? 'text-warning' : 'text-success')} />
+    <div className={cn('flex items-center gap-2 rounded-md border px-2.5 py-1.5', toneClasses.border)}>
+      <Icon className={cn('size-4 shrink-0', toneClasses.icon)} />
       <div className="min-w-0 flex-1">
         <p className="truncate text-[13px] font-medium" title={name}>
           {name}

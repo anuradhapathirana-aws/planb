@@ -24,8 +24,10 @@ class CourseVideoResource extends JsonResource
             'duration_seconds' => $this->duration_seconds,
             'sort_order' => $this->sort_order,
             // Never the file URL itself — playback goes through the signed
-            // stream endpoint (CLAUDE.md §13.13).
-            'has_file' => $media !== null,
+            // stream endpoint (CLAUDE.md §13.13). Nor the Bunny guid: it is the
+            // one thing needed to build a playback URL, so it stays server-side.
+            'has_file' => $this->hasVideoFile(),
+            'processing_status' => $this->processing_status->value,
             'file_name' => $media?->file_name,
             'file_size_bytes' => $media?->size,
             'thumbnail_url' => PublicUrl::forRequest($this->thumbnail_url, $request),

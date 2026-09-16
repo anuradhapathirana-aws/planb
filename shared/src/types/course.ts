@@ -95,6 +95,13 @@ export interface CourseCategoryListFilters {
   page?: number;
 }
 
+/**
+ * Where a lesson is in encoding. A Bunny-hosted upload is not watchable until
+ * transcoding finishes, which is what makes `ready` distinct from `has_file`.
+ * A locally hosted file is always `ready`.
+ */
+export type VideoProcessingStatus = 'pending' | 'processing' | 'ready' | 'failed';
+
 export interface CourseVideo {
   id: number;
   course_topic_id: number;
@@ -104,6 +111,7 @@ export interface CourseVideo {
   sort_order: number;
   /** The file URL is never exposed — playback goes through the signed stream endpoint. */
   has_file: boolean;
+  processing_status: VideoProcessingStatus;
   file_name: string | null;
   file_size_bytes: number | null;
   thumbnail_url: string | null;

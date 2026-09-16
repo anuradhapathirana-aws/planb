@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
@@ -7,6 +8,7 @@ import {
   deleteCourseVideoFile,
   fetchCourseProgramme,
   fetchCourseProgrammes,
+  fetchCourseVideoProcessingStatus,
   fetchVideoPlayback,
   publishCourseProgramme,
   unpublishCourseProgramme,
@@ -14,7 +16,7 @@ import {
   uploadCourseProgrammeThumbnail,
 } from '@/api/courses.api';
 import { getValidationErrors } from '@shared/lib/serverErrors';
-import type { CourseProgrammeListFilters, CourseProgrammePayload } from '@shared/types/course';
+import type { CourseProgrammeListFilters, CourseProgrammePayload, CourseVideo } from '@shared/types/course';
 
 export function useCourseProgrammes(filters: CourseProgrammeListFilters) {
   return useQuery({
@@ -134,6 +136,60 @@ export function useDeleteCourseVideoFile() {
     },
     onError: () => toast.error('Could not remove the video file.'),
   });
+}
+
+/**
+ * Watches lessons that are still encoding and reports each one as it becomes
+ * playable.
+ *
+ * Polling rather than waiting for Bunny's webhook, because the webhook is an
+ * optimisation, not a guarantee: it cannot reach a laptop during local
+ * development, and in production a single missed delivery would otherwise
+ * strand a lesson on "Processing" until someone reloaded the page. Each poll
+ * re-reads the true state from Bunny, so this is also the repair path.
+ *
+ * Stops on its own once nothing is encoding — an idle course form makes no
+ * requests at all.
+ */
+export function useVideoProcessingWatcher(
+  videoIds: number[],
+  onReady: (video: CourseVideo) => void,
+) {
+  const key = videoIds.join(',');
+  const onReadyRef = useRef(onReady);
+  onReadyRef.current = onReady;
+
+  useEffect(() => {
+    if (videoIds.length === 0) return;
+
+    let cancelled = false;
+
+    const check = async () => {
+      for (const id of videoIds) {
+        if (cancelled) return;
+
+        try {
+          const video = await fetchCourseVideoProcessingStatus(id);
+          if (!cancelled && video.processing_status !== 'processing' && video.processing_status !== 'pending') {
+            onReadyRef.current(video);
+          }
+        } catch {
+          // A failed poll is not worth a toast: the next tick tries again, and
+          // the admin has not asked for anything.
+        }
+      }
+    };
+
+    const timer = window.setInterval(() => void check(), 10_000);
+    void check();
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+    // `key` is the stable identity of the id list; the array itself is rebuilt each render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
 }
 
 /**
