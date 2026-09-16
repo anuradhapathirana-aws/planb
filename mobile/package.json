@@ -60,8 +60,10 @@
     "type-check": "tsc --noEmit",
     "lint": "expo lint",
     "audit": "npm audit --omit=dev",
-    "build:dev": "npx eas-cli@latest build --profile development --platform android",
-    "build:preview": "npx eas-cli@latest build --profile preview --platform android"
+    "build:dev": "npx eas-cli@24.6.0 build --profile development --platform android",
+    "build:preview": "npx eas-cli@24.6.0 build --profile preview --platform android",
+    "build:prod": "npx eas-cli@24.6.0 build --profile production --platform android",
+    "submit:prod": "npx eas-cli@24.6.0 submit --profile production --platform android"
   },
   "overrides": {
     "expo-linking": "$expo-linking",

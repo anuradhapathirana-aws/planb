@@ -18,6 +18,9 @@ expo-env.d.ts
 *.key
 *.mobileprovision
 
+# Google Play service account key used by `eas submit` — it can publish releases
+play-service-account.json
+
 # Metro
 .metro-health-check*
 

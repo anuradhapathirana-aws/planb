@@ -34,6 +34,24 @@ const iosBundleId = `lk.planbinternational.academy${idSuffix}`;
 const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'http://localhost:8001/api/v1';
 
 /*
+ * Production's URL comes from the EAS "production" environment (expo.dev →
+ * Environment variables), not from eas.json. If it is missing there, the
+ * localhost fallback above gets baked in and `src/lib/env.ts` refuses to start
+ * — an AAB that crashes on every launch, found only after a Play upload. Failing
+ * the build instead costs one minute.
+ *
+ * Only on an EAS worker (`EAS_BUILD`): locally, `npx expo config` with
+ * APP_VARIANT=production is a normal way to inspect the manifest and must not
+ * need the real URL.
+ */
+if (isProduction && process.env.EAS_BUILD === 'true' && !apiBaseUrl.startsWith('https://')) {
+  throw new Error(
+    'EXPO_PUBLIC_API_BASE_URL must be an https:// URL for a production build. '
+      + 'Set it in the EAS "production" environment.',
+  );
+}
+
+/*
  * Google Sign-In OAuth clients — one per platform, all under the same Google
  * Cloud project, which is what lets the API accept any of them as an audience.
  *

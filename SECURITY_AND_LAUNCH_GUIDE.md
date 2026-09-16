@@ -305,7 +305,29 @@ rejects when the system photo picker suffices (it does here).
 permissions` on the built AAB/APK) shows only `INTERNET`, `CAMERA`, network state, and
 Expo-required permissions; camera + photo picking still work on Android 13+ and Android 10.
 
-### [ ] P1-6 Production EAS profile
+### [x] P1-6 Production EAS profile — code done 2026-09-17, first build pending
+
+**Built:** `eas.json` production profile reads the EAS **"production" environment**
+(`"environment": "production"`) and has `autoIncrement: true`; `submit.production.android` points
+at `./play-service-account.json` (gitignored) on the `internal` track; CLI pinned to **24.6.0** in
+`eas.json` and in the `build:*` scripts; new `build:prod` / `submit:prod` scripts. Decisions (user,
+2026-09-17): domain **theplanbs.com** → API `https://api.theplanbs.com/api/v1` (matches
+`docs/deployment.md`); values set by the user on EAS, not committed. One addition to the plan:
+`app.config.ts` throws when a production build runs on an EAS worker (`EAS_BUILD=true`) with a
+missing or non-https `EXPO_PUBLIC_API_BASE_URL`, so the mistake fails the build instead of shipping
+an AAB that crashes on launch. Local `npx expo config` is unaffected.
+
+**Still to do:**
+- Create the variable (user):
+  `npx eas-cli@24.6.0 env:create --environment production --name EXPO_PUBLIC_API_BASE_URL --value https://api.theplanbs.com/api/v1 --visibility plaintext`
+- `EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID` is **not set yet** — it needs the production Android OAuth
+  client from G-2 (the local `.env` id belongs to the development package). Until then the
+  production app offers email-code sign-in only. `EXPO_PUBLIC_SENTRY_DSN` comes with P3-11.
+- The **first** AAB must be uploaded by hand in Play Console (Google's API cannot create an app's
+  first release); `submit:prod` works from the second build on. If Play answers "Only releases with
+  status draft may be created on draft app", add `"releaseStatus": "draft"` to the submit profile
+  until the app's store listing and content setup are complete.
+- "Done when" needs D-1..D-5 (the API live on `api.theplanbs.com`) and a real build.
 
 **Where:** `mobile/eas.json`, `mobile/package.json`.
 
