@@ -37,6 +37,11 @@ return [
 
     'mailers' => [
 
+        /*
+         * Host, port and credentials come from `.env`. For a cPanel/hosting
+         * mailbox: MAIL_HOST=mail.<domain>, and either port 465 with
+         * MAIL_SCHEME=smtps (SSL) or port 587 with MAIL_SCHEME=smtp (STARTTLS).
+         */
         'smtp' => [
             'transport' => 'smtp',
             'scheme' => env('MAIL_SCHEME'),
@@ -112,5 +117,18 @@ return [
         'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
         'name' => env('MAIL_FROM_NAME', 'Example'),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Support contact
+    |--------------------------------------------------------------------------
+    |
+    | Shown in the footer of every Plan B email, so a student who did not ask
+    | for a code knows who to tell. Blank hides the line — the From address is
+    | usually a no-reply mailbox nobody reads.
+    |
+    */
+
+    'support_address' => env('MAIL_SUPPORT_ADDRESS'),
 
 ];

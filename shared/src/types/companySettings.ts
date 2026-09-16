@@ -58,5 +58,16 @@ export interface StudentAppConfig {
     greeting_si: string | null;
     animation: IntroAnimation;
   };
+  /**
+   * The public legal pages, as absolute URLs built from the host the app called.
+   * Served here rather than hardcoded so the pages can move without a release.
+   */
+  legal: {
+    privacy_url: string;
+    terms_url: string;
+    account_deletion_url: string;
+    /** Null until Plan B sets a support inbox — hide any "email us" action then. */
+    support_email: string | null;
+  };
   updated_at: string | null;
 }

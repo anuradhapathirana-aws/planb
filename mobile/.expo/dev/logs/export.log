@@ -196,3 +196,11 @@
 {"_e":"metro:instantiate","_t":1789115236639,"atlas":false,"workers":3,"host":null,"port":null}
 {"_e":"metro:bundling:started","_t":1789115242388,"id":"1","platform":"android","environment":null,"entry":"node_modules\\expo-router\\entry.js"}
 {"_e":"metro:bundling:done","_t":1789115284742,"id":"1","total":2131,"ms":42353.2901}
+{"_e":"root:init","_t":1789517980424,"format":"v0-jsonl","version":"57.0.20"}
+{"_e":"env:mode","_t":1789517984536,"nodeEnv":"production","babelEnv":"production","mode":"production"}
+{"_e":"env:load","_t":1789517984545,"mode":"production","files":["../..\\..\\.env"],"env":{"EXPO_PUBLIC_API_BASE_URL":"http://10.253.225.1:8001/api/v1","EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID":"965400269132-p0cmdh9feecii0a5m0777p7k63uer848.apps.googleusercontent.com","EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID":"","EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID":""}}
+{"_e":"devserver:start","_t":1789517985569,"mode":"production","web":true,"baseUrl":"","asyncRoutes":false,"routerRoot":"../..\\..\\app","serverComponents":false,"serverActions":false,"serverRendering":false,"apiRoutes":false,"exporting":true}
+{"_e":"metro:config","_t":1789518001074,"serverRoot":"../..\\..","projectRoot":"../..\\..","exporting":true,"flags":{"autolinkingModuleResolution":false,"serverActions":false,"serverComponents":false,"reactCompiler":false,"optimizeGraph":false,"treeshaking":false,"logbox":false}}
+{"_e":"metro:instantiate","_t":1789518007809,"atlas":false,"workers":3,"host":null,"port":null}
+{"_e":"metro:bundling:started","_t":1789518015125,"id":"1","platform":"android","environment":null,"entry":"node_modules\\expo-router\\entry.js"}
+{"_e":"metro:bundling:done","_t":1789518115921,"id":"1","total":2185,"ms":100795.8188}

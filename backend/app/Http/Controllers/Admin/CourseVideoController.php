@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Course\CompleteCourseVideoUploadRequest;
 use App\Http\Requests\Course\UploadCourseVideoFileRequest;
 use App\Http\Requests\Course\UploadCourseVideoThumbnailRequest;
 use App\Http\Resources\CourseVideoResource;
@@ -30,6 +31,37 @@ class CourseVideoController extends Controller
         );
 
         return response()->json(['data' => new CourseVideoResource($updated)]);
+    }
+
+    /**
+     * Credentials for the admin's browser to upload straight to Bunny Stream.
+     *
+     * The lesson file never passes through this server when Bunny is on — see
+     * `CourseVideoService::createUploadTicket()`. The signature returned here
+     * authorizes exactly one video id, for a few hours; the library API key that
+     * produced it stays server-side.
+     */
+    public function uploadTicket(CourseVideo $video): JsonResponse
+    {
+        $this->authorize('update', $video->topic->programme);
+
+        return response()->json(['data' => $this->videos->createUploadTicket($video)]);
+    }
+
+    /** Browser reports the upload finished; Bunny is probably still encoding. */
+    public function completeUpload(CompleteCourseVideoUploadRequest $request, CourseVideo $video): JsonResponse
+    {
+        $updated = $this->videos->completeUpload($video, $request->integer('duration_seconds') ?: null);
+
+        return response()->json(['data' => new CourseVideoResource($updated)]);
+    }
+
+    /** Lets the admin UI poll while a lesson transcodes. */
+    public function processingStatus(CourseVideo $video): JsonResponse
+    {
+        $this->authorize('view', $video->topic->programme);
+
+        return response()->json(['data' => new CourseVideoResource($this->videos->refreshProcessingStatus($video))]);
     }
 
     public function deleteFile(CourseVideo $video): JsonResponse

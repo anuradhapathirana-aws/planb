@@ -17,6 +17,7 @@ use App\Http\Controllers\Admin\ProfessionController;
 use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\ServicePurchaseController;
 use App\Http\Controllers\Admin\StudentManagementController;
+use App\Http\Controllers\BunnyStreamWebhookController;
 use App\Http\Controllers\CheckoutRedirectController;
 use App\Http\Controllers\CourseVideoPlaybackController;
 use App\Http\Controllers\PaymentWebhookController;
@@ -93,6 +94,14 @@ Route::prefix('v1/admin')->group(function () {
         Route::delete('/course-programmes/{programme}/paper', [CoursePaperController::class, 'destroy']);
 
         Route::post('/course-videos/{video}/file', [CourseVideoController::class, 'uploadFile']);
+        /*
+         * Bunny Stream path: the browser asks for an upload ticket, pushes the
+         * file straight to Bunny, then reports back. `uploadFile` above stays for
+         * local development, where there is no Bunny library to upload to.
+         */
+        Route::post('/course-videos/{video}/upload-ticket', [CourseVideoController::class, 'uploadTicket']);
+        Route::post('/course-videos/{video}/upload-complete', [CourseVideoController::class, 'completeUpload']);
+        Route::get('/course-videos/{video}/processing-status', [CourseVideoController::class, 'processingStatus']);
         Route::delete('/course-videos/{video}/file', [CourseVideoController::class, 'deleteFile']);
         Route::post('/course-videos/{video}/thumbnail', [CourseVideoController::class, 'uploadThumbnail']);
         Route::delete('/course-videos/{video}/thumbnail', [CourseVideoController::class, 'deleteThumbnail']);
@@ -196,6 +205,15 @@ Route::prefix('v1')->group(function () {
     Route::get('/course-videos/{video}/playback', CourseVideoPlaybackController::class)
         ->name('course-videos.playback')
         ->middleware('signed');
+
+    /*
+     * Bunny tells us a lesson finished encoding. Unsigned because Bunny does not
+     * sign it — the handler therefore trusts nothing in the body beyond which
+     * video to re-read, and reads the real status back with our own API key.
+     */
+    Route::post('/videos/bunny/webhook', BunnyStreamWebhookController::class)
+        ->name('videos.bunny.webhook')
+        ->middleware('throttle:120,1');
 
     Route::get('/students/{student}/documents/{document}', StudentDocumentController::class)
         ->name('student-documents.show')

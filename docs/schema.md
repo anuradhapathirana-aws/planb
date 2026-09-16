@@ -58,8 +58,16 @@ Columns below marked "nullable" stay nullable at the DB level (CSV-imported rows
 | registered_at | timestamp, nullable | null = imported but not yet claimed on mobile. Set on the first successful sign-in, and at creation for a self-registered student |
 | imported_by | unsignedBigInteger, nullable, FK → `users.id` | audit: who bulk-imported this row |
 | created_at / updated_at / deleted_at | timestamps + soft delete | delete is soft (FR-ADM-005 "delete" = recoverable) |
+| anonymised_at | timestamp, nullable | Set when the **student deleted their own account** (`DELETE /student/account`, Google Play policy). Null = a normal account. See "Account deletion" below. |
 
 Profile photo: **Spatie Media Library** (`media` table, package-managed), collection `profile_photo`, single-file, per CLAUDE.md §4.
+
+**Account deletion is anonymisation, not a hard delete.** Orders, payments and enrolments cascade from `students` and are finance records Plan B must keep, so `App\Services\Student\StudentAccountService` keeps the row and removes the person:
+
+- **Cleared to null:** `full_name`, `email`, `google_sub`, `email_verified_at`, `contact_number`, `address`, `date_of_birth`, `highest_qualification`, `bio`, `industry_id`, `profession_id`, `visa_status`, `languages_spoken`. Nulling `email` and `google_sub` frees the address, so the same person can later register again as a new student.
+- **Deleted:** every Sanctum token, all login codes, video and programme progress, paper attempts and answers, checklist ticks, wishlist, and the `profile_photo`, `cv` and `profile_video` media.
+- **Set:** `is_blocked = true`, `anonymised_at = now()`, and the row is soft-deleted, so every sign-in path refuses it.
+- **Kept:** `student_id`, `registered_at`, `imported_by`, and the student's `orders`, `payments` (including receipts and bank reference) and `enrolments`, `service_purchases`.
 
 ## `industries`
 
@@ -267,6 +275,7 @@ A row is only ever created for a **real, eligible** student. A request for an un
 |---|---|---|
 | id | bigIncrements | |
 | student_id | FK → students.id, cascadeOnDelete | |
+| purpose | string(32), default `sign_in` | PHP enum `App\Enums\LoginCodePurpose`: `sign_in`, `delete_account`. A code only works for its own purpose, so a deletion code never signs anyone in and a sign-in code never deletes an account. |
 | email | string | Snapshot of where the code was sent, in case the record changes afterwards. |
 | code_hash | string | `Hash::make($code)`. **Never the plaintext** — a database dump must not hand over live codes. |
 | attempts | unsignedTinyInteger, default 0 | Wrong guesses. At `students.login_code.max_attempts` (5) the row is voided; the client is never told how many remain. |
@@ -276,9 +285,9 @@ A row is only ever created for a **real, eligible** student. A request for an un
 | request_ip | string(45), nullable | Abuse forensics only. Never written to logs (CLAUDE.md §13.10). |
 | created_at / updated_at | timestamps | |
 
-Indexes: `(student_id, consumed_at, voided_at)` to find the one live code; `expires_at` for pruning.
+Indexes: `(student_id, consumed_at, voided_at)`; `(student_id, purpose, consumed_at, voided_at)` named `login_codes_student_purpose_live_index`, to find the one live code for a purpose; `expires_at` for pruning.
 
-There is at most one live code per student — requesting a new one voids the previous.
+There is at most one live code per student **per purpose** — requesting a new one voids the previous code of the same purpose only, so signing in on another device does not cancel a pending deletion. The daily cap counts codes of every purpose.
 
 ## `student_video_progress`
 
@@ -509,7 +518,7 @@ The logo is a **Media Library collection** (`logo`, single file, public disk), r
 | bank_branch | string(120), nullable | |
 | bank_notes | string(500), nullable | Payment instructions shown under the account on the app. |
 | intro_is_enabled | boolean, default true | Whether the app plays the launch intro. |
-| intro_greeting_en | string(160), nullable | Required while the intro is on. |
+| intro_greeting_en | string(160), nullable | Optional. Null means the intro shows the logo only. |
 | intro_greeting_si | string(160), nullable | Optional. The app falls back to English. |
 | intro_animation | string(32), default `fade` | PHP enum `App\Enums\IntroAnimation`: `fade`, `zoom`, `slide_up`, `pulse`. |
 | created_at / updated_at | timestamps | `updated_at` is touched on a logo change so the app can tell its cached logo is stale. |
@@ -527,6 +536,7 @@ The logo is a **Media Library collection** (`logo`, single file, public disk), r
 
 | Date | Change |
 |---|---|
+| 2026-09-16 | **Student account deletion** (Google Play policy). Added `students.anonymised_at` (nullable) and `student_login_codes.purpose` (string, default `sign_in`, `App\Enums\LoginCodePurpose`) with index `login_codes_student_purpose_live_index`. Existing codes become `sign_in`. Deletion anonymises the row rather than deleting it, so finance records survive. |
 | 2026-09-15 | Added `course_categories.icon` (nullable, `App\Enums\CourseCategoryIcon`), so an admin picks the glyph for a category's tile on the student app's Home screen. No backfill: null means "guess from the name". |
 | 2026-09-14 | Added `course_wishlists` — a student's saved courses, behind the heart on course tiles. Delete-on-remove rather than a nulled timestamp; rows survive unpublishing and soft deletes and are filtered out on read. |
 | 2026-09-02 | Premium Services: `services` (the second `Purchasable`) and `service_purchases` (its fulfilment queue). The order/payment/webhook layer is unchanged — only `PaymentService::settleOrder` gained a branch. |

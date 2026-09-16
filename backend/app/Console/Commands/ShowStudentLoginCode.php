@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Enums\LoginCodePurpose;
 use App\Models\Student;
 use App\Models\StudentLoginCode;
 use Illuminate\Console\Command;
@@ -21,9 +22,9 @@ use Illuminate\Support\Facades\Hash;
  */
 class ShowStudentLoginCode extends Command
 {
-    protected $signature = 'student:code {email=student@planb.test}';
+    protected $signature = 'student:code {email=student@planb.test} {--delete : Show the account-deletion code instead}';
 
-    protected $description = 'Show the current sign-in code for a student (local development only)';
+    protected $description = 'Show the current sign-in (or --delete account-deletion) code for a student (local development only)';
 
     public function handle(): int
     {
@@ -48,14 +49,19 @@ class ShowStudentLoginCode extends Command
             return self::FAILURE;
         }
 
+        $purpose = $this->option('delete') ? LoginCodePurpose::DeleteAccount : LoginCodePurpose::SignIn;
+
         $live = StudentLoginCode::where('student_id', $student->id)
+            ->where('purpose', $purpose->value)
             ->whereNull('consumed_at')
             ->whereNull('voided_at')
             ->latest('id')
             ->first();
 
         if (! $live) {
-            $this->warn('No live code. Tap "Email me a sign-in code" in the app first.');
+            $this->warn($purpose === LoginCodePurpose::DeleteAccount
+                ? 'No live deletion code. Tap "Delete account" → "Email me a code" in the app first.'
+                : 'No live code. Tap "Email me a sign-in code" in the app first.');
 
             return self::FAILURE;
         }
@@ -76,12 +82,17 @@ class ShowStudentLoginCode extends Command
             return self::FAILURE;
         }
 
-        preg_match_all('/<strong[^>]*>(\d{6})<\/strong>/', (string) file_get_contents($logPath), $matches);
+        // Any standalone six-digit run: the branded email prints the code in a
+        // <span>, the plain-text part on its own line, and older log entries in
+        // <strong>. Every candidate is checked against the hash, so extra matches
+        // are harmless.
+        preg_match_all('/(?<!\d)(\d{6})(?!\d)/', (string) file_get_contents($logPath), $matches);
 
         foreach (array_reverse(array_unique($matches[1] ?? [])) as $candidate) {
             if (Hash::check($candidate, $live->code_hash)) {
                 $this->newLine();
-                $this->line("  Sign-in code for <options=bold>{$email}</>");
+                $label = $purpose === LoginCodePurpose::DeleteAccount ? 'Account-deletion code' : 'Sign-in code';
+                $this->line("  {$label} for <options=bold>{$email}</>");
                 $this->line("  <fg=black;bg=yellow;options=bold>  {$candidate}  </>");
                 $this->line('  expires '.$live->expires_at->diffForHumans());
                 $this->newLine();

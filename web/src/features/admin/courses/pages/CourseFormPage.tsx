@@ -45,6 +45,7 @@ import {
   useCreateCourseProgramme,
   useDeleteCourseThumbnail,
   useDeleteCourseVideoFile,
+  useVideoProcessingWatcher,
   useUpdateCourseProgramme,
   useUploadCourseThumbnail,
 } from '@/features/admin/courses/hooks/useCourses';
@@ -151,6 +152,23 @@ export function CourseFormPage() {
   const [stagedFiles, setStagedFiles] = useState<Record<string, StagedVideoFile>>({});
   /** Saved video records, so a row can show its uploaded file name/size/duration. */
   const [videoMeta, setVideoMeta] = useState<Record<number, CourseVideo>>({});
+
+  /*
+   * Lessons Bunny is still encoding. They become playable without anything
+   * happening in this tab, so the rows are refreshed until they settle rather
+   * than leaving the admin to guess when to reload.
+   */
+  const encodingVideoIds = useMemo(
+    () =>
+      Object.values(videoMeta)
+        .filter((video) => video.processing_status === 'pending' || video.processing_status === 'processing')
+        .map((video) => video.id),
+    [videoMeta],
+  );
+
+  useVideoProcessingWatcher(encodingVideoIds, (video) => {
+    setVideoMeta((current) => ({ ...current, [video.id]: video }));
+  });
   const [collapsedTopics, setCollapsedTopics] = useState<Record<number, boolean>>({});
   const [previewVideo, setPreviewVideo] = useState<CourseVideo | null>(null);
   const [fileRemovalTarget, setFileRemovalTarget] = useState<CourseVideo | null>(null);

@@ -129,6 +129,76 @@ const config: ExpoConfig = {
      * a non-HTTPS API URL, so this is belt and braces.
      */
     predictiveBackGestureEnabled: false,
+
+    /*
+     * Android's auto-backup is off, deliberately.
+     *
+     * Left on, Android copies the app's data directory to the student's Google
+     * Drive and restores it onto any device they sign into. Auth tokens are in
+     * the Keystore and are not copied, but everything in AsyncStorage is: the
+     * TanStack Query cache (course content, profile, order history) and the
+     * offline progress queue. That is student data leaving the phone for a
+     * backup nobody asked for, and a restore onto a second device replays a
+     * cache that belongs to a session that no longer exists.
+     */
+    allowBackup: false,
+
+    /*
+     * Permissions Google Play would make us justify, for features this app does
+     * not have. Each is added by a library for a code path we never call, and a
+     * permission in the manifest is a permission we must declare in the Play
+     * listing whether or not we use it.
+     *
+     * RECORD_AUDIO — added by the expo-image-picker plugin for video capture
+     * with sound. `microphonePermission: false` below already stops it being
+     * added; it is listed here as well so removing that flag by accident cannot
+     * quietly reintroduce it. The app never records anything.
+     *
+     * READ_MEDIA_IMAGES — comes from expo-screen-capture (Android 13 only),
+     * where it is needed to *detect* screenshots. We only ever call
+     * `preventScreenCaptureAsync` / `allowScreenCaptureAsync`, which set
+     * FLAG_SECURE and need no permission at all; the detection listener is
+     * never registered. Keeping it would force the Play Console's "Photo and
+     * video permissions" declaration, which Google routinely rejects when the
+     * system photo picker is enough — and it is enough here, because
+     * expo-image-picker asks for no media permission at all on Android 13+.
+     *
+     * READ_MEDIA_VIDEO — nothing declares it today. Blocked so that adding a
+     * media library later cannot pull us into that same Play declaration
+     * without anyone noticing.
+     *
+     * SYSTEM_ALERT_WINDOW — "Display over other apps". It is in Expo's own
+     * prebuild manifest template, under a comment reading "OPTIONAL
+     * PERMISSIONS, REMOVE WHATEVER YOU DO NOT NEED", so it ships in release
+     * builds rather than only in the dev client. Nothing here draws a system
+     * overlay, and it is one of the permissions students are most likely to
+     * read as spyware on the store listing.
+     *
+     * Deliberately NOT blocked, despite being unused-looking:
+     *
+     * - READ_EXTERNAL_STORAGE / WRITE_EXTERNAL_STORAGE (both capped at API 32
+     *   by expo-image-picker): still requested at runtime on Android 12 and
+     *   below, where `requestMediaLibraryPermissionsAsync` returns them.
+     *   Blocking them means "Choose photo" is denied on every pre-Android-13
+     *   phone — a large share of students here — and the camera stops working
+     *   below Android 10 too.
+     * - DETECT_SCREEN_CAPTURE: expo-screen-capture calls
+     *   `registerScreenCaptureCallback` on every launch on Android 14+, and
+     *   that call throws a SecurityException without this permission. It is a
+     *   normal (install-time, auto-granted) permission — blocking it trades a
+     *   listing line for a crash.
+     * - VIBRATE: also from Expo's template and unused today, but push
+     *   notifications are planned, and a notification channel's vibration
+     *   pattern silently does nothing without it. Blocking it now buys nothing
+     *   — it is a normal permission Play does not surface — and would cost an
+     *   afternoon to diagnose later.
+     */
+    blockedPermissions: [
+      'android.permission.RECORD_AUDIO',
+      'android.permission.READ_MEDIA_IMAGES',
+      'android.permission.READ_MEDIA_VIDEO',
+      'android.permission.SYSTEM_ALERT_WINDOW',
+    ],
   },
 
   plugins: [
@@ -166,6 +236,14 @@ const config: ExpoConfig = {
           'Plan B uses your photos so you can set a profile picture and attach a bank transfer slip.',
         cameraPermission:
           'Plan B uses your camera so you can take a profile picture or photograph a bank transfer slip.',
+        /*
+         * The plugin adds RECORD_AUDIO unless this is explicitly false — it
+         * assumes an app picking media may also record video with sound. This
+         * one never records anything, and an unexplained microphone permission
+         * on a student app is both a Play review question and a fair reason for
+         * a student to distrust the install.
+         */
+        microphonePermission: false,
       },
     ],
     [

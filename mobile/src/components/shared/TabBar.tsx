@@ -223,9 +223,10 @@ export function TabBar({ state, descriptors, navigation, insets }: TabBarProps) 
    * circle until another tab was tapped.
    *
    * So animated layers exist ONLY for the length of a trip. At rest the circle
-   * holds one plain, non-animated glyph for the open tab, and each bar icon is a
-   * plain view whose visibility comes from `focused` — nothing on screen at rest
-   * depends on a UI-thread value surviving a detach.
+   * holds one plain, non-animated glyph for the open tab, each bar icon is a
+   * plain view whose visibility comes from `focused`, and the bar's outline is a
+   * plain SVG path — nothing on screen at rest depends on a UI-thread value
+   * surviving a detach.
    */
   const [flight, setFlight] = useState<{ from: number; to: number } | null>(null);
   const landing = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -318,6 +319,10 @@ export function TabBar({ state, descriptors, navigation, insets }: TabBarProps) 
    */
   const shoulder = Math.min(SHOULDER_MAX, BAR_PADDING_X + slot / 2 - BAR_RADIUS - 1);
 
+  /** The bar's outline with the wave fully risen under tab `index` — its resting shape. */
+  const restingPath = (index: number) =>
+    wavePath(width, BAR_PADDING_X + slot * (index + 0.5), WAVE_HEIGHT, shoulder);
+
   const barProps = useAnimatedProps(() => ({
     d: wavePath(
       width,
@@ -373,10 +378,28 @@ export function TabBar({ state, descriptors, navigation, insets }: TabBarProps) 
 
               No stroke: the light hairline the white bar needed would read as a
               pale outline round a dark shape.
+
+              Same rest/trip split as the icons (see `flight`). On Android an
+              `AnimatedPath` could mount — after login, or when a pushed screen
+              uncovered the tabs — without its animated `d` ever reaching the
+              native view, leaving the bar unpainted: only the circle showed, and
+              the white bar icons vanished into the white page until a tab tap
+              started an animation. At rest the outline is a plain `d` prop now.
+              The trip's path is keyed so it mounts fresh, and is handed its
+              starting shape as a plain prop too, so its first frame is never empty.
             */}
             <View style={[StyleSheet.absoluteFill, styles.barShadow]} pointerEvents="none">
               <Svg width={width} height={TOP + BAR_HEIGHT}>
-                <AnimatedPath animatedProps={barProps} fill={colors.primary} />
+                {flight === null ? (
+                  <Path d={restingPath(state.index)} fill={colors.primary} />
+                ) : (
+                  <AnimatedPath
+                    key={`${flight.from}-${flight.to}`}
+                    d={restingPath(flight.from)}
+                    animatedProps={barProps}
+                    fill={colors.primary}
+                  />
+                )}
               </Svg>
             </View>
 

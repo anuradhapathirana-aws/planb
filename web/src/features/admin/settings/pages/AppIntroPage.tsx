@@ -198,7 +198,7 @@ export function AppIntroPage() {
 
             <FormSection icon={MessageSquareText} title="Greeting message">
               <div className="space-y-1 sm:col-span-2">
-                <FieldLabel htmlFor="intro_greeting_en" icon={Languages} required={enabled}>
+                <FieldLabel htmlFor="intro_greeting_en" icon={Languages}>
                   English
                 </FieldLabel>
                 <Input
@@ -208,6 +208,9 @@ export function AppIntroPage() {
                   {...register('intro_greeting_en')}
                 />
                 <FieldError message={errors.intro_greeting_en?.message} />
+                <p className="text-xs text-muted-foreground">
+                  Optional. If empty, the intro shows only the logo.
+                </p>
               </div>
 
               <div className="space-y-1 sm:col-span-2">

@@ -29,6 +29,19 @@ class StudentAppConfigTest extends TestCase
             ->assertJsonPath('data.logo_url', null);
     }
 
+    /** The sign-in screen links to these, so they come without a session too. */
+    public function test_the_config_carries_the_legal_links(): void
+    {
+        config(['legal.support_address' => 'support@planb.test']);
+
+        $this->getJson('/api/v1/student/app-config')
+            ->assertOk()
+            ->assertJsonPath('data.legal.privacy_url', route('legal.privacy'))
+            ->assertJsonPath('data.legal.terms_url', route('legal.terms'))
+            ->assertJsonPath('data.legal.account_deletion_url', route('legal.account-deletion'))
+            ->assertJsonPath('data.legal.support_email', 'support@planb.test');
+    }
+
     public function test_the_public_config_never_carries_bank_details(): void
     {
         CompanySetting::query()->update(['bank_account_number' => '123456789']);

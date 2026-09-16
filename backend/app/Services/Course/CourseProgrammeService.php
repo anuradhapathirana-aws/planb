@@ -187,6 +187,21 @@ class CourseProgrammeService
                 'status' => "Every lesson needs a video file before publishing. Missing: {$titles}{$more}.",
             ]);
         }
+
+        /*
+         * A Bunny upload exists before it is watchable — encoding takes minutes.
+         * Publishing mid-transcode would show students a player that errors, so
+         * it waits, and says which lesson it is waiting on.
+         */
+        $unencoded = $videos->reject(fn (CourseVideo $video) => $video->isPlayable());
+
+        if ($unencoded->isNotEmpty()) {
+            $titles = $unencoded->take(3)->pluck('title')->implode(', ');
+
+            throw ValidationException::withMessages([
+                'status' => "These lessons are still processing and cannot be published yet: {$titles}.",
+            ]);
+        }
     }
 
     public function unpublish(CourseProgramme $programme): CourseProgramme

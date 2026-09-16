@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\LoginCodePurpose;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -21,6 +22,7 @@ class StudentLoginCode extends Model
 
     protected $fillable = [
         'student_id',
+        'purpose',
         'email',
         'code_hash',
         'attempts',
@@ -33,6 +35,7 @@ class StudentLoginCode extends Model
     protected function casts(): array
     {
         return [
+            'purpose' => LoginCodePurpose::class,
             'attempts' => 'integer',
             'expires_at' => 'datetime',
             'consumed_at' => 'datetime',
@@ -45,10 +48,15 @@ class StudentLoginCode extends Model
         return $this->belongsTo(Student::class);
     }
 
-    /** Neither used nor superseded — there is at most one of these per student. */
+    /** Neither used nor superseded — there is at most one of these per student per purpose. */
     public function scopeLive(Builder $query): void
     {
         $query->whereNull('consumed_at')->whereNull('voided_at');
+    }
+
+    public function scopeForPurpose(Builder $query, LoginCodePurpose $purpose): void
+    {
+        $query->where('purpose', $purpose->value);
     }
 
     public function isUsable(): bool

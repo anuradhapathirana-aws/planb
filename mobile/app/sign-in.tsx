@@ -3,7 +3,7 @@ import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { useMutation } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { Mail } from '@/components/icons';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { requestCodeSchema } from '@shared/schemas/studentAuth';
@@ -15,6 +15,8 @@ import { Input } from '@/components/ui/Input';
 import { Text } from '@/components/ui/Text';
 import { useToast } from '@/components/ui/Toast';
 import { useAppConfig } from '@/features/intro/useAppConfig';
+import { useLegalLinks } from '@/features/legal/useLegalLinks';
+import { openExternalUrl } from '@/lib/webBrowser';
 import { GOOGLE_SIGN_IN_AVAILABLE } from '@/lib/googleAuth';
 import { useStatusBarStyle } from '@/lib/useStatusBarStyle';
 
@@ -61,6 +63,7 @@ export default function SignInScreen() {
   const toast = useToast();
   const insets = useSafeAreaInsets();
   const appConfig = useAppConfig();
+  const legal = useLegalLinks();
 
   // The navy panel runs under the clock on this screen, so the glyphs go white.
   useStatusBarStyle('light');
@@ -170,6 +173,40 @@ export default function SignInScreen() {
 
           <Text variant="caption" className="mt-6 text-center leading-5">
             {GOOGLE_SIGN_IN_AVAILABLE ? t('auth.signUpHint') : t('auth.noAccount')}
+          </Text>
+
+          {/*
+            Signing in with Google creates an account, so this is where a new
+            student agrees to the terms and confirms they are 18+. `Trans` rather
+            than three separate strings, so Sinhala can put the links in its own
+            word order. Nested `Text` presses are how inline links work in RN.
+          */}
+          <Text
+            variant="caption"
+            className="mb-8 mt-4 text-center leading-5"
+            style={{ paddingBottom: insets.bottom }}
+          >
+            <Trans
+              i18nKey="auth.legalConsent"
+              components={{
+                terms: (
+                  <Text
+                    variant="caption"
+                    accessibilityRole="link"
+                    className="font-medium text-primary underline"
+                    onPress={() => void openExternalUrl(legal.termsUrl)}
+                  />
+                ),
+                privacy: (
+                  <Text
+                    variant="caption"
+                    accessibilityRole="link"
+                    className="font-medium text-primary underline"
+                    onPress={() => void openExternalUrl(legal.privacyUrl)}
+                  />
+                ),
+              }}
+            />
           </Text>
         </View>
       </ScrollView>

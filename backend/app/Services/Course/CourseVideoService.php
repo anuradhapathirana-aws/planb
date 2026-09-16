@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Course;
 
+use App\Enums\VideoProcessingStatus;
 use App\Enums\VideoProvider;
 use App\Models\CourseVideo;
 use App\Models\Student;
@@ -16,6 +17,8 @@ use Symfony\Component\HttpFoundation\Response;
 
 class CourseVideoService
 {
+    public function __construct(private readonly BunnyStreamClient $bunny) {}
+
     /** Playback links stay well inside the 2-hour ceiling in CLAUDE.md §7.11. */
     private const SIGNED_URL_MINUTES = 90;
 
@@ -37,6 +40,10 @@ class CourseVideoService
         $video->update([
             'provider' => VideoProvider::Upload,
             'external_url' => null,
+            'external_id' => null,
+            // A local file is playable the moment it lands; only Bunny has an
+            // encoding step to wait for.
+            'processing_status' => VideoProcessingStatus::Ready,
             // The browser reads duration off the file before uploading, which is
             // both more accurate and far cheaper than probing it server-side.
             'duration_seconds' => $durationSeconds ?? $video->duration_seconds,
@@ -45,12 +52,107 @@ class CourseVideoService
         return $video->fresh(['media']);
     }
 
-    public function removeFile(CourseVideo $video): CourseVideo
+    /**
+     * Reserves a Bunny video id and returns credentials the admin's browser
+     * uploads against directly.
+     *
+     * The file never passes through this server: 100 GB of lessons would
+     * otherwise cost the VPS its bandwidth twice over, need temp disk, and hit
+     * PHP's upload limits. Any previous file for this lesson is cleared first so
+     * a re-upload cannot leave two copies billing storage.
+     *
+     * @return array{endpoint: string, library_id: string, video_id: string, signature: string, expires: int, resolutions: string}
+     */
+    public function createUploadTicket(CourseVideo $video): array
     {
-        $video->clearMediaCollection(CourseVideo::VIDEO_COLLECTION);
-        $video->update(['duration_seconds' => null]);
+        abort_unless($this->bunny->enabled(), Response::HTTP_CONFLICT, 'Video hosting is not configured.');
+
+        $this->discardExistingFile($video);
+
+        $guid = $this->bunny->createVideo($video->title);
+
+        $video->update([
+            'provider' => VideoProvider::External,
+            'external_url' => null,
+            'external_id' => $guid,
+            'processing_status' => VideoProcessingStatus::Pending,
+        ]);
+
+        return $this->bunny->uploadTicket($guid);
+    }
+
+    /**
+     * Called once the browser finishes pushing bytes. Bunny is still encoding at
+     * this point, so the lesson is marked processing rather than ready — the
+     * webhook (or the next status read) promotes it.
+     */
+    public function completeUpload(CourseVideo $video, ?int $durationSeconds = null): CourseVideo
+    {
+        abort_unless($video->external_id !== null, Response::HTTP_CONFLICT, 'This lesson has no upload in progress.');
+
+        $video->update([
+            'processing_status' => VideoProcessingStatus::Processing,
+            'duration_seconds' => $durationSeconds ?? $video->duration_seconds,
+        ]);
+
+        return $this->refreshProcessingStatus($video);
+    }
+
+    /**
+     * Reads the true encoding state from Bunny and stores it.
+     *
+     * Deliberately ignores whatever a webhook body said: Bunny's webhook carries
+     * no signature we can verify, so it is a nudge to come and look, never a
+     * fact to write (CLAUDE.md §7.9).
+     */
+    public function refreshProcessingStatus(CourseVideo $video): CourseVideo
+    {
+        if (! $video->isRemotelyHosted() || ! $this->bunny->enabled()) {
+            return $video;
+        }
+
+        $remote = $this->bunny->fetchVideo($video->external_id);
+
+        if ($remote === null) {
+            return $video;
+        }
+
+        $video->update([
+            'processing_status' => $remote['status'],
+            // Bunny's own measurement beats the browser's estimate, and the
+            // no-skip rule is computed against this number.
+            'duration_seconds' => $remote['duration_seconds'] ?? $video->duration_seconds,
+        ]);
 
         return $video->fresh(['media']);
+    }
+
+    public function removeFile(CourseVideo $video): CourseVideo
+    {
+        $this->discardExistingFile($video);
+
+        $video->update([
+            'duration_seconds' => null,
+            'processing_status' => VideoProcessingStatus::Ready,
+        ]);
+
+        return $video->fresh(['media']);
+    }
+
+    /**
+     * Drops whichever copy exists — local file, remote video, or both after a
+     * half-finished migration. Bunny bills storage until the video is deleted
+     * there, so an abandoned upload must not be left behind.
+     */
+    private function discardExistingFile(CourseVideo $video): void
+    {
+        $video->clearMediaCollection(CourseVideo::VIDEO_COLLECTION);
+
+        if ($video->external_id !== null && $this->bunny->enabled()) {
+            $this->bunny->deleteVideo($video->external_id);
+        }
+
+        $video->update(['external_id' => null]);
     }
 
     /**
@@ -95,6 +197,24 @@ class CourseVideoService
     {
         $minutes = $student !== null ? self::STUDENT_URL_MINUTES : self::SIGNED_URL_MINUTES;
         $expiresAt = now()->addMinutes($minutes);
+
+        /*
+         * Bunny-hosted: a token-signed HLS playlist. The token covers the whole
+         * `/{guid}/` directory because a player fetches the playlist and then
+         * every segment listed inside it, and those segment names are relative —
+         * a query-string token would be dropped on all of them.
+         *
+         * The trade-off to know about: these bytes never touch this server, so
+         * the mid-session block re-check in CourseVideoPlaybackController cannot
+         * run. A student blocked during a lesson keeps playing until the token
+         * expires, which is why the student window is the short one.
+         */
+        if ($video->isRemotelyHosted() && $this->bunny->enabled()) {
+            return [
+                'url' => $this->bunny->playbackUrl($video->external_id, $expiresAt->getTimestamp()),
+                'expires_at' => $expiresAt->toIso8601String(),
+            ];
+        }
 
         if ($video->provider === VideoProvider::External && $video->external_url !== null) {
             return ['url' => $video->external_url, 'expires_at' => $expiresAt->toIso8601String()];
