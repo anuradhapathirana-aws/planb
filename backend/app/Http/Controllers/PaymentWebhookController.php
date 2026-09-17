@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\PaymentStatus;
 use App\Models\Payment;
+use App\Services\Payment\Gateways\SandboxGateway;
 use App\Services\Payment\PaymentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -54,7 +55,7 @@ class PaymentWebhookController extends Controller
      */
     public function sandboxConfirm(Request $request, Payment $payment): JsonResponse
     {
-        abort_if(app()->environment('production'), 404);
+        abort_unless(SandboxGateway::allowedHere(), 404);
 
         $outcome = $this->payments->handleWebhook('sandbox', [
             'payment_id' => $payment->id,

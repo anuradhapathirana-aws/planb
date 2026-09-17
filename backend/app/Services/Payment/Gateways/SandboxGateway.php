@@ -20,9 +20,10 @@ use Illuminate\Support\Str;
  * order -> payment -> webhook -> enrolment path is exercised end to end before
  * PayHere credentials exist, including the idempotency and signature handling.
  *
- * Refuses to run outside local/testing. A production deployment that has not been
- * given real credentials must fail at checkout, never quietly hand out free
- * enrolments.
+ * Exists only in local/testing: `PaymentGatewayManager` does not register it
+ * anywhere else, so a server left on `PAYMENT_GATEWAY=sandbox` fails at checkout
+ * instead of quietly handing out free enrolments. The checks below repeat that
+ * rule so this class stays safe even if it is ever resolved directly.
  */
 class SandboxGateway implements PaymentGateway
 {
@@ -33,10 +34,10 @@ class SandboxGateway implements PaymentGateway
 
     public function createCheckout(Payment $payment): CheckoutSession
     {
-        abort_if(
-            app()->environment('production'),
+        abort_unless(
+            self::allowedHere(),
             500,
-            'The sandbox payment gateway cannot be used in production. Configure a real gateway.',
+            'The sandbox payment gateway only runs locally. Configure a real gateway.',
         );
 
         return new CheckoutSession(
@@ -51,12 +52,19 @@ class SandboxGateway implements PaymentGateway
     }
 
     /**
-     * The sandbox route is `signed`-middleware protected, so Laravel has already
-     * verified the caller before anything reaches here.
+     * There is no signature: anything addressed to the sandbox is believed. That
+     * is only acceptable where no real student or real money exists, so it says
+     * yes on a developer machine and in the test suite, and no everywhere else —
+     * staging included.
      */
     public function verifyWebhookSignature(array $payload): bool
     {
-        return ! app()->environment('production');
+        return self::allowedHere();
+    }
+
+    public static function allowedHere(): bool
+    {
+        return app()->environment('local', 'testing');
     }
 
     public function parseWebhook(array $payload): WebhookResult

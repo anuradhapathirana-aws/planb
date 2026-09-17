@@ -235,6 +235,14 @@ class PaymentService
      */
     public function handleWebhook(string $gatewayName, array $payload): string
     {
+        /*
+         * 404 for anything but the configured gateway, before any driver runs:
+         * an unknown name (was a 500), a driver not in use, or the sandbox on a
+         * server where it isn't registered. None of them may reach a signature
+         * check that might say yes.
+         */
+        abort_unless($this->gateways->acceptsWebhooksFor($gatewayName), 404);
+
         $gateway = $this->gateways->driver($gatewayName);
 
         if (! $gateway->verifyWebhookSignature($payload)) {

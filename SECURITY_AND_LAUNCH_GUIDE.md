@@ -549,7 +549,17 @@ disk), `LearnerAvatarService`, `Resources/Student/LearnerAvatarResource.php:29`,
 
 **Done when:** `/storage/.../PB-*.jpg` 404; learner-avatars response contains no URL or ID.
 
-### [ ] P2-4 Sandbox payment webhook can mark any order paid outside production
+### [x] P2-4 Sandbox payment webhook can mark any order paid outside production — done 2026-09-17
+
+**Built:** `PaymentGatewayManager` registers `sandbox` only in `local`/`testing`
+(`LOCAL_ONLY_DRIVERS`) and gains `acceptsWebhooksFor()` (name === `payments.gateway` and registered);
+`PaymentService::handleWebhook` 404s on anything else before resolving a driver (unknown name no
+longer 500s); `SandboxGateway::allowedHere()` (local/testing) now backs `createCheckout`,
+`verifyWebhookSignature` and `PaymentWebhookController::sandboxConfirm` instead of
+`! production`; `CheckoutRedirectController` 404s for a payment whose gateway isn't registered.
+10 tests in `tests/Feature/Payment/PaymentGatewayIsolationTest.php`. `.env.example` comment updated.
+Note: switching `PAYMENT_GATEWAY` while card payments are pending means their callbacks are refused
+(404) — switch when none are in flight. Staging should run `payhere` with `PAYHERE_SANDBOX=true`.
 
 **Where:** `backend/app/Services/Payment/Gateways/SandboxGateway.php:57-60`,
 `PaymentGatewayManager.php:32`, `routes/api.php:~387`.

@@ -42,6 +42,9 @@ class CheckoutRedirectController extends Controller
             410,
             'This payment link has already been used.',
         );
+        // A payment made with a driver this server doesn't have (the sandbox, on a
+        // real server) has nothing to hand over to.
+        abort_unless(in_array($payment->gateway, $this->gateways->available(), true), 404);
 
         $session = $this->gateways->driver($payment->gateway)->createCheckout($payment);
 
