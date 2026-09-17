@@ -340,7 +340,7 @@ Settings > Bank Details and Settings > App Intro in the admin panel. One singlet
 | PUT | `/admin/company-settings/app-intro` | Super Admin, Content Manager | `{ intro_is_enabled, intro_greeting_en, intro_greeting_si, intro_animation }`. Both greetings are optional; with none, the intro shows the logo only. Animation is `fade`, `zoom`, `slide_up` or `pulse`. |
 | POST | `/admin/company-settings/logo` | Super Admin, Content Manager | `multipart/form-data`, field `logo`. PNG/JPG/WebP up to 2 MB, re-encoded to PNG within 512×512. |
 | DELETE | `/admin/company-settings/logo` | Super Admin, Content Manager | Clears the logo; clients fall back to the bundled one. |
-| GET | `/student/app-config` | **public** | `{ logo_url, intro: { enabled, greeting_en, greeting_si, animation }, updated_at }`. Read on launch, before sign-in. Branding only, never bank details. Rate-limited 60/min. |
+| GET | `/student/app-config` | **public** | `{ logo_url, intro: { enabled, greeting_en, greeting_si, animation }, legal: { privacy_url, terms_url, account_deletion_url, support_email }, payments_enabled, updated_at }`. `payments_enabled` only decides whether the app shows Buy / Enrol or "Coming soon" on paid items. Read on launch, before sign-in. Branding only, never bank details. Rate-limited 60/min. |
 
 ## Home Banner
 
@@ -439,6 +439,8 @@ Paying settles through the same webhook as a course. `settleOrder` resolves the 
 Card details never reach this application: every gateway driver hands the student to the provider's own hosted checkout, which is what keeps the platform at PCI-DSS **SAQ-A** (FR-MOB-032). The mobile app opens that checkout in a Custom Tab / `SFSafariViewController`, never an in-app WebView — the card form must be the gateway's own page, on its own origin, with the address bar visible.
 
 ### Student
+
+**Payments switch (`PAYMENTS_ENABLED`, off by default).** While off, every call that would start paying returns **403** `{ message: "Payments are not available yet. Paid courses and services are coming soon." }` and writes nothing: `enrol` on a **paid** course, `services/{service}/purchase`, `orders/{order}/card` and `orders/{order}/bank-transfer`. Free enrolment, "already enrolled", order history, webhooks and admin approval of a transfer submitted earlier all keep working, so a payment already under way still settles. `GET /student/app-config` carries `payments_enabled` for the app's "Coming soon" buttons — presentation only.
 
 | Method | Path | Auth | Notes |
 |---|---|---|---|

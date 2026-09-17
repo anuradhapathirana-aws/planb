@@ -36,6 +36,7 @@ import { CourseHero } from '@/features/courses/CourseHero';
 import { CourseTopicCard } from '@/features/courses/CourseTopicCard';
 import { courseSocialProof, formatCompactCount } from '@/features/courses/courseSocialProof';
 import { useEnrol } from '@/features/enrolment/useEnrol';
+import { usePaymentsEnabled } from '@/features/enrolment/usePaymentsEnabled';
 import { useAuthStore } from '@/stores/authStore';
 import { cn } from '@/lib/cn';
 
@@ -66,6 +67,7 @@ export default function CourseDetailScreen() {
 
   // Already on the course screen, so a free enrolment must not push a second copy.
   const { enrol, pendingCourseId } = useEnrol({ navigateToCourse: false });
+  const paymentsEnabled = usePaymentsEnabled();
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['course', courseId],
@@ -379,6 +381,22 @@ export default function CourseDetailScreen() {
                     }
                   />
                 ) : null}
+              </>
+            ) : !data.is_free && !paymentsEnabled ? (
+              /* Payments are off at launch: the price is still shown, but
+                 nothing here offers a purchase the server would refuse. */
+              <>
+                <Text variant="caption" className="mb-2 text-center">
+                  {t('enrol.comingSoonBody')}
+                </Text>
+
+                <Button
+                  label={t('enrol.comingSoonPriced', { price })}
+                  icon={Clock}
+                  size="lg"
+                  fullWidth
+                  disabled
+                />
               </>
             ) : (
               <>

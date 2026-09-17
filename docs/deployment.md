@@ -248,6 +248,9 @@ MAIL_SUPPORT_ADDRESS="support@<domain>"
 PLAY_REVIEW_EMAIL=play-review@<domain>
 PLAY_REVIEW_CODE=<random-6-digits>
 
+# Payments stay OFF at launch — see SECURITY_AND_LAUNCH_GUIDE.md §9 before enabling.
+PAYMENTS_ENABLED=false
+
 # Bunny Stream — bunny-stream-setup.md
 BUNNY_STREAM_ENABLED=true
 BUNNY_STREAM_LIBRARY_ID=

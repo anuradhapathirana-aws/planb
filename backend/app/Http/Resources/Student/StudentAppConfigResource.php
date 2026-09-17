@@ -41,6 +41,12 @@ class StudentAppConfigResource extends JsonResource
                 'account_deletion_url' => route('legal.account-deletion'),
                 'support_email' => config('legal.support_address'),
             ],
+            /*
+             * Whether the app may offer Buy / Enrol on paid items. Presentation
+             * only: the payment endpoints refuse on their own while it is false
+             * (PaymentAvailability). Here so turning payments on needs no app release.
+             */
+            'payments_enabled' => (bool) config('payments.enabled'),
             // Lets the app tell a cached logo is out of date.
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];

@@ -1,6 +1,6 @@
 {
   "cli": {
-    "version": "24.6.0",
+    "version": ">= 24.6.0",
     "appVersionSource": "remote"
   },
   "build": {
@@ -22,7 +22,7 @@
       },
       "env": {
         "APP_VARIANT": "preview",
-        "EXPO_PUBLIC_API_BASE_URL": "http://192.168.8.101:8001/api/v1"
+        "EXPO_PUBLIC_API_BASE_URL": "https://api.theplanbs.com/api/v1"
       }
     },
     "production": {

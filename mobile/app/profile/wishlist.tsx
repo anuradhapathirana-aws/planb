@@ -12,6 +12,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Text } from '@/components/ui/Text';
 import { useEnrol } from '@/features/enrolment/useEnrol';
+import { usePaymentsEnabled } from '@/features/enrolment/usePaymentsEnabled';
 import { useWishlist, useWishlistToggle } from '@/features/wishlist/useWishlist';
 
 /**
@@ -39,6 +40,7 @@ export default function WishlistScreen() {
   // A course bought from here stays on the list; staying put beats being thrown
   // into the course the moment the payment lands.
   const { enrol, pendingCourseId } = useEnrol({ navigateToCourse: false });
+  const paymentsEnabled = usePaymentsEnabled();
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -86,7 +88,12 @@ export default function WishlistScreen() {
                 course={item}
                 onPress={() => openCourse(item)}
                 onToggleWishlist={() => toggle(item)}
-                onEnrol={item.is_enrolled ? undefined : () => enrol(item.id)}
+                onEnrol={
+                  // Paid tiles lose the cart while payments are off; the price stays.
+                  item.is_enrolled || (!item.is_free && !paymentsEnabled)
+                    ? undefined
+                    : () => enrol(item.id)
+                }
                 enrolling={pendingCourseId === item.id}
               />
             </View>

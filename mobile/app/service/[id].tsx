@@ -14,6 +14,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { Text } from '@/components/ui/Text';
 import { DeliveryNote, DeliveryStepper } from '@/features/services/DeliveryStepper';
 import { ServiceHowItWorks } from '@/features/services/ServiceHowItWorks';
+import { usePaymentsEnabled } from '@/features/enrolment/usePaymentsEnabled';
 import { usePurchaseService } from '@/features/services/usePurchaseService';
 import { useService } from '@/features/services/useServices';
 import { shortDeliveryTime } from '@/lib/shortDeliveryTime';
@@ -41,6 +42,7 @@ export default function ServiceDetailScreen() {
 
   const { data, isLoading, isError, refetch } = useService(serviceId);
   const { buy, pendingServiceId } = usePurchaseService();
+  const paymentsEnabled = usePaymentsEnabled();
 
   /*
    * `planb://service/<anything>` is a deep link, so the id is whatever the OS
@@ -289,22 +291,33 @@ export default function ServiceDetailScreen() {
                   </Text>
                 </View>
 
-                <Button
-                  /*
-                   * A finished purchase leaves the tracker on screen, so a bare
-                   * "Buy now" under it would read as though the last one had not
-                   * counted. A second consultation is a real thing to want.
-                   */
-                  label={purchase ? t('services.buyAgain') : t('services.buyNow')}
-                  accessibilityLabel={
-                    purchase ? t('services.buyAgain') : t('services.buyFor', { amount: price })
-                  }
-                  size="sm"
-                  shape="pill"
-                  className="min-w-[140px]"
-                  loading={pendingServiceId === data.id}
-                  onPress={() => buy(data.id)}
-                />
+                {paymentsEnabled ? (
+                  <Button
+                    /*
+                     * A finished purchase leaves the tracker on screen, so a bare
+                     * "Buy now" under it would read as though the last one had not
+                     * counted. A second consultation is a real thing to want.
+                     */
+                    label={purchase ? t('services.buyAgain') : t('services.buyNow')}
+                    accessibilityLabel={
+                      purchase ? t('services.buyAgain') : t('services.buyFor', { amount: price })
+                    }
+                    size="sm"
+                    shape="pill"
+                    className="min-w-[140px]"
+                    loading={pendingServiceId === data.id}
+                    onPress={() => buy(data.id)}
+                  />
+                ) : (
+                  // Payments are off at launch; the price beside it stays visible.
+                  <Button
+                    label={t('common.comingSoon')}
+                    size="sm"
+                    shape="pill"
+                    className="min-w-[140px]"
+                    disabled
+                  />
+                )}
               </View>
             )}
           </View>

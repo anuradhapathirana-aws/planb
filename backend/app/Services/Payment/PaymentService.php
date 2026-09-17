@@ -45,6 +45,7 @@ class PaymentService
         private readonly EnrolmentService $enrolments,
         private readonly ServicePurchaseService $servicePurchases,
         private readonly CompanySettingsService $companySettings,
+        private readonly PaymentAvailability $availability,
     ) {}
 
     /**
@@ -53,6 +54,7 @@ class PaymentService
      */
     public function startCardPayment(Order $order): array
     {
+        $this->availability->assertEnabled();
         $this->guardPayable($order);
 
         /*
@@ -138,6 +140,7 @@ class PaymentService
      */
     public function submitBankTransfer(Order $order, string $referenceNumber, UploadedFile $receipt): Payment
     {
+        $this->availability->assertEnabled();
         $this->guardPayable($order);
 
         if (! $this->companySettings->bankTransferEnabled()) {

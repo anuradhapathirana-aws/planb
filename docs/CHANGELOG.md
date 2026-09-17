@@ -5,6 +5,11 @@ All notable changes to this project are documented here. Format loosely follows 
 ## Unreleased
 
 ### Added
+- **Payments switch, off at launch.** Payments go live in a later update, so the server now refuses to start one while `PAYMENTS_ENABLED` is false (the default).
+  - **Server:** enrolling in a **paid** course, buying a service, starting a card payment and submitting a bank transfer all return 403 "Payments are not available yet. Paid courses and services are coming soon." and create nothing. The check is in the services (new `App\Services\Payment\PaymentAvailability`, called from `OrderService::createFor`, `PaymentService::startCardPayment` and `submitBankTransfer`), not only on routes, because free and paid courses share the enrol endpoint.
+  - **Still works:** free courses enrol as before, a student who already has a course is told so, order history loads, and webhooks and admin approval still run, so a payment started before the switch-off still completes.
+  - **App:** `GET /student/app-config` gains `payments_enabled`. On a paid course the bottom button becomes a disabled **"Coming soon · Rs …"** with "Paid courses open for enrolment soon." above it; on a service, the Buy button becomes a disabled **"Coming soon"** beside the price; paid course tiles in All Courses and Wishlist lose their cart button but keep the price. The Services area stays visible. The app assumes "off" until app-config loads. New `usePaymentsEnabled` hook; strings `common.comingSoon`, `enrol.comingSoonBody`, `enrol.comingSoonPriced` (English; Sinhala falls back).
+  - **Config:** `PAYMENTS_ENABLED=false` in `.env.example` and `docs/deployment.md`; `phpunit.xml` sets it to true so the existing payment tests still cover the flow. **Set `PAYMENTS_ENABLED=true` in your local `.env` to keep working on payments.** 8 feature tests (`StudentPaymentsDisabledTest`).
 - **Google Play reviewer sign-in.** Play's reviewers can't read our emailed codes, and Google rejects an app they can't sign in to. A fixed address and code in the server `.env` (`PLAY_REVIEW_EMAIL`, `PLAY_REVIEW_CODE`) now let them in. **Both are blank by default, which turns it off.**
   - **Only that one address** accepts the code; for every other student it is just a wrong code. Asking for a code for the reviewer address sends no email and returns the usual response.
   - **The code has to be exactly 6 digits** (the only thing the app's code box accepts), otherwise the feature stays off.
@@ -48,6 +53,10 @@ All notable changes to this project are documented here. Format loosely follows 
   - 11 feature tests (`StudentAccountDeletionTest`).
 
 ### Changed
+- **The app's crash screens no longer show technical details to students** (`mobile/app/_layout.tsx`). Before, a crash showed the error name, message and full stack trace, and a slow start showed "Fonts / Session" status and a note about Metro.
+  - **In the store app**, a crash shows "Something went wrong", a short apology and **Try again**; a slow start shows "Taking longer than usual" and asks the student to close and reopen the app. The error details stay visible in development builds only.
+  - **The text is translated** (new `appError.*` strings in English; Sinhala falls back to English until the client supplies it). It is read in a way that falls back to English if translation itself is what failed, so the crash screen can't crash.
+  - **The slow-start screen can now actually be seen.** It used to sit underneath the native splash screen, which covers everything until the app lifts it, so nobody on a real build ever saw it. The splash now lifts after the 8-second wait.
 - **Production EAS build is ready to configure** (`mobile/eas.json`, `mobile/package.json`). Before this, the production profile had no API URL, so a Play build would have used `http://localhost` and crashed on every launch.
   - **The production API URL and Google client ID live in the EAS "production" environment** (expo.dev), not in the repo. The profile now reads that environment (`"environment": "production"`).
   - **A production build on EAS now fails if the API URL is missing or not `https://`** (`app.config.ts`), instead of producing an app that crashes when opened. `npx expo config` on your own computer is not affected.

@@ -15,6 +15,7 @@ import { Text } from '@/components/ui/Text';
 import { useBrowseCourses } from '@/features/browse/useBrowseCourses';
 import { CategoryTabs } from '@/features/home/CategoryTabs';
 import { useEnrol } from '@/features/enrolment/useEnrol';
+import { usePaymentsEnabled } from '@/features/enrolment/usePaymentsEnabled';
 
 /**
  * All Courses — everything the student has not enrolled in yet.
@@ -52,6 +53,7 @@ export default function BrowseCoursesScreen() {
   // A bought course leaves this list, so staying put beats being thrown into
   // the course the moment the payment lands.
   const { enrol, pendingCourseId } = useEnrol({ navigateToCourse: false });
+  const paymentsEnabled = usePaymentsEnabled();
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -125,7 +127,9 @@ export default function BrowseCoursesScreen() {
               <CourseGridCard
                 course={item}
                 onPress={() => openCourse(item)}
-                onEnrol={() => enrol(item.id)}
+                /* No cart on a paid tile while payments are off — the price
+                   stays, and the course page says "Coming soon". */
+                onEnrol={item.is_free || paymentsEnabled ? () => enrol(item.id) : undefined}
                 enrolling={pendingCourseId === item.id}
               />
             </View>

@@ -69,5 +69,10 @@ export interface StudentAppConfig {
     /** Null until Plan B sets a support inbox — hide any "email us" action then. */
     support_email: string | null;
   };
+  /**
+   * Whether paid courses and services can be bought yet. Presentation only — the
+   * payment endpoints 403 on their own while it is false.
+   */
+  payments_enabled: boolean;
   updated_at: string | null;
 }

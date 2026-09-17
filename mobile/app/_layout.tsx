@@ -30,7 +30,7 @@ import { Poppins_700Bold } from '@expo-google-fonts/poppins/700Bold';
 import { NotoSansSinhala_400Regular } from '@expo-google-fonts/noto-sans-sinhala/400Regular';
 import { NotoSansSinhala_600SemiBold } from '@expo-google-fonts/noto-sans-sinhala/600SemiBold';
 
-import '@/lib/i18n';
+import i18n from '@/lib/i18n';
 import { registerUnauthenticatedHandler } from '@/api/client';
 import { ToastProvider } from '@/components/ui/Toast';
 import { queryClient } from '@/lib/queryClient';
@@ -44,18 +44,55 @@ void SplashScreen.preventAutoHideAsync();
 if (__DEV__) console.warn('[startup] root layout evaluated');
 
 /**
+ * A translated string for the two failure screens below, or the English
+ * fallback if translation itself is broken.
+ *
+ * Those screens must render even when the thing that failed is i18n, so this
+ * reads the i18next instance directly (no hook, no provider) and treats a
+ * throw, an uninitialised instance or a key echoed back as "use the fallback".
+ */
+function safeT(key: string, fallback: string): string {
+  try {
+    const value = i18n.t(key);
+
+    return typeof value === 'string' && value !== '' && value !== key ? value : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+/**
  * Shown when the app is still on the splash long after it should have lifted.
  *
- * Names the gate that is still closed, because the two have completely
- * different causes: fonts stuck on "pending" means Metro is not serving assets
- * (wrong LAN address, firewall, dev server not running), while a session stuck
- * on "pending" means the SecureStore read never resolved.
+ * In development it names the gate that is still closed, because the two have
+ * completely different causes: fonts stuck on "pending" means Metro is not
+ * serving assets (wrong LAN address, firewall, dev server not running), while a
+ * session stuck on "pending" means the SecureStore read never resolved.
+ *
+ * A release build shows none of that. "Metro" and "SecureStore" mean nothing to
+ * a student and describe the app's internals to anyone curious; all a student
+ * can usefully do is restart the app.
  *
  * Bare `react-native` primitives and inline styles on purpose — it must not
- * depend on the fonts, NativeWind or i18n, since any of those may be the thing
- * that failed.
+ * depend on the fonts or NativeWind, since either may be the thing that failed.
  */
 function StartupStalled({ fonts, session }: { fonts: string; session: string }) {
+  if (!__DEV__) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#14224b', justifyContent: 'center', padding: 32 }}>
+        <RNText style={{ color: '#ffffff', fontSize: 18, fontWeight: '700', marginBottom: 10 }}>
+          {safeT('appError.stalledTitle', 'Taking longer than usual')}
+        </RNText>
+        <RNText style={{ color: '#c7d2e5', fontSize: 14, lineHeight: 22 }}>
+          {safeT(
+            'appError.stalledBody',
+            'The app is taking longer than usual to start. Please close it and open it again.',
+          )}
+        </RNText>
+      </View>
+    );
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: '#14224b', justifyContent: 'center', padding: 32 }}>
       <RNText style={{ color: '#ffffff', fontSize: 18, fontWeight: '700', marginBottom: 10 }}>
@@ -86,35 +123,60 @@ function StartupStalled({ fonts, session }: { fonts: string; session: string }) 
  * a phone, and the app looks broken rather than broken *for a reason*.
  *
  * Deliberately built from bare `react-native` primitives with inline styles: no
- * NativeWind, no `Text` variant, no i18n, no fonts. Everything this component
- * touches is a thing that could itself be the failure, and an error screen that
- * can throw is worse than no error screen at all.
+ * NativeWind, no `Text` variant, no fonts, and i18n only through `safeT`.
+ * Everything this component touches is a thing that could itself be the
+ * failure, and an error screen that can throw is worse than no error screen.
+ *
+ * **The error itself is shown in development only.** A message or stack in a
+ * release build hands a student file paths, API shapes and library names they
+ * cannot act on, and tells anyone probing the app exactly what broke. Release
+ * builds get a plain apology and Try again; the real error is for crash
+ * reporting (Sentry, P3-11), never the screen.
  */
 export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: '#14224b' }}
-      contentContainerStyle={{ padding: 24, paddingTop: 72 }}
+      contentContainerStyle={
+        __DEV__ ? { padding: 24, paddingTop: 72 } : { flexGrow: 1, justifyContent: 'center', padding: 32 }
+      }
     >
       <RNText style={{ color: '#ffffff', fontSize: 20, fontWeight: '700', marginBottom: 8 }}>
-        Something went wrong
-      </RNText>
-      <RNText style={{ color: '#c7d2e5', fontSize: 14, lineHeight: 20, marginBottom: 20 }}>
-        The app hit an error it could not recover from. The details below are for the development
-        team.
+        {safeT('appError.title', 'Something went wrong')}
       </RNText>
 
-      <View style={{ backgroundColor: '#0b1533', borderRadius: 12, padding: 16, marginBottom: 20 }}>
-        <RNText style={{ color: '#ff9b9b', fontSize: 13, fontWeight: '600', marginBottom: 8 }}>
-          {error.name}: {error.message}
+      {__DEV__ ? (
+        <>
+          <RNText style={{ color: '#c7d2e5', fontSize: 14, lineHeight: 20, marginBottom: 20 }}>
+            The app hit an error it could not recover from. The details below are for the
+            development team.
+          </RNText>
+
+          <View
+            style={{ backgroundColor: '#0b1533', borderRadius: 12, padding: 16, marginBottom: 20 }}
+          >
+            <RNText style={{ color: '#ff9b9b', fontSize: 13, fontWeight: '600', marginBottom: 8 }}>
+              {error.name}: {error.message}
+            </RNText>
+            {error.stack ? (
+              <RNText style={{ color: '#8fa3c4', fontSize: 11, lineHeight: 16 }}>
+                {error.stack}
+              </RNText>
+            ) : null}
+          </View>
+        </>
+      ) : (
+        <RNText style={{ color: '#c7d2e5', fontSize: 14, lineHeight: 22, marginBottom: 24 }}>
+          {safeT(
+            'appError.body',
+            'Sorry, the app ran into a problem. Please try again. If it keeps happening, close the app and open it again.',
+          )}
         </RNText>
-        {error.stack ? (
-          <RNText style={{ color: '#8fa3c4', fontSize: 11, lineHeight: 16 }}>{error.stack}</RNText>
-        ) : null}
-      </View>
+      )}
 
       <RNText
         onPress={retry}
+        accessibilityRole="button"
         style={{
           color: '#14224b',
           backgroundColor: '#ffffff',
@@ -127,7 +189,7 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
           textAlign: 'center',
         }}
       >
-        Try again
+        {safeT('common.retry', 'Try again')}
       </RNText>
     </ScrollView>
   );
@@ -268,6 +330,12 @@ export default function RootLayout() {
 
     const timer = setTimeout(() => {
       setStalled(true);
+      /*
+       * The native splash is held until `hideAsync`, and it sits ON TOP of
+       * whatever React renders. Without lifting it here, `StartupStalled` is
+       * drawn underneath and nobody on a real build ever sees it.
+       */
+      void SplashScreen.hideAsync();
 
       if (__DEV__) {
         console.warn(

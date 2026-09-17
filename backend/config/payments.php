@@ -6,6 +6,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Payments switch
+    |--------------------------------------------------------------------------
+    |
+    | Off at launch: no new order, card checkout or bank transfer can start, and
+    | the app shows "Coming soon" on paid courses and services. Free courses are
+    | unaffected, and payments already under way still settle. Before turning it
+    | on, work through the "Before switching PAYMENTS_ENABLED=true" list in
+    | SECURITY_AND_LAUNCH_GUIDE.md §9. See PaymentAvailability.
+    |
+    */
+
+    'enabled' => (bool) env('PAYMENTS_ENABLED', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | Active gateway
     |--------------------------------------------------------------------------
     |

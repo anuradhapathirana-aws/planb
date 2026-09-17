@@ -385,7 +385,20 @@ demo course, and put the email + code in Play Console → App content → App ac
 **Done when:** tests: disabled when empty; wrong code rejected; only that email accepted; throttle
 still applies.
 
-### [ ] P1-8 Hide technical errors in the production crash screen
+### [x] P1-8 Hide technical errors in the production crash screen — code done 2026-09-17, release-build check pending
+
+**Built:** `mobile/app/_layout.tsx` — `ErrorBoundary` shows `error.name` / `message` / `stack` only
+under `__DEV__`; release builds show `appError.title` + `appError.body` + `common.retry` (Try again,
+`accessibilityRole="button"`). `StartupStalled` shows the fonts/session/Metro diagnostics only under
+`__DEV__`; release builds show `appError.stalledTitle` / `stalledBody`. Strings in
+`shared/src/i18n/en.json` (SI pending from client — falls back to EN). Two additions to the plan:
+- **`safeT()`** reads `i18n.t` directly inside try/catch with the English text as fallback, so the
+  error screens keep their "cannot throw" guarantee while being translated.
+- **The splash is lifted when the 8-second stall fires.** The native splash covers React until
+  `hideAsync`, so the stall screen was never visible on a native build.
+
+**Still to do:** on a release build (preview or production), force a render error and confirm no
+stack or file paths appear.
 
 **Where:** `mobile/app/_layout.tsx` (~lines 58–114: error boundary renders `error.name`,
 `error.message`, `error.stack`; "Metro is not serving assets" screen).
@@ -395,7 +408,20 @@ still applies.
 
 **Done when:** a thrown error in a production build shows no stack/paths.
 
-### [ ] P1-9 Payments switched off (server-enforced)
+### [x] P1-9 Payments switched off (server-enforced) — done 2026-09-17
+
+**Built:** `config/payments.php` `enabled` = `env('PAYMENTS_ENABLED', false)`;
+`App\Services\Payment\PaymentAvailability::assertEnabled()` (403) called from
+`OrderService::createFor` (paid enrol + service purchase), `PaymentService::startCardPayment` and
+`submitBankTransfer`; `payments_enabled` on `StudentAppConfigResource` + shared `StudentAppConfig`;
+mobile `usePaymentsEnabled` → disabled "Coming soon · price" on course detail, disabled "Coming soon"
+on service detail, no cart on paid tiles in All Courses / Wishlist; 8 tests in
+`StudentPaymentsDisabledTest`; `phpunit.xml` sets `PAYMENTS_ENABLED=true` for the existing payment
+tests. Decisions (user, 2026-09-17): **prices stay visible**; the **Services area stays visible**.
+Guarded in services rather than middleware because free and paid enrolment share one route. Admin
+approval and webhooks are not guarded, so a payment under way at switch-off still settles (tested).
+**Note:** a local `.env` without the key now has payments off — add `PAYMENTS_ENABLED=true` to work
+on payments.
 
 **Do:**
 1. `config/payments.php` (or existing payments config): `enabled` = `env('PAYMENTS_ENABLED', false)`.

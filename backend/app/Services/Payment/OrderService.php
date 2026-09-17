@@ -15,6 +15,8 @@ use Illuminate\Validation\ValidationException;
 
 class OrderService
 {
+    public function __construct(private readonly PaymentAvailability $availability) {}
+
     /**
      * Opens an order for anything purchasable.
      *
@@ -28,6 +30,8 @@ class OrderService
      */
     public function createFor(Student $student, Purchasable&Model $purchasable): Order
     {
+        $this->availability->assertEnabled();
+
         if (! $purchasable->isPurchasable()) {
             throw ValidationException::withMessages([
                 'purchasable' => 'This item is not available for purchase right now.',

@@ -14,7 +14,14 @@
     "search": "Search",
     "noResults": "No matches",
     "optional": "Optional",
-    "done": "Done"
+    "done": "Done",
+    "comingSoon": "Coming soon"
+  },
+  "appError": {
+    "title": "Something went wrong",
+    "body": "Sorry, the app ran into a problem. Please try again. If it keeps happening, close the app and open it again.",
+    "stalledTitle": "Taking longer than usual",
+    "stalledBody": "The app is taking longer than usual to start. Please close it and open it again."
   },
   "intro": {
     "skipHint": "Tap to continue"
@@ -328,10 +335,12 @@
     "action": "Enrol",
     "actionFree": "Start for free",
     "paywallBody": "One payment. Lifetime access to every lesson and the assessment.",
+    "comingSoonBody": "Paid courses open for enrolment soon. Please check back later.",
     "lockedLesson": "Enrol to unlock this lesson.",
     "done": "You're enrolled. Enjoy the course.",
     "failed": "We couldn't start your enrolment. Please try again.",
-    "actionPriced": "Enrol now · {{price}}"
+    "actionPriced": "Enrol now · {{price}}",
+    "comingSoonPriced": "Coming soon · {{price}}"
   },
   "payment": {
     "title": "Checkout",
