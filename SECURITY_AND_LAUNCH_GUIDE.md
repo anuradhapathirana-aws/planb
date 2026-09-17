@@ -349,7 +349,25 @@ HTTPS guard in `env.ts` crashes the app on launch.
 **Done when:** `eas build --profile production --platform android` produces an AAB that starts and
 reaches the real API.
 
-### [ ] P1-7 Google Play reviewer login
+### [x] P1-7 Google Play reviewer login — done 2026-09-17
+
+**Built:** `config/play_review.php`, `App\Services\Auth\PlayReviewAccess`, wired into
+`StudentAuthService` (`requestLoginCode` sends nothing; `verifyLoginCode` → `verifyReviewerCode`)
+and `StudentAccountService` (deletion code not emailed; the fixed code confirms deletion); blank
+`PLAY_REVIEW_EMAIL` / `PLAY_REVIEW_CODE` in `.env.example` and `docs/deployment.md`; 11 tests in
+`tests/Feature/Student/PlayReviewAccessTest.php`. No mobile change needed. Differences from the plan
+below:
+- **Account deletion works for the reviewer, and the account repairs itself** (user decision,
+  2026-09-17): the fixed code confirms a real deletion, and the next reviewer sign-in creates a
+  fresh student, so step 4's manual creation is optional. A reviewer row an *admin* blocked or
+  soft-deleted is refused (403) and never replaced.
+- **Brute-force lock:** a fixed code can't be burned like an emailed one, so 10 wrong reviewer codes
+  per hour (any IP) lock reviewer sign-in for the hour, on top of the route throttles.
+- The code must be exactly 6 digits, or the feature stays off.
+
+**Before submitting to Play:** set both values on the production server (a Plan B mailbox, a random
+code), run `php artisan config:cache`, sign in once from the app, enrol that account in the free
+demo course, and put the email + code in Play Console → App content → App access.
 
 **Problem:** reviewers cannot receive our email OTP; an app they cannot sign in to is rejected.
 

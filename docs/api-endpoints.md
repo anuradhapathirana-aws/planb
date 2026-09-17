@@ -199,6 +199,7 @@ Notes:
 - Google ID tokens are verified locally against Google's JWKS (cached 1h), so sign-in does not depend on a live call to Google. Configure `GOOGLE_CLIENT_IDS` (comma-separated, one OAuth client per platform). **Blank disables Google sign-in** — an empty list rejects every token rather than accepting any.
 - Rate limits: `request-code` 3 per 10 min per email + 8/hour per IP; `verify-code` and `google` 6/min per email+IP; plus a hard daily cap per student (`STUDENT_LOGIN_CODE_DAILY_CAP`, default 10).
 - **The sign-in email is queued.** If no `queue:work` is running, nobody can sign in and nothing errors — the job just sits in the `jobs` table.
+- **Google Play reviewer.** When `PLAY_REVIEW_EMAIL` and `PLAY_REVIEW_CODE` (6 digits) are both set, that one address signs in on `verify-code` with the fixed code, and `request-code` for it emails nothing (same 200 body). No record → one is created (`is_new_student: true`). The same code confirms `DELETE /student/account`, and `account/deletion-code` emails nothing for it. A wrong fixed code is the normal 422; 10 wrong in an hour locks reviewer sign-in for that hour. Blocking or deleting the reviewer student in the admin panel stops it (403, and no replacement account is made). Either value blank → off.
 - Blocking or deleting a student revokes all their tokens and voids any live code immediately.
 
 `StudentProfile` is `App\Http\Resources\Student\StudentProfileResource` — deliberately *not* the admin `StudentResource`, which carries `is_blocked` and `imported_by`.

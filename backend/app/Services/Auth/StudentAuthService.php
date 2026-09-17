@@ -34,6 +34,7 @@ class StudentAuthService
         private readonly GoogleIdTokenVerifier $google,
         private readonly StudentIdGenerator $studentIds,
         private readonly StudentLoginCodeService $codes,
+        private readonly PlayReviewAccess $playReview,
     ) {}
 
     /**
@@ -49,7 +50,8 @@ class StudentAuthService
     public function requestLoginCode(string $email, ?string $ip): array
     {
         $config = config('students.login_code');
-        $student = $this->findByEmail($email);
+        // The Play reviewer has a fixed code, so nothing is emailed — same ticket back.
+        $student = $this->playReview->isReviewerEmail($email) ? null : $this->findByEmail($email);
 
         if ($student !== null && $student->canSignIn() && ! $this->codes->hasHitDailyCap($student)) {
             $code = $this->codes->issue($student, $email, LoginCodePurpose::SignIn, $ip);
@@ -71,6 +73,10 @@ class StudentAuthService
      */
     public function verifyLoginCode(string $email, string $code, ?string $deviceName): array
     {
+        if ($this->playReview->isReviewerEmail($email)) {
+            return $this->verifyReviewerCode($code, $deviceName);
+        }
+
         $student = $this->findByEmail($email);
 
         // Same message whether the student doesn't exist or the code is wrong.
@@ -85,6 +91,30 @@ class StudentAuthService
         $this->markVerified($student, verifiedEmail: true);
 
         return $this->issueSession($student, $deviceName);
+    }
+
+    /**
+     * Google Play's reviewer, with the fixed code from config/play_review.php.
+     *
+     * The code is checked before the account is looked at, so a wrong code
+     * learns nothing — not even whether the reviewer account is suspended. The
+     * account is created here if a reviewer deleted it (see PlayReviewAccess).
+     *
+     * @throws ValidationException
+     */
+    private function verifyReviewerCode(string $code, ?string $deviceName): array
+    {
+        if (! $this->playReview->checkCode($code)) {
+            throw $this->codes->invalidCode();
+        }
+
+        $student = $this->playReview->student();
+
+        $this->assertCanSignIn($student);
+
+        $this->markVerified($student, verifiedEmail: true);
+
+        return $this->issueSession($student, $deviceName, isNew: $student->wasRecentlyCreated);
     }
 
     /**

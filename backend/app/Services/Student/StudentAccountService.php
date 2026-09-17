@@ -8,6 +8,7 @@ use App\Enums\LoginCodePurpose;
 use App\Models\CoursePaperAnswer;
 use App\Models\Student;
 use App\Notifications\StudentAccountDeletionCodeNotification;
+use App\Services\Auth\PlayReviewAccess;
 use App\Services\Auth\StudentLoginCodeService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -49,7 +50,10 @@ class StudentAccountService
         Student::PROFILE_VIDEO_COLLECTION,
     ];
 
-    public function __construct(private readonly StudentLoginCodeService $codes) {}
+    public function __construct(
+        private readonly StudentLoginCodeService $codes,
+        private readonly PlayReviewAccess $playReview,
+    ) {}
 
     /**
      * Email the code that confirms a deletion.
@@ -72,16 +76,19 @@ class StudentAccountService
             ]);
         }
 
-        if ($this->codes->hasHitDailyCap($student)) {
-            throw ValidationException::withMessages([
-                'code' => 'You have asked for too many codes today. Please try again tomorrow.',
-            ]);
+        // The Play reviewer confirms with their fixed code, so nothing is emailed.
+        if (! $this->playReview->isReviewerEmail($student->email)) {
+            if ($this->codes->hasHitDailyCap($student)) {
+                throw ValidationException::withMessages([
+                    'code' => 'You have asked for too many codes today. Please try again tomorrow.',
+                ]);
+            }
+
+            $code = $this->codes->issue($student, $student->email, LoginCodePurpose::DeleteAccount, $ip);
+
+            // Queued (CLAUDE.md §4.7).
+            $student->notify(new StudentAccountDeletionCodeNotification($code, (int) $config['ttl_minutes']));
         }
-
-        $code = $this->codes->issue($student, $student->email, LoginCodePurpose::DeleteAccount, $ip);
-
-        // Queued (CLAUDE.md §4.7).
-        $student->notify(new StudentAccountDeletionCodeNotification($code, (int) $config['ttl_minutes']));
 
         return [
             'expires_in_seconds' => (int) $config['ttl_minutes'] * 60,
@@ -103,7 +110,17 @@ class StudentAccountService
             throw $this->codes->invalidCode();
         }
 
-        $this->codes->consume($student, $student->email, LoginCodePurpose::DeleteAccount, $code);
+        /*
+         * The Play reviewer's deletion is real, like anyone's. Anonymising frees
+         * the address, so the next reviewer sign-in makes a fresh account.
+         */
+        if ($this->playReview->isReviewerEmail($student->email)) {
+            if (! $this->playReview->checkCode($code)) {
+                throw $this->codes->invalidCode();
+            }
+        } else {
+            $this->codes->consume($student, $student->email, LoginCodePurpose::DeleteAccount, $code);
+        }
 
         DB::transaction(function () use ($student): void {
             // Every device, not just this one.

@@ -36,20 +36,45 @@ adduser deploy                          # your own account; stop using root
 usermod -aG sudo deploy
 ```
 
-From **your own machine**, set up key login:
+From **your own machine**, create a key. On Windows, in PowerShell (OpenSSH is built in):
 
-```bash
+```powershell
 ssh-keygen -t ed25519 -C "planb-deploy"
-ssh-copy-id deploy@<server-ip>
-ssh deploy@<server-ip>                  # confirm this works BEFORE the next step
+# press Enter to accept C:\Users\<you>\.ssh\id_ed25519, then set a passphrase
 ```
 
-Only once key login works:
+Copy the public key to the server. `ssh-copy-id` does not exist on Windows, so:
+
+```powershell
+type $env:USERPROFILE\.ssh\id_ed25519.pub | ssh deploy@<server-ip> "mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
+```
+
+On macOS/Linux, `ssh-copy-id deploy@<server-ip>` does the same thing.
+
+Confirm key login works — **in a new window, leaving the root session open**:
 
 ```bash
-sudo sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
-sudo sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
-sudo systemctl restart ssh
+ssh deploy@<server-ip>
+```
+
+Only once that logs you in without asking for the account password:
+
+```bash
+sudo tee /etc/ssh/sshd_config.d/00-planb-hardening.conf > /dev/null <<'EOF'
+PasswordAuthentication no
+PermitRootLogin no
+EOF
+sudo sshd -t && sudo systemctl restart ssh
+
+sudo sshd -T | grep -Ei '^(passwordauthentication|permitrootlogin)'
+# must print: passwordauthentication no / permitrootlogin no
+```
+
+The settings go in their own file under `sshd_config.d/`, named `00-` on purpose. Cloud images ship
+`50-cloud-init.conf` in that folder with `PasswordAuthentication yes`; sshd reads the folder in
+alphabetical order, before the main `sshd_config`, and **the first value it reads wins**. Editing the
+main file — or naming this one `99-` — silently does nothing. `sshd -T` prints what is actually in
+force; trust that, not the files.
 
 sudo apt install -y ufw fail2ban unattended-upgrades
 sudo ufw allow 22,80,443/tcp && sudo ufw enable
@@ -217,6 +242,11 @@ MAIL_USERNAME=<brevo-login>
 MAIL_PASSWORD=<brevo-smtp-key>
 MAIL_FROM_ADDRESS="no-reply@<domain>"
 MAIL_SUPPORT_ADDRESS="support@<domain>"
+
+# Google Play reviewer sign-in (blank = off). A Plan B address and a random 6-digit
+# code, given only to Google in Play Console > App content > App access.
+PLAY_REVIEW_EMAIL=play-review@<domain>
+PLAY_REVIEW_CODE=<random-6-digits>
 
 # Bunny Stream — bunny-stream-setup.md
 BUNNY_STREAM_ENABLED=true
