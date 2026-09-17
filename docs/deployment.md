@@ -233,64 +233,34 @@ server, add the `.pub` to the repository's deploy keys (read-only), then clone o
 ```bash
 cd /var/www/planb/backend
 composer install --no-dev --optimize-autoloader
-cp .env.example .env
+cp .env.production.example .env
 chmod 600 .env
 nano .env
 ```
 
-The values that must change from the example:
+**Start from `.env.production.example`, never `.env.example`.** The production template already
+has the safe settings — debug off, HTTPS-only encrypted session cookies, daily `warning` logs, real
+SMTP, Cloudflare proxies, payments off with the live PayHere gateway — and
+`tests/Feature/EnvironmentTemplateTest.php` fails if any of them drift. `.env.example` is for a
+developer machine and is unsafe on a server.
 
-```env
-APP_NAME="Plan B International"
-APP_ENV=production
-APP_DEBUG=false
-APP_URL=https://api.<domain>
-FRONTEND_URL=https://admin.<domain>
+What is left for you to fill in:
 
-# Behind Cloudflare's proxy (Part 2). Blank only if Cloudflare is not proxying.
-TRUSTED_PROXIES=cloudflare
+| Setting | Value |
+|---|---|
+| every `<domain>` | your domain, e.g. `theplanbs.com` (7 places) |
+| `DB_PASSWORD` | the password from Part 4 |
+| `MAIL_USERNAME`, `MAIL_PASSWORD` | Brevo login and SMTP key (Part 8) || `LEGAL_COMPANY_ADDRESS`, `LEGAL_COMPANY_REGISTRATION_NUMBER` | shown on /privacy, /terms |
+| `BUNNY_STREAM_*` (four blanks) | `bunny-stream-setup.md` |
+| `GOOGLE_CLIENT_IDS` | web, Android and iOS OAuth client ids, comma-separated |
+| `PLAY_REVIEW_CODE` | a random 6-digit code (never `123456`); blank turns reviewer sign-in off |
+| `PAYHERE_MERCHANT_ID`, `PAYHERE_MERCHANT_SECRET` | only when payments are switched on |
+| `APP_KEY` | leave blank — `key:generate` below fills it |
 
-DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
-DB_DATABASE=planb
-DB_USERNAME=planb
-DB_PASSWORD=a-long-random-password
+Check nothing was missed — this must print nothing:
 
-# Admin login is a cookie shared between api. and admin. — the leading dot matters.
-SESSION_DRIVER=database
-SESSION_DOMAIN=.<domain>
-SESSION_SECURE_COOKIE=true
-SANCTUM_STATEFUL_DOMAINS=admin.<domain>
-
-QUEUE_CONNECTION=database
-CACHE_STORE=database
-LOG_STACK=daily
-LOG_LEVEL=warning
-
-# Brevo — Part 8
-MAIL_MAILER=smtp
-MAIL_HOST=smtp-relay.brevo.com
-MAIL_PORT=587
-MAIL_SCHEME=smtp
-MAIL_USERNAME=<brevo-login>
-MAIL_PASSWORD=<brevo-smtp-key>
-MAIL_FROM_ADDRESS="no-reply@<domain>"
-MAIL_SUPPORT_ADDRESS="support@<domain>"
-
-# Google Play reviewer sign-in (blank = off). A Plan B address and a random 6-digit
-# code, given only to Google in Play Console > App content > App access.
-PLAY_REVIEW_EMAIL=play-review@<domain>
-PLAY_REVIEW_CODE=<random-6-digits>
-
-# Payments stay OFF at launch — see SECURITY_AND_LAUNCH_GUIDE.md §9 before enabling.
-PAYMENTS_ENABLED=false
-
-# Bunny Stream — bunny-stream-setup.md
-BUNNY_STREAM_ENABLED=true
-BUNNY_STREAM_LIBRARY_ID=
-BUNNY_STREAM_API_KEY=
-BUNNY_STREAM_CDN_HOSTNAME=
-BUNNY_STREAM_TOKEN_KEY=
+```bash
+grep -v '^\s*#' .env | grep '<'
 ```
 
 `SESSION_DOMAIN` with the leading dot and `SANCTUM_STATEFUL_DOMAINS` are the two settings that decide

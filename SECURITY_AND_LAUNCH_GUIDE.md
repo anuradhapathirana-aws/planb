@@ -723,7 +723,19 @@ scanners pre-fetch GET links).
 4. Enforce for all admins: an admin without 2FA is forced to the setup page after login.
 5. `admin:reset-2fa {email}` artisan command for lockouts.
 
-### [ ] P3-7 Production environment template
+### [x] P3-7 Production environment template — done 2026-09-17
+
+**Built:** `backend/.env.production.example` with every value below plus the rest of what a server
+reads (Bunny, legal, student sign-in, exchange), secrets blank, domains as `<domain>`.
+`MAIL_MAILER=smtp` (Brevo, matching `docs/deployment.md`), `QUEUE_CONNECTION=database` (no Redis on
+the server), `PAYHERE_CHECKOUT_URL` set to the live URL alongside `PAYHERE_SANDBOX=false`.
+`.env.example`: `PAYHERE_SECRET` and the duplicate `PAYHERE_MERCHANT_ID`/`PAYHERE_SANDBOX` removed.
+Root `.gitignore` gains `!.env.production.example` (its `.env.*` rule would have ignored the file).
+5 tests in `tests/Feature/EnvironmentTemplateTest.php`: safe values, secrets blank, every key read
+by the app (catches typos), no duplicate keys in either template. `docs/deployment.md` Part 6 and
+`docs/deployment-readiness-report.md` §4.1 now point at the template instead of repeating values.
+Not done here: `.env.example` still lists keys nothing reads (`FIREBASE_*`, `BUNNY_STORAGE_*`,
+`WHATSAPP_CONTACT_NUMBER`) — harmless on a dev machine, and absent from the production template.
 
 **Do:** create `backend/.env.production.example` (placeholders only, no secrets):
 `APP_ENV=production`, `APP_DEBUG=false`, `LOG_STACK=daily`, `LOG_LEVEL=warning`,

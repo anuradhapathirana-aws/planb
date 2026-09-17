@@ -9,6 +9,8 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+# Placeholders only, no secrets — the server's starting point (backend/).
+!.env.production.example
 
 # Dependency directories (each sub-project also ignores its own)
 node_modules/

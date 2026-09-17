@@ -5,6 +5,13 @@ All notable changes to this project are documented here. Format loosely follows 
 ## Unreleased
 
 ### Added
+- **Production `.env` template, `backend/.env.production.example`.** The server's `.env` used to be copied from `.env.example`, the developer file, with debug on, `log` mail, unencrypted non-HTTPS-only sessions and the sandbox payment gateway, fixed by hand from a list in the deployment guide. The new template starts safe and is the one file to copy on a server:
+  - **Fixed values:** `APP_DEBUG=false`, `LOG_STACK=daily` / `LOG_LEVEL=warning`, `SESSION_SECURE_COOKIE=true`, `SESSION_ENCRYPT=true`, `SESSION_LIFETIME=120` (minutes idle, down from 480), `TRUSTED_PROXIES=cloudflare`, Brevo SMTP, `PAYMENTS_ENABLED=false`, `PAYMENT_GATEWAY=payhere` with `PAYHERE_SANDBOX=false` and the live checkout URL.
+  - **No secrets:** every password, key and code is blank; domains are `<domain>`.
+  - **Tested:** `EnvironmentTemplateTest` (5 tests) fails if a safe value changes, a secret gets a value, a key is misspelt (every key must be read by the app), or either template sets a key twice.
+  - **`.gitignore`:** the root rule ignored every `.env.*` except `.env.example`, which would have silently kept the new file out of git. It is now allowed.
+  - **`.env.example`:** removed the stray `PAYHERE_SECRET` (the code reads `PAYHERE_MERCHANT_SECRET`) and the duplicate `PAYHERE_MERCHANT_ID` / `PAYHERE_SANDBOX` above it, so there is one PayHere block.
+  - **Docs:** `docs/deployment.md` Part 6 and `docs/deployment-readiness-report.md` §4.1 now copy the template and list only what is left to fill in, instead of keeping their own copies of the values (the report's copy still had `SESSION_ENCRYPT=false`).
 - **Payments switch, off at launch.** Payments go live in a later update, so the server now refuses to start one while `PAYMENTS_ENABLED` is false (the default).
   - **Server:** enrolling in a **paid** course, buying a service, starting a card payment and submitting a bank transfer all return 403 "Payments are not available yet. Paid courses and services are coming soon." and create nothing. The check is in the services (new `App\Services\Payment\PaymentAvailability`, called from `OrderService::createFor`, `PaymentService::startCardPayment` and `submitBankTransfer`), not only on routes, because free and paid courses share the enrol endpoint.
   - **Still works:** free courses enrol as before, a student who already has a course is told so, order history loads, and webhooks and admin approval still run, so a payment started before the switch-off still completes.
