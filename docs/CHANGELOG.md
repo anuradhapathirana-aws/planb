@@ -53,6 +53,12 @@ All notable changes to this project are documented here. Format loosely follows 
   - 11 feature tests (`StudentAccountDeletionTest`).
 
 ### Changed
+- **Seeders that create logins or fake students refuse to run on a server.** `AdminUserSeeder` writes four admin accounts whose password (`Password123!`) is in this repository, so a stray `db:seed` on production would have opened the admin panel to anyone who read the README.
+  - `DatabaseSeeder`, `AdminUserSeeder`, `StudentSeeder` and `DemoStudentAppSeeder` now throw unless `APP_ENV` is `local` or `testing`, whether run as `db:seed` or `db:seed --class=...`. The full seed checks first, so it writes nothing at all instead of stopping halfway. The error tells you what to run instead. New `Database\Seeders\Concerns\LocalOnly` trait.
+  - Reference data (`RoleSeeder`, `IndustrySeeder`, `HomeCarouselSeeder`) can still be seeded on a server.
+  - **`admin:create` now also refuses passwords found in known data breaches** (Have I Been Pwned, by k-anonymity: only a 5-character hash prefix leaves the server), on top of the 12-character minimum. No forced upper/lower/number mix, per NIST SP 800-63B. If the breach service can't be reached, the password is accepted rather than blocking the first admin.
+  - README marks the dev logins as local-only and shows how to create a real admin; `docs/deployment.md` notes the guard.
+  - 7 tests: `ProductionSeedingTest` (production and staging refuse and write nothing, each dangerous seeder refuses by name, roles still seed, local still works) and 2 new `CreateAdminUserTest` cases (breached password refused, unreachable service doesn't block). The breach API is faked, and stray HTTP calls fail the suite.
 - **The app's crash screens no longer show technical details to students** (`mobile/app/_layout.tsx`). Before, a crash showed the error name, message and full stack trace, and a slow start showed "Fonts / Session" status and a note about Metro.
   - **In the store app**, a crash shows "Something went wrong", a short apology and **Try again**; a slow start shows "Taking longer than usual" and asks the student to close and reopen the app. The error details stay visible in development builds only.
   - **The text is translated** (new `appError.*` strings in English; Sinhala falls back to English until the client supplies it). It is read in a way that falls back to English if translation itself is what failed, so the crash screen can't crash.

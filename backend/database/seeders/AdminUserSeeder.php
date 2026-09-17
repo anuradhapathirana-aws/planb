@@ -6,16 +6,21 @@ namespace Database\Seeders;
 
 use App\Enums\RoleName;
 use App\Models\User;
+use Database\Seeders\Concerns\LocalOnly;
 use Illuminate\Database\Seeder;
 
 class AdminUserSeeder extends Seeder
 {
+    use LocalOnly;
+
     /**
      * Local/dev-only seed accounts, one per role, for exercising the admin panel.
-     * Never run against production — create real Super Admin accounts manually there.
+     * Refuses to run on a server — create real admins there with `php artisan admin:create`.
      */
     public function run(): void
     {
+        $this->ensureLocalEnvironment();
+
         $accounts = [
             ['name' => 'Anuradha (Super Admin)', 'email' => 'admin@planbinternational.test', 'role' => RoleName::SuperAdmin],
             ['name' => 'Content Manager', 'email' => 'content@planbinternational.test', 'role' => RoleName::ContentManager],

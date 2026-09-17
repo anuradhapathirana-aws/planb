@@ -8,6 +8,7 @@ use App\Enums\RoleName;
 use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rules\Password;
 use Spatie\Permission\Models\Role;
 
 use function Laravel\Prompts\password;
@@ -56,7 +57,7 @@ class CreateAdminUser extends Command
 
         $plainPassword = password(
             label: 'Password',
-            hint: 'At least 12 characters. It is not shown as you type.',
+            hint: 'At least 12 characters, and not one that has leaked online. It is not shown as you type.',
             required: true,
         );
 
@@ -68,9 +69,17 @@ class CreateAdminUser extends Command
                 'name' => ['required', 'string', 'max:255'],
                 'email' => ['required', 'email', 'max:255', 'unique:users,email'],
                 'role' => ['required', 'string', 'in:'.implode(',', RoleName::values())],
-                // Long rather than cryptic: an admin password guards every
-                // student record in the system, and length beats symbols.
-                'password' => ['required', 'string', 'min:12'],
+                /*
+                 * Long and never leaked, rather than cryptic: an admin password
+                 * guards every student record, and forced upper/lower/digit
+                 * mixes just produce "Password123!" (NIST SP 800-63B).
+                 *
+                 * `uncompromised()` checks Have I Been Pwned by k-anonymity —
+                 * only the first 5 characters of the SHA-1 leave the server. If
+                 * the service can't be reached it lets the password through
+                 * rather than blocking the first admin on a firewalled box.
+                 */
+                'password' => ['required', 'string', Password::min(12)->uncompromised()],
             ],
             ['email.unique' => 'An account with that email already exists.'],
         );

@@ -275,7 +275,12 @@ php artisan admin:create                           # your real Super Admin, pass
 ```
 
 **Never run `php artisan db:seed` without `--class`.** The full seeder includes `AdminUserSeeder`,
-which creates four accounts with a published password.
+which creates four accounts with a published password. With `APP_ENV=production` it now refuses and
+writes nothing, as do `AdminUserSeeder`, `StudentSeeder` and `DemoStudentAppSeeder` called by name —
+but that guard depends on `APP_ENV` being right, so check `.env` first.
+
+`admin:create` needs a password of at least 12 characters that has not appeared in a known data
+breach (checked against Have I Been Pwned; only a 5-character hash prefix is sent).
 
 ### Permissions
 

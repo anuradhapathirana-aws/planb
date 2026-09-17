@@ -15,6 +15,7 @@ use App\Models\CourseQuestionOption;
 use App\Models\CourseTopic;
 use App\Models\CourseVideo;
 use App\Models\Student;
+use Database\Seeders\Concerns\LocalOnly;
 use Illuminate\Database\Seeder;
 
 /**
@@ -31,10 +32,14 @@ use Illuminate\Database\Seeder;
  */
 class DemoStudentAppSeeder extends Seeder
 {
+    use LocalOnly;
+
     public const DEMO_EMAIL = 'student@planb.test';
 
     public function run(): void
     {
+        $this->ensureLocalEnvironment();
+
         $student = Student::withTrashed()->firstOrNew(['email' => self::DEMO_EMAIL]);
 
         $student->fill([

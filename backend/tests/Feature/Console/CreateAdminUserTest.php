@@ -8,11 +8,59 @@ use App\Enums\RoleName;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class CreateAdminUserTest extends TestCase
 {
     use RefreshDatabase;
+
+    private const BREACH_API = 'api.pwnedpasswords.com/range/*';
+
+    /** What the fake breach API answers. Empty: no password is known to have leaked. */
+    private string $breachBody = '';
+
+    private int $breachStatus = 200;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // No real call to Have I Been Pwned from the suite. A closure, because
+        // a second Http::fake() in a test would not replace this one.
+        Http::preventStrayRequests();
+        Http::fake([self::BREACH_API => fn () => Http::response($this->breachBody, $this->breachStatus)]);
+    }
+
+    public function test_a_password_found_in_a_data_breach_is_refused(): void
+    {
+        $password = 'a-long-but-leaked-password';
+        $hash = strtoupper(sha1($password));
+
+        // The range API answers with hash suffixes and how often each has leaked.
+        $this->breachBody = substr($hash, 5).":4521\r\n0000000000000000000000000000000000A:1";
+
+        $this->artisan('admin:create', ['--name' => 'Test', '--email' => 'new@planb.lk', '--role' => RoleName::SuperAdmin->value])
+            ->expectsQuestion('Password', $password)
+            ->expectsQuestion('Type the password again', $password)
+            ->assertFailed();
+
+        $this->assertDatabaseCount('users', 0);
+
+        // Only the 5-character prefix is sent, never the password or full hash.
+        Http::assertSent(fn ($request): bool => str_ends_with($request->url(), '/range/'.substr($hash, 0, 5)));
+    }
+
+    /** A firewalled server must still be able to create its first admin. */
+    public function test_an_unreachable_breach_service_does_not_block_creation(): void
+    {
+        $this->breachStatus = 503;
+
+        $this->artisan('admin:create', ['--name' => 'Test', '--email' => 'new@planb.lk', '--role' => RoleName::SuperAdmin->value])
+            ->expectsQuestion('Password', 'a-long-enough-password')
+            ->expectsQuestion('Type the password again', 'a-long-enough-password')
+            ->assertSuccessful();
+    }
 
     public function test_it_creates_a_super_admin_who_can_actually_sign_in(): void
     {

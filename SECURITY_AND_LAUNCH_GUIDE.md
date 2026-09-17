@@ -438,7 +438,22 @@ on payments.
 
 ## PHASE 2 — High-risk security holes
 
-### [ ] P2-1 Seeders create a known Super Admin password in production
+### [x] P2-1 Seeders create a known Super Admin password in production — done 2026-09-17
+
+**Built:** `database/seeders/Concerns/LocalOnly.php` trait, used by `DatabaseSeeder` (checked before
+any seeder runs, so nothing is written), `AdminUserSeeder`, `StudentSeeder` and
+`DemoStudentAppSeeder` — all throw a `RuntimeException` naming `RoleSeeder` + `admin:create` unless
+`APP_ENV` is `local`/`testing`, including when called with `--class`. `admin:create` already existed
+(earlier session); its password rule is now `Password::min(12)->uncompromised()`. README keeps the dev
+logins labelled local-only and documents `admin:create`; `docs/deployment.md` notes the guard.
+Tests: `tests/Feature/Console/ProductionSeedingTest.php` (5) + 2 new in `CreateAdminUserTest`.
+Decisions (user, 2026-09-17):
+- **No `mixedCase()`/`numbers()`** — 12+ characters and not breached only (NIST SP 800-63B: forced
+  composition produces `Password123!`-style passwords).
+- **README keeps the local dev logins**, clearly marked local-only, rather than removing them.
+
+Note: `uncompromised()` fails open (accepts) if Have I Been Pwned is unreachable. The seeder guard
+relies on `APP_ENV` — the deployment guide says to check it.
 
 **Where:** `backend/database/seeders/AdminUserSeeder.php:29` (`Password123!`),
 `DatabaseSeeder.php:16-18` (runs admin + 41 fake students unconditionally), `README.md:18-24`.

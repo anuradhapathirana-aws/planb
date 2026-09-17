@@ -15,13 +15,22 @@ cd backend
 composer install
 cp .env.example .env        # then set DB_* to your local MySQL
 php artisan key:generate
-php artisan migrate --seed  # seeds roles + one dev admin per role + demo students
+php artisan migrate --seed  # seeds roles + one dev admin per role + demo students (local only)
 php artisan serve --port=8001
 ```
 
 > Port 8001 is used locally instead of 8000 to avoid clashing with other local projects — adjust `APP_URL` in `.env` and the frontend's `VITE_API_BASE_URL` together if you change it.
 
-Seeded dev admin logins (password `Password123!` for all): `admin@planbinternational.test` (Super Admin), `content@planbinternational.test`, `support@planbinternational.test`, `accounts@planbinternational.test`.
+**Local only** — seeded dev admin logins (password `Password123!` for all): `admin@planbinternational.test` (Super Admin), `content@planbinternational.test`, `support@planbinternational.test`, `accounts@planbinternational.test`. These exist only on a developer machine: the seeders refuse to run unless `APP_ENV` is `local` or `testing`.
+
+**On a server** (staging, production) there are no seeded logins. Seed roles, then create each real admin — the password is typed at the prompt (12+ characters, not found in a known data breach):
+
+```bash
+php artisan db:seed --class=RoleSeeder --force
+php artisan admin:create
+```
+
+See `docs/deployment.md` for the full server setup.
 
 Run tests: `php artisan test`
 
