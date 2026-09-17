@@ -262,6 +262,7 @@
     "failed": "Not quite",
     "retake": "Retake assessment",
     "score": "You scored {{score}}%",
+    "answersHidden": "You'll see which answers were right once you pass, or when you have no attempts left.",
     "blocked": {
       "videos_incomplete": "Watch every lesson in this course to unlock the assessment.",
       "attempts_exhausted": "You've used all your attempts. Contact Plan B support.",

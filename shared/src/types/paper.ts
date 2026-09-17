@@ -82,7 +82,12 @@ export interface PaperAnswerResult {
   question_text: string;
   selected_option_id: number | null;
   selected_option_text: string | null;
-  is_correct: boolean;
+  /**
+   * Whether this answer was right — null until `answers_revealed`. Even a plain
+   * right/wrong per question lets a student rebuild the key across retries, so
+   * before then the student gets their score only.
+   */
+  is_correct: boolean | null;
   /**
    * The right answer — present ONLY once revealing it can no longer help:
    * the student passed, or has no attempts left. Otherwise null, because
@@ -97,5 +102,10 @@ export interface PaperAttemptResult extends PaperAttempt {
   score_percent: number;
   is_passed: boolean;
   submitted_at: string;
+  /**
+   * True once the student passed or ran out of attempts. Until then every
+   * answer's correctness is null and the result screen shows the score only.
+   */
+  answers_revealed: boolean;
   answers: PaperAnswerResult[];
 }

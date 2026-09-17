@@ -263,6 +263,7 @@ Established on the Q&A paper (`course_question_options.is_correct`).
 
 - **An API Resource that carries an answer key is admin-only.** `CourseQuestionOptionResource` includes `is_correct` because only admins read that endpoint. Any student-facing endpoint over the same data needs its **own** Resource that omits it — a frontend that simply doesn't render the field still ships the answers in the network tab.
 - **Grading happens on the backend.** Never send the correct answers to a student client and compare there.
+- **Per-answer right/wrong is part of the answer key.** A result that marks each of a student's answers correct or incorrect lets them rebuild the key by retrying. Before the student has passed or used every attempt, a result carries the score only (`answers_revealed: false`, every `is_correct` null).
 - **Rules the array syntax can't express go in a Form Request `after()` hook**, not the Service — e.g. "exactly one correct answer per question". Mirror them in the Zod schema too, so the admin sees the problem before saving, but the backend stays the enforcement point (§7.3).
 
 ### Payments & Purchasables (non-negotiable)

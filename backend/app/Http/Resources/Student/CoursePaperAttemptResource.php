@@ -11,9 +11,9 @@ use Illuminate\Http\Resources\Json\JsonResource;
 /**
  * A started (or finished) attempt.
  *
- * The per-answer breakdown only appears once the attempt is submitted, and the
- * correct answers within it only once revealing them can no longer help — see
- * {@see CoursePaperAnswerResource}.
+ * The per-answer breakdown only appears once the attempt is submitted, and any
+ * sign of which answers were right only once revealing it can no longer help —
+ * see {@see CoursePaperAnswerResource}. Until then the student gets the score.
  *
  * @mixin CoursePaperAttempt
  */
@@ -38,6 +38,8 @@ class CoursePaperAttemptResource extends JsonResource
             'is_passed' => $this->is_passed,
             'started_at' => $this->started_at?->toIso8601String(),
             'submitted_at' => $this->submitted_at?->toIso8601String(),
+            // Said outright, so the app never has to infer "score only" from nulls.
+            'answers_revealed' => $this->revealAnswers,
             'answers' => $this->whenLoaded(
                 'answers',
                 fn () => $this->answers->map(

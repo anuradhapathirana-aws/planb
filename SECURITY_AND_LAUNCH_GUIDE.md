@@ -571,7 +571,17 @@ Note: switching `PAYMENT_GATEWAY` while card payments are pending means their ca
 
 **Done when:** tests: sandbox webhook in `production` and `staging` envs → 404, order unchanged.
 
-### [ ] P2-5 Paper result leaks the answer key
+### [x] P2-5 Paper result leaks the answer key — done 2026-09-17
+
+**Built:** `CoursePaperAnswerResource` sends `is_correct` only when `$reveal` (docblock rewritten);
+`CoursePaperAttemptResource` adds `answers_revealed`; shared `PaperAnswerResult.is_correct` is
+`boolean | null` and `PaperAttemptResult.answers_revealed` added; mobile result screen
+(`app/paper/result/[attemptId].tsx`) shows score + `paper.answersHidden` note instead of the list
+while not revealed; `StudentPaperTest` updated (both states) plus a new partly-correct-fail test
+covering submit and GET result; root CLAUDE.md "Answer Keys" gains the per-answer rule.
+**Residual risk (documented, not fixed):** the score still changes with a single changed answer, so
+unlimited retries allow a slow one-answer-at-a-time search. Mitigation is an admin setting — a
+**Max attempts** on each paper — not code. Worth raising with the client before launch.
 
 **Where:** `Resources/Student/CoursePaperAnswerResource.php:42` (always sends `is_correct`),
 `CoursePaperAttemptService::mayRevealAnswers()` (~line 209), test

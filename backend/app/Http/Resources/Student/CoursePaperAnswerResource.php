@@ -11,13 +11,16 @@ use Illuminate\Http\Resources\Json\JsonResource;
 /**
  * One graded answer.
  *
- * The student is always told whether *their own* answer was right — that is the
- * point of taking the paper. The **correct** option is a different matter: hand
- * it over after a failed attempt and unlimited retries become meaningless,
- * because the student just reads the answers off the result screen. So it
- * appears only when it can no longer be used to cheat — they passed, or they
- * have no attempts left. `$reveal` is decided by
- * `CoursePaperAttemptService::mayRevealAnswers()`.
+ * **Nothing about correctness leaves the server until it can no longer help** —
+ * the student passed, or has no attempts left (`$reveal`, decided by
+ * `CoursePaperAttemptService::mayRevealAnswers()`). Until then `is_correct` is
+ * null along with the correct option, and the student sees their score only.
+ *
+ * It used to send `is_correct` on every attempt, on the reasoning that a student
+ * should always know whether their own answer was right. With retries, that is
+ * the answer key by another route: a two-option question is settled in one
+ * submission, and a whole paper in a handful — no need to ever see the correct
+ * option. The client decided on score-only (launch guide §1).
  *
  * @mixin CoursePaperAnswer
  */
@@ -39,7 +42,7 @@ class CoursePaperAnswerResource extends JsonResource
             'question_text' => $this->question_text_snapshot,
             'selected_option_id' => $this->course_question_option_id,
             'selected_option_text' => $this->option_text_snapshot,
-            'is_correct' => $this->is_correct,
+            'is_correct' => $this->reveal ? $this->is_correct : null,
             'correct_option_id' => $correctOption?->id,
             'correct_option_text' => $correctOption?->text,
         ];

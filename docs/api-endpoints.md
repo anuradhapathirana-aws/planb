@@ -317,7 +317,9 @@ Playback bytes are still served by the existing `GET /api/v1/course-videos/{vide
 | POST | `/student/paper-attempts/{attempt}/submit` | `{ answers: [{ question_id, option_id }] }` → the graded result. |
 | GET | `/student/paper-attempts/{attempt}` | Result detail. |
 
-**`is_correct` never appears in a student payload.** `StudentQuestionOptionResource` omits it, and a test asserts the string is absent from the response body entirely. A client that merely doesn't render the field still ships the answer key in the network tab.
+**`is_correct` never appears on a question option in a student payload.** `StudentQuestionOptionResource` omits it, and a test asserts the string is absent from the response body entirely. A client that merely doesn't render the field still ships the answer key in the network tab.
+
+**A result is score-only until the answers can no longer help** — the student passed, or has no attempts left (`CoursePaperAttemptService::mayRevealAnswers`). The result carries `answers_revealed`; while it is false, every answer's `is_correct`, `correct_option_id` and `correct_option_text` are **null**. Per-answer right/wrong is part of the key: with retries it rebuilds the whole paper. `score_percent` and `correct_answers` are always sent. (Until 2026-09-17 `is_correct` was sent on every attempt.)
 
 **Grading is server-side.** `submit` checks that every question is answered and that each `option_id` belongs to its `question_id` *and* to this paper — that last check is the tamper guard, and it is why the Form Request has no `exists:` rule (which would accept any option id in the database).
 

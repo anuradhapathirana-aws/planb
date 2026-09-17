@@ -17,11 +17,12 @@ import { Text } from '@/components/ui/Text';
 /**
  * The result.
  *
- * The correct answers appear here only when the backend chose to send them —
- * on a pass, or once attempts run out. On a failed attempt with retries left
- * `correct_option_id` is null, because showing it would turn every retry into
- * a copying exercise. The client simply renders what it was given; it has no
- * way to reveal more.
+ * The per-question breakdown appears only when the backend says so
+ * (`answers_revealed`) — on a pass, or once attempts run out. On a failed
+ * attempt with retries left the student sees their score and nothing per
+ * question: even a plain right/wrong mark lets a student work out the key by
+ * retrying. The backend sends no correctness in that case, so the client has
+ * nothing to reveal.
  */
 export default function PaperResultScreen() {
   const { t } = useTranslation();
@@ -112,8 +113,16 @@ export default function PaperResultScreen() {
         )}
       </View>
 
+      {!data.answers_revealed && (
+        <Card className="mt-8 p-4">
+          <Text variant="caption" className="text-center leading-5">
+            {t('paper.answersHidden')}
+          </Text>
+        </Card>
+      )}
+
       <View className="mt-8 gap-3">
-        {data.answers.map((answer) => (
+        {(data.answers_revealed ? data.answers : []).map((answer) => (
           <Card key={answer.question_id} className="p-4">
             <View className="flex-row items-start gap-2.5">
               {answer.is_correct ? (

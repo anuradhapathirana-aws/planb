@@ -146,8 +146,11 @@ class StudentPaperTest extends TestCase
             'answers' => $this->answers('wrong'),
         ])->assertOk();
 
+        // Score only: not even whether each of their own answers was right.
         $failed->assertJsonPath('data.is_passed', false);
-        $failed->assertJsonPath('data.answers.0.is_correct', false);
+        $failed->assertJsonPath('data.score_percent', 0);
+        $failed->assertJsonPath('data.answers_revealed', false);
+        $failed->assertJsonPath('data.answers.0.is_correct', null);
         $failed->assertJsonPath('data.answers.0.correct_option_id', null);
         $failed->assertJsonPath('data.answers.0.correct_option_text', null);
 
@@ -158,7 +161,46 @@ class StudentPaperTest extends TestCase
         ])->assertOk();
 
         $passed->assertJsonPath('data.is_passed', true);
+        $passed->assertJsonPath('data.answers_revealed', true);
+        $passed->assertJsonPath('data.answers.0.is_correct', true);
         $passed->assertJsonPath('data.answers.0.correct_option_id', $this->questions[0]['correct']->id);
+    }
+
+    /**
+     * The leak this closes: a per-answer right/wrong on a failed attempt lets a
+     * student rebuild the key by resubmitting. A partly-correct fail is the case
+     * where it would have told them the most, so neither the submit response nor
+     * a later look at the result may carry any per-answer correctness.
+     */
+    public function test_a_failed_attempt_with_retries_left_carries_no_per_answer_correctness(): void
+    {
+        $this->paper->update(['pass_mark' => 100]);
+        $attemptId = $this->startAttempt();
+
+        $mixed = [
+            ['question_id' => $this->questions[0]['question']->id, 'option_id' => $this->questions[0]['correct']->id],
+            ['question_id' => $this->questions[1]['question']->id, 'option_id' => $this->questions[1]['wrong']->id],
+        ];
+
+        $responses = [
+            $this->postJson("/api/v1/student/paper-attempts/{$attemptId}/submit", ['answers' => $mixed])->assertOk(),
+            $this->getJson("/api/v1/student/paper-attempts/{$attemptId}")->assertOk(),
+        ];
+
+        foreach ($responses as $response) {
+            $response->assertJsonPath('data.is_passed', false)
+                ->assertJsonPath('data.score_percent', 50)
+                ->assertJsonPath('data.answers_revealed', false);
+
+            foreach ($response->json('data.answers') as $answer) {
+                $this->assertNull($answer['is_correct']);
+                $this->assertNull($answer['correct_option_id']);
+                $this->assertNull($answer['correct_option_text']);
+            }
+
+            $this->assertStringNotContainsString('"is_correct":true', (string) $response->getContent());
+            $this->assertStringNotContainsString('"is_correct":false', (string) $response->getContent());
+        }
     }
 
     // ------------------------------------------------------------------ grading
@@ -291,6 +333,8 @@ class StudentPaperTest extends TestCase
 
         $this->getJson("/api/v1/student/paper-attempts/{$attemptId}")
             ->assertOk()
+            ->assertJsonPath('data.answers_revealed', true)
+            ->assertJsonPath('data.answers.0.is_correct', false)
             ->assertJsonPath('data.answers.0.correct_option_id', $this->questions[0]['correct']->id);
     }
 
