@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/Button';
 import { OtpInput } from '@/components/ui/OtpInput';
 import { Text } from '@/components/ui/Text';
 import { useToast } from '@/components/ui/Toast';
-import { queryClient } from '@/lib/queryClient';
+import { resetTo } from '@/lib/resetTo';
 import { useAuthStore } from '@/stores/authStore';
 
 /** Matches the server's `resend_after_seconds`; the throttle is the real limit. */
@@ -61,9 +61,8 @@ export default function DeleteAccountScreen() {
        * try to rotate a token that no longer exists.
        */
       await signOutLocal();
-      queryClient.clear();
       toast.success(t('account.deleted'));
-      router.replace('/sign-in');
+      resetTo('/sign-in');
     },
     onError: (err) => {
       submitted.current = false;

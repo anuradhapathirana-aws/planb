@@ -1,7 +1,7 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
 
 import { API_BASE_URL } from '@/lib/env';
-import { clearSession, loadSession, saveSession } from '@/lib/secureStore';
+import { loadSession, saveSession } from '@/lib/secureStore';
 
 /**
  * The one HTTP client. Every network call goes through a typed function in
@@ -119,7 +119,13 @@ apiClient.interceptors.response.use(
         return apiClient.request(config);
       }
 
-      await clearSession();
+      /*
+       * Only the in-memory token is dropped here, so nothing else goes out with
+       * it. The rest of the sign-out — the Keystore, the cached data of the
+       * student this token belonged to, their profile in the store — is
+       * `authStore.signOut()`, which the handler calls. `src/api` must not
+       * import the store (the store imports this file).
+       */
       setAccessToken(null);
       onUnauthenticated?.();
     }

@@ -58,6 +58,7 @@
 | Paper results | **Score only** until the student has no attempts left or has passed; then per-question feedback + correct answers. |
 | Student photos | Private (signed URLs). "Other learners" strip shows **initials only**, no faces. |
 | Extra hardening in this release | Server-enforced lesson order · Admin TOTP 2FA · Sentry crash reporting (mobile) |
+| Phase 3 timing (2026-09-17) | **Before the first Play upload:** P3-1, P3-7, P3-8. **During the closed test, as updates:** P3-2, P3-3, P3-4, P3-11. P3-5, P3-6, P3-9 (admin web) and P3-10 (payments off) do not gate Play. Step-by-step Play setup: `docs/play-store-launch.md`. |
 | Deferred | Laravel 11 → 12 upgrade (11 is out of security support) — first task after launch. |
 | Approved new packages | `pragmarx/google2fa` (backend) · `@sentry/react-native` via `npx expo install` (mobile). Anything else: ASK. |
 
@@ -625,7 +626,32 @@ ranges or use `*` only when the origin firewall allows Cloudflare IPs exclusivel
 
 ## PHASE 3 — Medium
 
-### [ ] P3-1 Previous account's data visible after signing in as someone else (mobile)
+### [x] P3-1 Previous account's data visible after signing in as someone else (mobile) — code done 2026-09-17, device test pending
+
+**Built:** `authStore.signIn` calls `queryClient.clear()` before saving the new token.
+`authStore.signOut` is the one full wipe: drops the in-memory token first, clears SecureStore, the
+query cache, and expo-image memory (awaited) + disk (fire-and-forget) caches, then nulls `student`.
+`profile.tsx` and `delete-account.tsx` no longer duplicate `queryClient.clear()`. `client.ts` drops
+only the in-memory token on a failed refresh and calls the handler; the `_layout.tsx` handler calls
+`signOut()` (skipped when `isSigningOut`, so a 401 burst signs out once) and still leaves routing to
+the launch gate. New `src/features/auth/useLeaveIfSignedIn.ts` on sign-in and verify — "signed in"
+means `student !== null` (server-confirmed), read once at mount, so a dead or suspended restored token
+never bounces the student into the tabs. New `src/lib/resetTo.ts` (`dismissAll` + `replace`) for
+every sign-in/sign-out navigation, so the back button can't cross the session boundary.
+No automated test: `mobile/` has no test runner (adding Jest is an ASK). `npx tsc --noEmit` passes;
+`npm run lint` cannot run (`eslint` is not installed in `mobile/`).
+**Device test (release or dev build, two student accounts A and B):**
+1. Sign in as A, open Profile, Courses, Checklists, Wishlist, Edit Profile. Sign out, sign in as B:
+   every screen shows B only — no flash of A — and Edit Profile is prefilled with B's details.
+2. Signed in, press Android back on Home: the app closes, it does not show sign-in.
+3. Signed out, press back on sign-in: the app closes, it does not show A's screens.
+4. Signed in, open `adb shell am start -a android.intent.action.VIEW -d "planb://verify?email=x@y.z"`:
+   the code screen closes straight back to where you were.
+5. While A is on Home, delete A's tokens in `php artisan tinker`
+   (`App\Models\Student::where('email', 'A…')->first()->tokens()->delete();`), then pull to refresh:
+   lands on sign-in once (no flicker loop), and signing in as B shows B's data. (Blocking A is not
+   this test — a blocked student gets 403, not 401.)
+6. Google sign-in still lands on Home, with back closing the app.
 
 **Where:** `mobile/src/stores/authStore.ts:62-67` (`signIn` doesn't clear cache — `queryClient`
 isn't even imported), `app/sign-in.tsx`, `app/verify.tsx` (neither reads `useAuthStore`, so both
@@ -897,7 +923,8 @@ git pull && composer install --no-dev -o && php artisan migrate --force \
 
 ## PHASE R — Build, test, release (Personal account rules)
 
-- [ ] **R-1** All Phase 1 + Phase 2 tasks done and deployed to the production server.
+- [ ] **R-1** All Phase 1 + Phase 2 tasks, plus P3-1, P3-7 and P3-8, done and deployed to the
+  production server.
 - [ ] **R-2** `eas build --profile production --platform android` → `eas submit --profile
   production` (internal track). Install from Play on real phones (Android 10 and 14 at least).
 - [ ] **R-3** Release smoke test (R8 shrinking can break things only in release):

@@ -29,7 +29,7 @@ import { ProfileHeader } from '@/features/profile/ProfileHeader';
 import { ProfileStats } from '@/features/profile/ProfileStats';
 import { useServicePurchases } from '@/features/services/useServices';
 import { useWishlist } from '@/features/wishlist/useWishlist';
-import { queryClient } from '@/lib/queryClient';
+import { resetTo } from '@/lib/resetTo';
 import { openExternalUrl } from '@/lib/webBrowser';
 import { useStatusBarStyle } from '@/lib/useStatusBarStyle';
 import { useAuthStore } from '@/stores/authStore';
@@ -92,8 +92,7 @@ export default function ProfileScreen() {
      */
     onSettled: async () => {
       await signOutLocal();
-      queryClient.clear();
-      router.replace('/sign-in');
+      resetTo('/sign-in');
     },
   });
 

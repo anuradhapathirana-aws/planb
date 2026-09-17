@@ -3,7 +3,7 @@ import '../global.css';
 import { useEffect, useRef, useState } from 'react';
 import { ScrollView, Text as RNText, View } from 'react-native';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { Stack, router, useSegments, type ErrorBoundaryProps } from 'expo-router';
+import { Stack, useSegments, type ErrorBoundaryProps } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as ScreenCapture from 'expo-screen-capture';
 import * as ScreenOrientation from 'expo-screen-orientation';
@@ -34,6 +34,7 @@ import i18n from '@/lib/i18n';
 import { registerUnauthenticatedHandler } from '@/api/client';
 import { ToastProvider } from '@/components/ui/Toast';
 import { queryClient } from '@/lib/queryClient';
+import { resetTo } from '@/lib/resetTo';
 import { useAuthStore } from '@/stores/authStore';
 
 void SplashScreen.preventAutoHideAsync();
@@ -247,8 +248,8 @@ export default function RootLayout() {
   }, [bootstrap]);
 
   /*
-   * When a token can no longer be refreshed the API client clears it and calls
-   * this. Routing lives here rather than in the client so that `src/api` has no
+   * When a token can no longer be refreshed the API client drops it and calls
+   * this, which signs the student out properly. Routing lives here rather than in the client so that `src/api` has no
    * dependency on navigation.
    */
   const segments = useSegments();
@@ -259,14 +260,29 @@ export default function RootLayout() {
   useEffect(() => {
     registerUnauthenticatedHandler(() => {
       /*
+       * A burst of parallel requests all 401 together; the first one's sign-out
+       * covers the rest. Also true when the student tapped "sign out" and the
+       * screen doing that is already on its way to sign-in.
+       */
+      const { isSigningOut, signOut } = useAuthStore.getState();
+
+      if (isSigningOut) return;
+
+      /*
        * The launch gate (`app/index.tsx`, no segments) sends a signed-out
        * student to sign-in itself once the intro has played. Redirecting from
-       * here would cut the intro off for exactly those students.
+       * here would cut the intro off for exactly those students. Read now, not
+       * after the await: by then the gate may already have moved on.
        */
-      if (segmentsRef.current.length === 0) return;
+      const onLaunchGate = segmentsRef.current.length === 0;
 
-      queryClient.clear();
-      router.replace('/sign-in');
+      void (async () => {
+        // The whole sign-out, not a copy of its steps: a partial one left the
+        // previous student's profile in the store.
+        await signOut();
+
+        if (!onLaunchGate) resetTo('/sign-in');
+      })();
     });
 
     return () => registerUnauthenticatedHandler(null);

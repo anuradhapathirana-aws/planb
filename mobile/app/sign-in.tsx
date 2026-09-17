@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Text } from '@/components/ui/Text';
 import { useToast } from '@/components/ui/Toast';
+import { useLeaveIfSignedIn } from '@/features/auth/useLeaveIfSignedIn';
 import { useAppConfig } from '@/features/intro/useAppConfig';
 import { useLegalLinks } from '@/features/legal/useLegalLinks';
 import { openExternalUrl } from '@/lib/webBrowser';
@@ -64,6 +65,7 @@ export default function SignInScreen() {
   const insets = useSafeAreaInsets();
   const appConfig = useAppConfig();
   const legal = useLegalLinks();
+  const leaving = useLeaveIfSignedIn();
 
   // The navy panel runs under the clock on this screen, so the glyphs go white.
   useStatusBarStyle('light');
@@ -101,6 +103,8 @@ export default function SignInScreen() {
     setError(undefined);
     mutation.mutate(parsed.data.email);
   }
+
+  if (leaving) return null;
 
   return (
     <KeyboardAvoidingView

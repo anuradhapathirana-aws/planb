@@ -14,6 +14,8 @@ import { Button } from '@/components/ui/Button';
 import { OtpInput } from '@/components/ui/OtpInput';
 import { Text } from '@/components/ui/Text';
 import { useToast } from '@/components/ui/Toast';
+import { useLeaveIfSignedIn } from '@/features/auth/useLeaveIfSignedIn';
+import { resetTo } from '@/lib/resetTo';
 import { useAuthStore } from '@/stores/authStore';
 
 const RESEND_SECONDS = 60;
@@ -23,6 +25,7 @@ export default function VerifyScreen() {
   const toast = useToast();
   const insets = useSafeAreaInsets();
   const signIn = useAuthStore((state) => state.signIn);
+  const leaving = useLeaveIfSignedIn();
 
   const { email } = useLocalSearchParams<{ email: string }>();
 
@@ -51,7 +54,7 @@ export default function VerifyScreen() {
       verifyLoginCode(email ?? '', value, Device.modelName ?? undefined),
     onSuccess: async (session) => {
       await signIn(session.token, session.expires_at, session.student);
-      router.replace('/(tabs)');
+      resetTo('/(tabs)');
     },
     onError: (err) => {
       submitted.current = false;
@@ -81,6 +84,8 @@ export default function VerifyScreen() {
     submitted.current = true;
     verify.mutate(value);
   }
+
+  if (leaving) return null;
 
   return (
     <KeyboardAvoidingView

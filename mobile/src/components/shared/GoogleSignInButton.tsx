@@ -1,9 +1,9 @@
-import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 
 import { errorMessage } from '@/api/client';
 import { GoogleButton } from '@/components/shared/GoogleButton';
 import { useToast } from '@/components/ui/Toast';
+import { resetTo } from '@/lib/resetTo';
 import { useGoogleSignIn } from '@/lib/useGoogleSignIn';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -40,7 +40,7 @@ export function GoogleSignInButton({ disabled = false }: GoogleSignInButtonProps
        * having, is how you lose them.
        */
       toast.success(session.is_new_student ? t('auth.welcome') : t('auth.welcomeBack'));
-      router.replace('/(tabs)');
+      resetTo('/(tabs)');
     },
     onError: (error) => {
       toast.error(errorMessage(error, t('common.genericError')));
