@@ -21,6 +21,14 @@ export async function fetchOrderStats(): Promise<OrderStats> {
   return data.data;
 }
 
+/** A short-lived signed link to a bank-transfer slip. Minted per click, never cached. */
+export async function fetchPaymentReceiptLink(paymentId: number): Promise<{ url: string; expires_at: string }> {
+  const { data } = await apiClient.get<ApiResource<{ url: string; expires_at: string }>>(
+    `/admin/payments/${paymentId}/receipt-link`,
+  );
+  return data.data;
+}
+
 export async function approveBankTransfer(paymentId: number, remark?: string): Promise<Payment> {
   const { data } = await apiClient.post<ApiResource<Payment>>(`/admin/payments/${paymentId}/approve`, { remark });
   return data.data;

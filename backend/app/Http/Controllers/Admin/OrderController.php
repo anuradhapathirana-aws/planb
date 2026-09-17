@@ -14,6 +14,7 @@ use App\Http\Resources\PaymentResource;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Services\Payment\OrderService;
+use App\Services\Payment\PaymentReceiptService;
 use App\Services\Payment\PaymentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -23,7 +24,22 @@ class OrderController extends Controller
     public function __construct(
         private readonly OrderService $orders,
         private readonly PaymentService $payments,
+        private readonly PaymentReceiptService $receipts,
     ) {}
+
+    /**
+     * A fresh 10-minute link to a bank-transfer slip, minted when the admin
+     * clicks — the same pattern as student documents, so a sheet left open
+     * never offers a link that has already expired.
+     */
+    public function receiptLink(Payment $payment): JsonResponse
+    {
+        $this->authorize('view', $payment->order);
+
+        abort_unless($payment->hasReceipt(), 404, 'This payment has no receipt.');
+
+        return response()->json(['data' => $this->receipts->link($payment)]);
+    }
 
     public function index(Request $request): JsonResponse
     {

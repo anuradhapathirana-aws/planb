@@ -18,6 +18,7 @@ export interface StudentPayment {
   status: PaymentStatus;
   /** The reference the student typed off their bank slip. Null for card. */
   reference_number: string | null;
+  /** A signed link that stops working 10 minutes after the order was fetched. Null with no slip. */
   receipt_url: string | null;
   /** Why a transfer was rejected, so the student knows what to fix. */
   review_remark: string | null;

@@ -15,7 +15,12 @@ export interface Payment {
   status: PaymentStatus;
   /** Student-entered bank reference. Null for card payments. */
   reference_number: string | null;
-  receipt_url: string | null;
+  /**
+   * Whether a slip is on file. There is no URL here on purpose: receipts are
+   * private, and the panel asks `/admin/payments/{id}/receipt-link` for a
+   * 10-minute link at the moment "View receipt" is clicked.
+   */
+  has_receipt: boolean;
   /** True while this bank transfer is sitting in the admin queue. */
   is_awaiting_review: boolean;
   review_remark: string | null;

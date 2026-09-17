@@ -20,6 +20,7 @@ use App\Http\Controllers\Admin\StudentManagementController;
 use App\Http\Controllers\BunnyStreamWebhookController;
 use App\Http\Controllers\CheckoutRedirectController;
 use App\Http\Controllers\CourseVideoPlaybackController;
+use App\Http\Controllers\PaymentReceiptController;
 use App\Http\Controllers\PaymentWebhookController;
 use App\Http\Controllers\StudentDocumentController;
 use Illuminate\Support\Facades\Route;
@@ -133,6 +134,8 @@ Route::prefix('v1/admin')->group(function () {
         Route::get('/orders/stats', [OrderController::class, 'stats']);
         Route::get('/orders', [OrderController::class, 'index']);
         Route::get('/orders/{order}', [OrderController::class, 'show']);
+        // Minted on click, like student documents: the link lives 10 minutes.
+        Route::get('/payments/{payment}/receipt-link', [OrderController::class, 'receiptLink']);
         Route::post('/payments/{payment}/approve', [OrderController::class, 'approve']);
         Route::post('/payments/{payment}/reject', [OrderController::class, 'reject']);
 
@@ -214,6 +217,10 @@ Route::prefix('v1')->group(function () {
     Route::post('/videos/bunny/webhook', BunnyStreamWebhookController::class)
         ->name('videos.bunny.webhook')
         ->middleware('throttle:120,1');
+
+    Route::get('/payments/{payment}/receipt', PaymentReceiptController::class)
+        ->name('payments.receipt.show')
+        ->middleware(['signed', 'throttle:60,1']);
 
     Route::get('/students/{student}/documents/{document}', StudentDocumentController::class)
         ->name('student-documents.show')

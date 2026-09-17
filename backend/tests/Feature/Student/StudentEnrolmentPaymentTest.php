@@ -253,6 +253,7 @@ class StudentEnrolmentPaymentTest extends TestCase
     public function test_submitting_a_bank_transfer_awaits_verification_rather_than_granting_access(): void
     {
         Storage::fake('public');
+        Storage::fake('payment_receipts');
 
         $orderId = $this->postJson("/api/v1/student/courses/{$this->paidCourse->id}/enrol")->json('data.order.id');
 
@@ -280,6 +281,7 @@ class StudentEnrolmentPaymentTest extends TestCase
     public function test_a_bank_transfer_reference_must_be_4_to_30_digits(): void
     {
         Storage::fake('public');
+        Storage::fake('payment_receipts');
 
         $orderId = $this->postJson("/api/v1/student/courses/{$this->paidCourse->id}/enrol")->json('data.order.id');
 
@@ -298,6 +300,7 @@ class StudentEnrolmentPaymentTest extends TestCase
     public function test_a_bank_transfer_reference_keeps_its_leading_zeros(): void
     {
         Storage::fake('public');
+        Storage::fake('payment_receipts');
 
         $orderId = $this->postJson("/api/v1/student/courses/{$this->paidCourse->id}/enrol")->json('data.order.id');
 
@@ -312,6 +315,7 @@ class StudentEnrolmentPaymentTest extends TestCase
     public function test_a_bank_transfer_slip_may_be_a_pdf(): void
     {
         Storage::fake('public');
+        Storage::fake('payment_receipts');
 
         $orderId = $this->postJson("/api/v1/student/courses/{$this->paidCourse->id}/enrol")->json('data.order.id');
 
@@ -331,6 +335,7 @@ class StudentEnrolmentPaymentTest extends TestCase
     public function test_a_bank_transfer_slip_must_be_a_jpg_png_or_pdf(): void
     {
         Storage::fake('public');
+        Storage::fake('payment_receipts');
 
         $orderId = $this->postJson("/api/v1/student/courses/{$this->paidCourse->id}/enrol")->json('data.order.id');
 
@@ -355,6 +360,7 @@ class StudentEnrolmentPaymentTest extends TestCase
     public function test_a_bank_transfer_is_refused_while_an_admin_has_it_switched_off(): void
     {
         Storage::fake('public');
+        Storage::fake('payment_receipts');
         CompanySetting::query()->update(['bank_transfer_enabled' => false]);
 
         $orderId = $this->postJson("/api/v1/student/courses/{$this->paidCourse->id}/enrol")->json('data.order.id');
@@ -370,6 +376,7 @@ class StudentEnrolmentPaymentTest extends TestCase
     public function test_only_one_bank_transfer_may_wait_in_the_queue_at_a_time(): void
     {
         Storage::fake('public');
+        Storage::fake('payment_receipts');
 
         $orderId = $this->postJson("/api/v1/student/courses/{$this->paidCourse->id}/enrol")->json('data.order.id');
 

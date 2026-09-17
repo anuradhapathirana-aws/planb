@@ -28,6 +28,9 @@ class Payment extends Model implements HasMedia
     /** Bank transfer proof (FR-MOB-033): image or PDF. */
     public const RECEIPT_COLLECTION = 'receipt';
 
+    /** Private: receipts are only ever served through a signed link (PaymentReceiptService). */
+    public const RECEIPT_DISK = 'payment_receipts';
+
     protected $fillable = [
         'order_id',
         'method',
@@ -73,13 +76,19 @@ class Payment extends Model implements HasMedia
     public function registerMediaCollections(): void
     {
         $this->addMediaCollection(self::RECEIPT_COLLECTION)
+            ->useDisk(self::RECEIPT_DISK)
             ->singleFile()
             ->acceptsMimeTypes(['image/jpeg', 'image/png', 'application/pdf']);
     }
 
-    public function getReceiptUrlAttribute(): ?string
+    /*
+     * Deliberately no `receipt_url` accessor. A Media URL on this disk would not
+     * work, and on the old public disk it was the problem: anyone could read a
+     * slip by guessing `/storage/{id}/receipt-{id}.jpg`.
+     */
+    public function hasReceipt(): bool
     {
-        return $this->getFirstMedia(self::RECEIPT_COLLECTION)?->getUrl();
+        return $this->getFirstMedia(self::RECEIPT_COLLECTION) !== null;
     }
 
     public function isBankTransfer(): bool

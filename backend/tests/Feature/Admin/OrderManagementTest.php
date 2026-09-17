@@ -42,6 +42,7 @@ class OrderManagementTest extends TestCase
 
         config()->set('payments.gateway', 'sandbox');
         Storage::fake('public');
+        Storage::fake('payment_receipts');
 
         foreach (RoleName::values() as $role) {
             Role::firstOrCreate(['name' => $role, 'guard_name' => 'web']);
@@ -128,7 +129,8 @@ class OrderManagementTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.payments.0.reference_number', '55440001')
             ->assertJsonPath('data.payments.0.is_awaiting_review', true)
-            ->assertJsonPath('data.payments.0.receipt_url', fn (?string $url) => $url !== null);
+            ->assertJsonPath('data.payments.0.has_receipt', true)
+            ->assertJsonMissingPath('data.payments.0.receipt_url');
     }
 
     public function test_approving_a_transfer_marks_the_order_paid_and_enrols_the_student(): void

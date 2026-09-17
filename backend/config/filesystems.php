@@ -60,6 +60,17 @@ return [
             'report' => false,
         ],
 
+        // Bank-transfer slips. Payment evidence with names and account numbers on
+        // it: no `url`, private visibility, and every read goes through the
+        // short-lived signed receipt route (PaymentReceiptService).
+        'payment_receipts' => [
+            'driver' => 'local',
+            'root' => storage_path('app/payment-receipts'),
+            'visibility' => 'private',
+            'throw' => false,
+            'report' => false,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

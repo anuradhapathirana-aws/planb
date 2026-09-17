@@ -271,6 +271,7 @@ php artisan migrate --force                        # NEVER --seed in production
 php artisan db:seed --class=RoleSeeder --force     # roles only; safe and required
 php artisan storage:link
 php artisan config:cache && php artisan route:cache && php artisan view:cache
+php artisan payments:migrate-receipts              # only if data was copied from an older install; safe to re-run
 php artisan admin:create                           # your real Super Admin, password typed at the prompt
 ```
 

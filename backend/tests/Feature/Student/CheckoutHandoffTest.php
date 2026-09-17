@@ -224,6 +224,7 @@ class CheckoutHandoffTest extends TestCase
     public function test_a_card_payment_is_refused_while_a_transfer_is_being_checked(): void
     {
         Storage::fake('public');
+        Storage::fake('payment_receipts');
 
         $orderId = $this->openOrder();
 

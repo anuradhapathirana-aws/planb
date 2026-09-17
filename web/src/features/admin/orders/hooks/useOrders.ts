@@ -1,6 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { approveBankTransfer, fetchOrder, fetchOrders, fetchOrderStats, rejectBankTransfer } from '@/api/orders.api';
+import {
+  approveBankTransfer,
+  fetchOrder,
+  fetchOrders,
+  fetchOrderStats,
+  fetchPaymentReceiptLink,
+  rejectBankTransfer,
+} from '@/api/orders.api';
 import type { OrderListFilters } from '@shared/types/order';
 
 export function useOrders(filters: OrderListFilters) {
@@ -16,6 +23,21 @@ export function useOrder(id: number | null) {
     queryKey: ['orders', 'detail', id],
     queryFn: () => fetchOrder(id!),
     enabled: !!id,
+  });
+}
+
+/**
+ * Opens a bank-transfer slip in a new tab. A mutation rather than a query, as
+ * with student documents: the signed link lives 10 minutes, so it is minted at
+ * the moment of the click and never served from cache.
+ */
+export function useOpenPaymentReceipt() {
+  return useMutation({
+    mutationFn: (paymentId: number) => fetchPaymentReceiptLink(paymentId),
+    onSuccess: ({ url }) => {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    },
+    onError: () => toast.error('Could not open the receipt. Please try again.'),
   });
 }
 

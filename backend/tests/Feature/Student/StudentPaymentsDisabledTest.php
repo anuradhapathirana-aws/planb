@@ -117,6 +117,7 @@ class StudentPaymentsDisabledTest extends TestCase
     public function test_a_bank_transfer_on_an_existing_order_is_refused(): void
     {
         Storage::fake('public');
+        Storage::fake('payment_receipts');
         $orderId = $this->existingOrder();
 
         $this->postJson("/api/v1/student/orders/{$orderId}/bank-transfer", [

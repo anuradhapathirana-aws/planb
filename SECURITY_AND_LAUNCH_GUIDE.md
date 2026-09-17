@@ -468,7 +468,26 @@ relies on `APP_ENV` — the deployment guide says to check it.
 
 **Done when:** test: `db:seed` in production env throws and creates no admin.
 
-### [ ] P2-2 Bank-transfer receipts are public, guessable, and client-chosen extension
+### [x] P2-2 Bank-transfer receipts are public, guessable, and client-chosen extension — done 2026-09-17
+
+**Built:** `payment_receipts` disk (private, no `url`); `Payment` collection `useDisk`, public
+`receipt_url` accessor removed, `hasReceipt()` added; `App\Services\Payment\PaymentReceiptService`
+(`store` — type from bytes via Symfony MimeTypes, `jpg|png|pdf` only, images re-encoded with
+Intervention and capped at 2400px, UUID filename; `link` 10 min; `fileResponse` with nosniff,
+`private, no-store`, inline); `PaymentReceiptController` on signed route `payments.receipt.show`;
+`payments:migrate-receipts {--dry-run}`; 13 tests in `tests/Feature/Payment/PaymentReceiptTest.php`,
+plus `payment_receipts` faked in 4 existing payment test files.
+Differences from the plan below:
+- **Admin gets `has_receipt` + `GET /admin/payments/{payment}/receipt-link`** (minted on click,
+  `OrderPolicy::view`), not a signed URL inside the Resource — the same pattern as student CVs, so an
+  order sheet left open more than 10 minutes never holds a dead link. `web/` updated
+  (`useOpenPaymentReceipt`). The **student** Resource does carry the signed URL as `receipt_url`.
+- A link pointed at a **non-existent** payment id returns 404 (route binding runs before the
+  signature check); pointed at an existing one, 403. Neither serves anything.
+- A slip still on the public disk returns 404 from the signed route until migrated.
+
+**Before launch:** if any data is copied from a dev/staging install, run
+`php artisan payments:migrate-receipts` (listed in `docs/deployment.md`).
 
 **Where:** `backend/app/Models/Payment.php:75-82` (no `useDisk`, falls back to `public`),
 `PaymentService.php:388-393` (filename uses `getClientOriginalExtension()`),

@@ -46,6 +46,7 @@ class PaymentService
         private readonly ServicePurchaseService $servicePurchases,
         private readonly CompanySettingsService $companySettings,
         private readonly PaymentAvailability $availability,
+        private readonly PaymentReceiptService $receipts,
     ) {}
 
     /**
@@ -171,9 +172,8 @@ class PaymentService
                 'reference_number' => $referenceNumber,
             ]);
 
-            $payment->addMedia($receipt->getRealPath())
-                ->usingFileName($this->receiptFileName($payment, $receipt))
-                ->toMediaCollection(Payment::RECEIPT_COLLECTION);
+            // Private disk, random name, re-encoded; throws (rolling back) if the bytes aren't a slip.
+            $this->receipts->store($payment, $receipt->getRealPath());
 
             $order->update(['status' => OrderStatus::AwaitingVerification]);
 
@@ -386,12 +386,5 @@ class PaymentService
                 'payment' => 'This bank transfer has already been reviewed.',
             ]);
         }
-    }
-
-    private function receiptFileName(Payment $payment, UploadedFile $receipt): string
-    {
-        $extension = strtolower($receipt->getClientOriginalExtension()) ?: 'jpg';
-
-        return 'receipt-'.$payment->id.'.'.$extension;
     }
 }

@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { STATUS_LABELS, STATUS_VARIANTS } from '@/features/admin/orders/components/orderColumns';
-import { useOrder, useReviewBankTransfer } from '@/features/admin/orders/hooks/useOrders';
+import { useOpenPaymentReceipt, useOrder, useReviewBankTransfer } from '@/features/admin/orders/hooks/useOrders';
 import { formatDateTime, formatMoney } from '@shared/lib/formatters';
 import type { Order, Payment } from '@shared/types/order';
 
@@ -172,6 +172,7 @@ export function OrderDetailSheet({ order, onOpenChange, canReview }: OrderDetail
 function PaymentCard({ payment }: { payment: Payment }) {
   const isBank = payment.method === 'bank_transfer';
   const Icon = isBank ? Landmark : CreditCard;
+  const openReceipt = useOpenPaymentReceipt();
 
   return (
     <div className="space-y-2 rounded-lg border p-3">
@@ -218,12 +219,21 @@ function PaymentCard({ payment }: { payment: Payment }) {
         <p className="rounded-md bg-muted px-2.5 py-1.5 text-xs text-muted-foreground">{payment.review_remark}</p>
       )}
 
-      {payment.receipt_url && (
-        <Button asChild size="xs" variant="outline" className="w-full">
-          <a href={payment.receipt_url} target="_blank" rel="noopener noreferrer">
-            <Receipt className="size-3.5" /> View receipt
-            <ExternalLink className="size-3" />
-          </a>
+      {payment.has_receipt && (
+        <Button
+          size="xs"
+          variant="outline"
+          className="w-full"
+          disabled={openReceipt.isPending}
+          onClick={() => openReceipt.mutate(payment.id)}
+        >
+          {openReceipt.isPending ? (
+            <Loader2 className="size-3.5 animate-spin" />
+          ) : (
+            <Receipt className="size-3.5" />
+          )}{' '}
+          View receipt
+          <ExternalLink className="size-3" />
         </Button>
       )}
     </div>

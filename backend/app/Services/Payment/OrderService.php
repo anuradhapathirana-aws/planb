@@ -91,7 +91,8 @@ class OrderService
     public function list(array $filters): LengthAwarePaginator
     {
         $query = Order::query()
-            ->with(['student:id,student_id,full_name,email', 'payments', 'purchasable'])
+            // `payments.media` so each row's `has_receipt` is not a query of its own.
+            ->with(['student:id,student_id,full_name,email', 'payments.media', 'purchasable'])
             ->when(
                 filled($filters['search'] ?? null),
                 fn ($q) => $q->where(function ($inner) use ($filters): void {
