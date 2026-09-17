@@ -45,7 +45,7 @@ class StudentAccountService
     ];
 
     private const MEDIA_COLLECTIONS = [
-        'profile_photo',
+        Student::PHOTO_COLLECTION,
         Student::CV_COLLECTION,
         Student::PROFILE_VIDEO_COLLECTION,
     ];

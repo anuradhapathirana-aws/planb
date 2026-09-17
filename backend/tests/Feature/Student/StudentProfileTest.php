@@ -179,6 +179,7 @@ class StudentProfileTest extends TestCase
     public function test_a_student_can_upload_and_remove_their_photo(): void
     {
         Storage::fake('public');
+        Storage::fake(Student::DOCUMENT_DISK);
 
         $this->postJson('/api/v1/student/profile/photo', [
             'photo' => UploadedFile::fake()->image('me.jpg', 800, 800),
@@ -194,6 +195,7 @@ class StudentProfileTest extends TestCase
     public function test_a_non_image_upload_is_rejected(): void
     {
         Storage::fake('public');
+        Storage::fake(Student::DOCUMENT_DISK);
 
         $this->postJson('/api/v1/student/profile/photo', [
             'photo' => UploadedFile::fake()->create('payload.pdf', 100, 'application/pdf'),

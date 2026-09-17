@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Resources;
 
 use App\Models\Student;
+use App\Services\Student\StudentPhotoService;
 use App\Support\DocumentSummary;
-use App\Support\PublicUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -36,7 +36,9 @@ class StudentResource extends JsonResource
             'is_blocked' => $this->is_blocked,
             'is_registered' => $this->isRegistered(),
             'registered_at' => $this->registered_at?->toIso8601String(),
-            'profile_photo_url' => PublicUrl::forRequest($this->profile_photo_url, $request),
+            // A signed link, not a storage URL: only reachable by whoever was
+            // allowed to load this record.
+            'profile_photo_url' => app(StudentPhotoService::class)->url($this->resource),
             // Metadata only. Neither file has a URL here by design — reading one
             // needs a fresh signed link from /students/{id}/documents/{type}/link.
             'cv' => DocumentSummary::from($this->cvMedia()),

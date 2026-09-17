@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Intervention\Image\ImageManager;
 
 class StudentManagementService
@@ -119,16 +120,19 @@ class StudentManagementService
         $tempPath = tempnam(sys_get_temp_dir(), 'planb_avatar_').'.jpg';
         file_put_contents($tempPath, (string) $encoded);
 
+        // A random name on the private disk: the old `{student_id}.jpg` on the
+        // public disk let anyone walk the student IDs and download every face.
         $student->addMedia($tempPath)
-            ->usingFileName($student->student_id.'.jpg')
-            ->toMediaCollection('profile_photo');
+            ->usingName('photo')
+            ->usingFileName(Str::uuid()->toString().'.jpg')
+            ->toMediaCollection(Student::PHOTO_COLLECTION, Student::DOCUMENT_DISK);
 
         return $student->fresh();
     }
 
     public function removePhoto(Student $student): Student
     {
-        $student->clearMediaCollection('profile_photo');
+        $student->clearMediaCollection(Student::PHOTO_COLLECTION);
 
         return $student->fresh();
     }

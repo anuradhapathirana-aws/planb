@@ -10,6 +10,11 @@ export interface AvatarProps {
   uri?: string | null;
   /** Full name; initials are derived from it as the fallback. */
   name?: string | null;
+  /**
+   * Initials to show when there is no name to derive them from — other
+   * learners in the course stack, where the server sends initials and nothing else.
+   */
+  initials?: string | null;
   size?: number;
   className?: string;
 }
@@ -25,16 +30,18 @@ export interface AvatarProps {
  * cannot fix (the file was removed, the host is unreachable), and a broken-image
  * icon looks like the app is broken. Initials always look deliberate.
  */
-export function Avatar({ uri, name, size = 80, className }: AvatarProps) {
+export function Avatar({ uri, name, initials: givenInitials, size = 80, className }: AvatarProps) {
   const [failed, setFailed] = useState(false);
 
-  const initials = (name ?? '')
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? '')
-    .join('');
+  const initials =
+    givenInitials ||
+    (name ?? '')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase() ?? '')
+      .join('');
 
   const showImage = Boolean(uri) && !failed;
 

@@ -253,7 +253,9 @@ class CourseVideoService
             // Signed URLs expire, so nothing downstream should hold a copy.
             'Cache-Control' => 'private, no-store',
             'Content-Disposition' => 'inline',
-        ]);
+        ])
+            // response()->file() marks every file `public`, overriding the header above.
+            ->setPrivate();
     }
 
     /** Keeps the stored name predictable and free of anything path-like. */

@@ -513,7 +513,26 @@ it.
 **Done when:** tests: public `/storage/...receipt` 404; signed URL works; expired/foreign → 403;
 `.html` upload stored as `.jpg`/rejected.
 
-### [ ] P2-3 Profile photos public with guessable names; other learners' faces exposed
+### [x] P2-3 Profile photos public with guessable names; other learners' faces exposed — done 2026-09-17
+
+**Built:** `profile_photo` collection → private `student_documents` disk (`Student::PHOTO_COLLECTION`,
+`photoMedia()`; public accessor removed), UUID filename in `StudentManagementService::updatePhoto`;
+`App\Services\Student\StudentPhotoService` (signed `student-photos.show` link, `v` = media id) +
+`StudentPhotoController`; `StudentProfileResource` and admin `StudentResource` return the signed
+URL; `LearnerAvatarService`/`LearnerAvatarResource` → `{ initials }` only (any registered, unblocked,
+named student); mobile `Avatar` gains `initials`, `app/course/[id].tsx` renders initials; shared
+`LearnerAvatar` type; `students:migrate-photos {--dry-run}`; 8 tests in `StudentPhotoTest`,
+`StudentLearnerAvatarTest` rewritten (6).
+Decisions / differences:
+- **Link lifetime: stable per clock hour, valid 1–2 h** (expiry rounded to the hour) rather than a
+  fresh 60-minute link per request — `expo-image` caches by URL, so a changing link would re-download
+  every photo on mobile data. Still well under the 2-hour ceiling (CLAUDE.md §7.11).
+- **Found and fixed while testing:** `response()->file()` forces `Cache-Control: public`, overriding
+  the `private` header on all four signed file routes (lesson video, student documents, receipts,
+  photos). Each now calls `->setPrivate()`; tests assert `public` is absent.
+- Reused the existing private `student_documents` disk rather than adding a new one.
+
+**Before launch:** if data is copied from a dev/staging install, run `php artisan students:migrate-photos`.
 
 **Where:** `Student.php:144`, `StudentManagementService.php:123` (`{student_id}.jpg` on public
 disk), `LearnerAvatarService`, `Resources/Student/LearnerAvatarResource.php:29`,

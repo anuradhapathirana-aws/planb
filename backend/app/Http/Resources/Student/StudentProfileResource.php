@@ -7,7 +7,7 @@ namespace App\Http\Resources\Student;
 use App\Http\Resources\IndustryResource;
 use App\Http\Resources\ProfessionResource;
 use App\Models\Student;
-use App\Support\PublicUrl;
+use App\Services\Student\StudentPhotoService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -39,7 +39,8 @@ class StudentProfileResource extends JsonResource
             'profession' => $this->profession ? new ProfessionResource($this->profession) : null,
             'visa_status' => $this->visa_status?->value,
             'languages_spoken' => $this->languages_spoken ?? [],
-            'profile_photo_url' => PublicUrl::forRequest($this->profile_photo_url, $request),
+            // Signed and stable for the hour, so the app's image cache still works.
+            'profile_photo_url' => app(StudentPhotoService::class)->url($this->resource),
             'registered_at' => $this->registered_at?->toIso8601String(),
             'email_verified_at' => $this->email_verified_at?->toIso8601String(),
         ];

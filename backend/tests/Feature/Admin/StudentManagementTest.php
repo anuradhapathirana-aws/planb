@@ -11,6 +11,7 @@ use App\Models\Student;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -23,6 +24,10 @@ class StudentManagementTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        // Photos, CVs and videos all live on the private document disk.
+        Storage::fake('public');
+        Storage::fake(Student::DOCUMENT_DISK);
 
         foreach (RoleName::values() as $role) {
             Role::firstOrCreate(['name' => $role, 'guard_name' => 'web']);

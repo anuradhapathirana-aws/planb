@@ -81,7 +81,9 @@ class StudentDocumentService
             'Content-Disposition' => 'inline; filename="'.$media->file_name.'"',
             // A PDF is rendered, never sniffed into something executable.
             'X-Content-Type-Options' => 'nosniff',
-        ]);
+        ])
+            // response()->file() marks every file `public`, overriding the header above.
+            ->setPrivate();
     }
 
     /** Keeps the stored name predictable, free of PII, and free of anything path-like. */

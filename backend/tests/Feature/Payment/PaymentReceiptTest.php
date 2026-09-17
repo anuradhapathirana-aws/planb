@@ -195,6 +195,7 @@ class PaymentReceiptTest extends TestCase
             ->assertHeader('X-Content-Type-Options', 'nosniff');
 
         $this->assertStringContainsString('no-store', (string) $response->headers->get('Cache-Control'));
+        $this->assertStringNotContainsString('public', (string) $response->headers->get('Cache-Control'));
     }
 
     public function test_an_expired_link_is_refused(): void

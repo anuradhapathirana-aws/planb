@@ -210,7 +210,7 @@ Notes:
 |---|---|---|
 | GET | `/student/profile` | Same payload as `/student/me`. |
 | PUT | `/student/profile` | Editable: `contact_number`, `address`, `date_of_birth`, `highest_qualification`, `industry_id`, `profession_id`, `languages_spoken`. |
-| POST | `/student/profile/photo` | Multipart `photo` (jpeg/png, ≤2MB). Re-encoded 600×600 before storage. |
+| POST | `/student/profile/photo` | Multipart `photo` (jpeg/png, ≤2MB). Re-encoded 600×600 before storage, on the **private** document disk under a random name. `profile_photo_url` (here and on the admin `StudentResource`) is a **signed link** to `GET /students/{student}/photo`, identical for the whole clock hour so the app's image cache keeps working, and valid 1–2 hours. A new photo changes the URL (`v` = media id). Served `Cache-Control: private, max-age=3600`, `nosniff`. Expired/tampered → 403; photo not yet moved off the public disk → 404 (run `students:migrate-photos`). |
 | DELETE | `/student/profile/photo` | |
 
 ### Account deletion (Google Play policy)
@@ -301,11 +301,11 @@ Playback bytes are still served by the existing `GET /api/v1/course-videos/{vide
 
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/student/learner-avatars` | Up to 4 photo URLs, for the avatar stack on Course Details. **`{ "data": [] }`** is a normal answer. |
+| GET | `/student/learner-avatars` | Up to 4 `{ initials }` (e.g. `"NP"`), for the stack on Course Details. **`{ "data": [] }`** is a normal answer. |
 
-- **`LearnerAvatarResource` carries `photo_url` and nothing else** — no id, no name, no initials. This is the one student endpoint that returns data about *other* students, so it stays at the minimum that renders a circle. Do not widen it.
-- **It is not scoped to a course, on purpose.** Returning the faces of the students enrolled in a particular course would tell the viewer who is taking it, and a face identifies a person with or without a name attached. The broader query is the less leaky one.
-- **Only registered, unblocked students who actually have a photo** are returned; soft-deleted ones are excluded by the model's `SoftDeletes`. A student with no photo would render as an empty circle, which reads as a broken image rather than a person.
+- **`LearnerAvatarResource` carries `initials` and nothing else** — no photo, no id, no name. This is the one student endpoint that returns data about *other* students, so it stays at the minimum that renders a circle. Do not widen it. (It returned photo URLs until 2026-09-17; the client decided other learners appear as initials only.)
+- **It is not scoped to a course, on purpose.** Listing the students enrolled in a particular course would tell the viewer who is taking it. The broader query is the less leaky one.
+- **Only registered, unblocked students with a name** are returned; soft-deleted and self-deleted ones are excluded by the model's `SoftDeletes`.
 - **The signed-in student's own photo is added by the client**, at the head of the stack — it is never in this payload.
 
 ## Student Assessments

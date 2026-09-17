@@ -424,16 +424,13 @@ export default function CourseDetailScreen() {
 }
 
 /**
- * The overlapping avatars beside the learner count. Decorative — we do not
- * publish who else is on a course, and would not want to.
- */
-/**
- * The faces beside the learner count.
+ * The overlapping circles beside the learner count.
  *
  * The signed-in student's own photo leads — the one face that needs nobody's
- * permission — followed by a couple of other registered learners. That endpoint
- * returns photo URLs and nothing else, so there is no name to render and none
- * is wanted: a stack does not identify anyone.
+ * permission — followed by a couple of other registered learners as **initials
+ * only**. That endpoint sends initials and nothing else: no photo, no name. We do
+ * not publish who else is learning with Plan B, and a stack does not need to
+ * identify anyone.
  *
  * The COUNT beside it is still sample data and stays that way, at Anuradha's
  * request — a real number would read as "3 learners" for the first few months.
@@ -451,16 +448,23 @@ function LearnerStack() {
     retry: 1,
   });
 
-  const faces: Array<{ key: string; uri: string | null; name: string | null }> = [
+  const faces: Array<{
+    key: string;
+    uri: string | null;
+    name: string | null;
+    initials: string | null;
+  }> = [
     {
       key: 'me',
       uri: student?.profile_photo_url ?? null,
       name: student?.full_name ?? null,
+      initials: null,
     },
     ...(data ?? []).slice(0, 2).map((learner, index) => ({
       key: `learner-${index}`,
-      uri: learner.photo_url,
+      uri: null,
       name: null,
+      initials: learner.initials,
     })),
   ];
 
@@ -478,7 +482,7 @@ function LearnerStack() {
           key={face.key}
           className={cn('rounded-full border-2 border-background', index > 0 && '-ml-2')}
         >
-          <Avatar uri={face.uri} name={face.name} size={24} />
+          <Avatar uri={face.uri} name={face.name} initials={face.initials} size={24} />
         </View>
       ))}
     </View>

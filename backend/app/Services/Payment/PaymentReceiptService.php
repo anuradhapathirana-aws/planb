@@ -111,7 +111,9 @@ class PaymentReceiptService
             'Cache-Control' => 'private, no-store',
             // Served as exactly the type it was stored as, never sniffed into HTML.
             'X-Content-Type-Options' => 'nosniff',
-        ]);
+        ])
+            // response()->file() marks every file `public`, overriding the header above.
+            ->setPrivate();
     }
 
     private function reencode(string $path, string $extension): string

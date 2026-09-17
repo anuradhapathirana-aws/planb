@@ -49,9 +49,10 @@ return [
             'report' => false,
         ],
 
-        // Student CVs and profile videos. Same reasoning as `course_videos`, with
-        // more force: a CV is a bundle of PII. No `url`, private visibility, and
-        // every read goes through the short-lived signed document route.
+        // Student photos, CVs and profile videos. Same reasoning as `course_videos`,
+        // with more force: a CV is a bundle of PII and a face identifies a person.
+        // No `url`, private visibility, and every read goes through a short-lived
+        // signed route (document or photo).
         'student_documents' => [
             'driver' => 'local',
             'root' => storage_path('app/student-documents'),
