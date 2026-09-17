@@ -39,6 +39,21 @@ return Application::configure(basePath: dirname(__DIR__))
          */
         $middleware->statefulApi();
 
+        /*
+         * WHICH proxies are trusted comes from config/trustedproxy.php
+         * (TRUSTED_PROXIES), read per request so `config:cache` still works.
+         * This fixes WHAT they may tell us: the client IP and whether the
+         * original request was HTTPS, and nothing else.
+         *
+         * Not X-Forwarded-Host: Cloudflare passes a client-supplied one straight
+         * through, and the host ends up inside every signed URL this API mints
+         * (receipts, photos, lesson playback). Not Port or Prefix: nothing here
+         * needs them, and each believed header is one more thing a caller can set.
+         */
+        $middleware->trustProxies(
+            headers: Request::HEADER_X_FORWARDED_FOR | Request::HEADER_X_FORWARDED_PROTO,
+        );
+
         $middleware->alias([
             'role' => RoleMiddleware::class,
             'permission' => PermissionMiddleware::class,

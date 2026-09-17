@@ -108,6 +108,37 @@ dig +short admin.<domain>
 
 Do not continue to TLS until both answer correctly — Certbot fails otherwise.
 
+### Cloudflare (planned for theplanbs.com)
+
+The domain sits behind Cloudflare's proxy. Order matters, because Certbot needs to reach the server:
+
+1. Add the two `A` records in Cloudflare DNS as **DNS only (grey cloud)** first.
+2. Finish Part 7 (Certbot issues real certificates on the server).
+3. Switch both records to **Proxied (orange cloud)**.
+4. Cloudflare → SSL/TLS → Overview → **Full (strict)**. Never "Flexible": that sends traffic from
+   Cloudflare to this server unencrypted.
+5. In the backend `.env`, set `TRUSTED_PROXIES=cloudflare` (Part 6), then `php artisan config:cache`.
+
+**Why step 5 matters.** Behind Cloudflare, every request reaches the server from a Cloudflare
+address. Without it, Laravel thinks all students share a handful of IPs, so the sign-in code limit
+(8 per IP per hour) locks everyone out at once. With it, Laravel believes the forwarded client IP only
+when the request really came from a Cloudflare range, so nobody can fake one by calling the server
+directly. Check the bundled ranges are still current with `php artisan proxies:check-cloudflare`.
+
+**Recommended: only accept web traffic from Cloudflare.** Otherwise anyone who finds the server's IP
+can skip Cloudflare's protection. After step 3, replace the open 80/443 rule from Part 1:
+
+```bash
+sudo ufw delete allow 80/tcp && sudo ufw delete allow 443/tcp
+for ip in $(curl -s https://www.cloudflare.com/ips-v4) $(curl -s https://www.cloudflare.com/ips-v6); do
+  sudo ufw allow proto tcp from "$ip" to any port 80,443
+done
+sudo ufw status numbered      # 22 open to you, 80/443 only from Cloudflare ranges
+```
+
+Certbot renewals keep working through Cloudflare. If a renewal ever fails, set the records back to
+grey cloud, renew, and switch them back.
+
 ---
 
 ## Part 3 — Install the stack
@@ -215,6 +246,9 @@ APP_ENV=production
 APP_DEBUG=false
 APP_URL=https://api.<domain>
 FRONTEND_URL=https://admin.<domain>
+
+# Behind Cloudflare's proxy (Part 2). Blank only if Cloudflare is not proxying.
+TRUSTED_PROXIES=cloudflare
 
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1

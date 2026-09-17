@@ -597,7 +597,20 @@ shows score only when per-question data is null.
 
 **Done when:** tests: attempts remaining + not passed ⇒ no per-answer correctness in JSON.
 
-### [ ] P2-6 Trusted proxies
+### [x] P2-6 Trusted proxies — done 2026-09-17
+
+**Built:** `TRUSTED_PROXIES` → `config/trustedproxy.php` (read per request by Laravel's TrustProxies
+middleware, so it survives `config:cache`) via `App\Support\TrustedProxies::resolve()`: `cloudflare`
+expands to Cloudflare's published ranges (bundled, verified 2026-09-17), blank trusts nobody, `*` is
+refused. `bootstrap/app.php` trusts only `X-Forwarded-For` + `X-Forwarded-Proto` (not Host, which
+would reach signed URLs). `proxies:check-cloudflare` command. 10 tests in
+`tests/Feature/TrustedProxiesTest.php`, including the per-student sign-in limit behind Cloudflare.
+Decisions (user, 2026-09-17): **theplanbs.com will be behind Cloudflare's proxy.**
+Differences from the plan below: the default is **trust nobody**, not `127.0.0.1` — with Nginx
+talking to PHP-FPM over a socket, `REMOTE_ADDR` is already the real client, so there is no local proxy
+to trust. `*` is not supported at all rather than documented as "only with a firewall".
+`docs/deployment.md` Part 2 has the Cloudflare order of operations (grey cloud → Certbot → orange
+cloud → Full (strict) → `TRUSTED_PROXIES=cloudflare`) and the recommended ufw rules.
 
 **Where:** `backend/bootstrap/app.php` (no `trustProxies`).
 
