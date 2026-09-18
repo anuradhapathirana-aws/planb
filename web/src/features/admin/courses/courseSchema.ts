@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import { newClientKey } from '@shared/lib/clientKey';
 
-export const MAX_VIDEO_UPLOAD_MB = 512;
 export const ACCEPTED_VIDEO_TYPES = ['video/mp4', 'video/quicktime'];
 export const ACCEPTED_VIDEO_EXTENSIONS = '.mp4,.mov';
 

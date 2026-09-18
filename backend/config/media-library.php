@@ -54,13 +54,15 @@ return [
      * any one upload — those live in the Form Requests (a student photo is 2MB, a
      * course thumbnail 2MB, a bank receipt 5MB), which is where a size is rejected
      * with a message the admin can act on. It only has to clear the largest file
-     * the app deliberately accepts, which is a course lesson video
-     * (`COURSE_MAX_VIDEO_UPLOAD_MB`, 512MB) — at 10MB it threw `FileIsTooBig`
-     * *after* validation had already passed the file, so a real lesson upload
-     * failed with a 500 rather than a message. It therefore follows the course
-     * video cap by default, so raising one cannot leave the other behind.
+     * the app deliberately accepts, which is a course lesson video — and those
+     * have no cap (multi-GB recordings). At 10MB it threw `FileIsTooBig` *after*
+     * validation had already passed the file, so a real lesson upload failed
+     * with a 500 rather than a message. Unlimited unless MEDIA_MAX_FILE_SIZE_MB
+     * is set.
      */
-    'max_file_size' => 1024 * 1024 * (int) env('MEDIA_MAX_FILE_SIZE_MB', env('COURSE_MAX_VIDEO_UPLOAD_MB', 512)),
+    'max_file_size' => env('MEDIA_MAX_FILE_SIZE_MB') !== null
+        ? 1024 * 1024 * (int) env('MEDIA_MAX_FILE_SIZE_MB')
+        : PHP_INT_MAX,
 
     /*
      * Uploads whose file name contains any of these extensions will be rejected.

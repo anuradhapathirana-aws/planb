@@ -1,5 +1,5 @@
 import { toast } from 'sonner';
-import { ACCEPTED_VIDEO_TYPES, MAX_VIDEO_UPLOAD_MB } from '@/features/admin/courses/courseSchema';
+import { ACCEPTED_VIDEO_TYPES } from '@/features/admin/courses/courseSchema';
 
 /**
  * Reads a lesson's length from the file itself before it is uploaded. Doing it
@@ -35,11 +35,6 @@ export function validateVideoFile(file: File): boolean {
 
   if (!looksLikeVideo) {
     toast.error('Upload an MP4 or MOV video.');
-    return false;
-  }
-
-  if (file.size > MAX_VIDEO_UPLOAD_MB * 1024 * 1024) {
-    toast.error(`The video must be under ${MAX_VIDEO_UPLOAD_MB} MB.`);
     return false;
   }
 

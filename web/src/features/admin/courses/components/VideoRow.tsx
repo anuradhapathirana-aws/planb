@@ -4,7 +4,7 @@ import { ArrowDown, ArrowUp, FileVideo, Play, RefreshCw, Trash2, UploadCloud, X 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FieldError } from '@/components/shared/FormField';
-import { ACCEPTED_VIDEO_EXTENSIONS, MAX_VIDEO_UPLOAD_MB } from '@/features/admin/courses/courseSchema';
+import { ACCEPTED_VIDEO_EXTENSIONS } from '@/features/admin/courses/courseSchema';
 import { readVideoDuration, validateVideoFile } from '@/features/admin/courses/videoFile';
 import { formatBytes, formatDuration } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
@@ -218,7 +218,7 @@ export function VideoRow({
               <span className="font-medium text-primary">Click to upload</span>{' '}
               <span className="text-muted-foreground">or drag and drop</span>
             </p>
-            <p className="text-[11px] text-muted-foreground">MP4 or MOV, up to {MAX_VIDEO_UPLOAD_MB} MB</p>
+            <p className="text-[11px] text-muted-foreground">MP4 or MOV, any size</p>
           </div>
         </div>
       )}

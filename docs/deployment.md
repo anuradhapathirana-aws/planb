@@ -170,7 +170,9 @@ max_execution_time = 120
 ```
 
 Lesson videos go browser → Bunny and never pass through PHP, so these limits only cover the small
-uploads. If Bunny is ever disabled, raise both to `550M` to match `COURSE_MAX_VIDEO_UPLOAD_MB`.
+uploads. Lesson videos have no size cap in the app (multi-GB recordings are expected), so if Bunny
+is ever disabled these two values become the only ceiling — raise both (and `client_max_body_size`
+in Nginx, and `max_execution_time`) above the largest lesson you intend to upload, e.g. `4G`.
 
 ### PHP-FPM workers
 

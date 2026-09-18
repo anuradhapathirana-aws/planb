@@ -74,8 +74,8 @@ class CourseVideoFileTest extends TestCase
     }
 
     /**
-     * Regression: Media Library's blanket `max_file_size` guard sat at 10MB, well
-     * under the 512MB the upload rule accepts. A real lesson passed validation and
+     * Regression: Media Library's blanket `max_file_size` guard sat at 10MB, while
+     * lesson uploads have no size rule at all. A real lesson passed validation and
      * then threw `FileIsTooBig` while being stored — the whole file was uploaded
      * before it failed, and the admin was only told the video "did not upload".
      */

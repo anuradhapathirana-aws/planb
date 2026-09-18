@@ -6,20 +6,16 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Course video uploads
+    | Course uploads
     |--------------------------------------------------------------------------
     |
-    | Largest lesson file an admin may upload, in megabytes. PHP itself must
-    | allow at least this much as well — `upload_max_filesize`, `post_max_size`
-    | and `max_execution_time` in php.ini all cap the request before Laravel
-    | ever sees it, so raise those alongside this value.
-    |
-    | Media Library's own `max_file_size` guard has to clear it too; it reads
-    | this same env var by default, so the two only drift if one is overridden.
+    | Lesson videos have no size cap — recorded sessions run to several GB.
+    | With Bunny Stream they go browser → Bunny over resumable tus and never
+    | touch this server. Without Bunny they come through PHP, where php.ini's
+    | `upload_max_filesize`, `post_max_size` and `max_execution_time` are the
+    | only ceiling.
     |
     */
-
-    'max_video_upload_mb' => (int) env('COURSE_MAX_VIDEO_UPLOAD_MB', 512),
 
     'max_thumbnail_upload_mb' => (int) env('COURSE_MAX_THUMBNAIL_UPLOAD_MB', 2),
 
