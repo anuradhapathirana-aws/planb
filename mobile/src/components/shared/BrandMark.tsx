@@ -1,6 +1,7 @@
 import { View } from 'react-native';
 import { Image } from 'expo-image';
 import Svg, { Path } from 'react-native-svg';
+import { useTranslation } from 'react-i18next';
 
 import { colors } from '@shared/theme/tokens';
 import { Text } from '@/components/ui/Text';
@@ -17,6 +18,8 @@ import { Text } from '@/components/ui/Text';
  * set one, it replaces the drawn mark — that was the point of uploading it.
  */
 export function BrandMark({ logoUrl }: { logoUrl?: string | null }) {
+  const { t } = useTranslation();
+
   return (
     <View className="flex-row items-center gap-3">
       {logoUrl ? (
@@ -53,12 +56,9 @@ export function BrandMark({ logoUrl }: { logoUrl?: string | null }) {
         </View>
       )}
 
-      <View>
-        <Text className="text-[17px] font-bold leading-6 tracking-wide text-white">PLAN B</Text>
-        <Text className="text-[10px] font-semibold uppercase leading-4 tracking-[3px] text-accent">
-          Academy
-        </Text>
-      </View>
+      <Text variant="none" className="flex-1 text-[20px] font-bold leading-8 text-white">
+        {t('auth.brandWelcome')}
+      </Text>
     </View>
   );
 }

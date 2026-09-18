@@ -24,6 +24,13 @@ interface AuthState {
    */
   student: StudentProfile | null;
   /**
+   * Whether a token is held at all. The launch gate asks the server about a
+   * session only when there is one: a `/me` with no token is a guaranteed 401,
+   * and that 401 runs the full sign-out — which wipes the query cache and the
+   * image cache the launch intro and sign-in screen had just filled.
+   */
+  hasSession: boolean;
+  /**
    * False until the first SecureStore read finishes. This is what stops the
    * app flashing the sign-in screen for a moment on every cold start before
    * discovering there is a valid token.
@@ -39,6 +46,7 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>((set) => ({
   student: null,
+  hasSession: false,
   isInitialized: false,
   isSigningOut: false,
 
@@ -51,11 +59,14 @@ export const useAuthStore = create<AuthState>((set) => ({
      * leave the app rendering nothing at all, with no error and no way out.
      * Failing to a signed-out state is recoverable; a white screen is not.
      */
+    let hasSession = false;
+
     try {
       const stored = await loadSession();
 
       if (stored) {
         setAccessToken(stored.token);
+        hasSession = true;
       }
     } catch {
       setAccessToken(null);
@@ -63,7 +74,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     // The profile is fetched separately by a query, so a revoked token is
     // discovered by the API rejecting it rather than by trusting local state.
-    set({ isInitialized: true });
+    set({ hasSession, isInitialized: true });
   },
 
   signIn: async (token, expiresAt, student) => {
@@ -79,7 +90,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     await saveSession(token, expiresAt);
     setAccessToken(token);
 
-    set({ student, isInitialized: true });
+    set({ student, hasSession: true, isInitialized: true });
   },
 
   setStudent: (student) => set({ student }),
@@ -108,6 +119,6 @@ export const useAuthStore = create<AuthState>((set) => ({
     await Image.clearMemoryCache().catch(() => false);
     void Image.clearDiskCache().catch(() => false);
 
-    set({ student: null, isSigningOut: false });
+    set({ student: null, hasSession: false, isSigningOut: false });
   },
 }));

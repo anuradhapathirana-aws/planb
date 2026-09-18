@@ -130,10 +130,19 @@ const config: ExpoConfig = {
 
   android: {
     package: androidPackage,
+    /*
+     * Generated from `assets/appicon.png`: the badge is cut out of its black
+     * square and shrunk to ~62% of the canvas, because launchers mask the
+     * foreground to a circle / squircle and only the middle 66% is guaranteed to
+     * survive. At full size "PLAN B" and the gold rim were cropped away.
+     *
+     * No `monochromeImage` (Android 13+ themed icons): that needs a single-colour
+     * silhouette, and the badge has no clean one — its detail is carried by
+     * colour. Without the key, themed-icon launchers show the normal icon.
+     */
     adaptiveIcon: {
       backgroundColor: '#14224b',
       foregroundImage: './assets/android-icon-foreground.png',
-      monochromeImage: './assets/android-icon-monochrome.png',
     },
     /*
      * No `usesCleartextTraffic` key here, and none is needed: Android has

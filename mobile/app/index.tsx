@@ -5,8 +5,6 @@ import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { fetchMe } from '@/api/auth.api';
-import { Screen } from '@/components/ui/Screen';
-import { Skeleton } from '@/components/ui/Skeleton';
 import { INTRO_DURATION_MS, IntroSplash } from '@/features/intro/IntroSplash';
 import { useAppConfig } from '@/features/intro/useAppConfig';
 import { useAuthStore } from '@/stores/authStore';
@@ -26,10 +24,14 @@ import { useAuthStore } from '@/stores/authStore';
 export default function LaunchScreen() {
   const { i18n } = useTranslation();
   const setStudent = useAuthStore((state) => state.setStudent);
+  const hasSession = useAuthStore((state) => state.hasSession);
 
   const { data, isError, isSuccess } = useQuery({
     queryKey: ['auth', 'me'],
     queryFn: fetchMe,
+    // No token, nothing to ask. The 401 would also trigger a full sign-out,
+    // wiping the config and logo this screen has just downloaded.
+    enabled: hasSession,
     // A failure here means "sign in", not "try again" — the client has already
     // attempted a token refresh by the time this rejects.
     retry: false,
@@ -60,13 +62,13 @@ export default function LaunchScreen() {
   useEffect(() => {
     if (!introDone) return;
 
-    if (isSuccess && data) {
+    if (!hasSession || isError) {
+      router.replace('/sign-in');
+    } else if (isSuccess && data) {
       setStudent(data);
       router.replace('/(tabs)');
-    } else if (isError) {
-      router.replace('/sign-in');
     }
-  }, [introDone, isSuccess, isError, data, setStudent]);
+  }, [introDone, hasSession, isSuccess, isError, data, setStudent]);
 
   if (showIntro && intro) {
     // Sinhala falls back to English when the admin has not translated it. The
@@ -84,17 +86,11 @@ export default function LaunchScreen() {
     );
   }
 
-  // Navy while the config request is out, continuing the native splash rather
-  // than flashing a skeleton for the fraction of a second before the intro.
-  if (!configSettled) return <View className="flex-1 bg-primary" />;
-
-  return (
-    <Screen>
-      <View className="flex-1 justify-center gap-4">
-        <Skeleton className="h-8 w-1/2" />
-        <Skeleton className="h-32 w-full" />
-        <Skeleton className="h-20 w-full" />
-      </View>
-    </Screen>
-  );
+  /*
+   * Navy for every wait, continuing the native splash. Both places this screen
+   * hands over to — the intro and the sign-in screen — are navy too, so a white
+   * placeholder here flashed between two navy screens whenever the config
+   * request failed or the session check was slow.
+   */
+  return <View className="flex-1 bg-primary" />;
 }

@@ -27,6 +27,7 @@
     "skipHint": "Tap to continue"
   },
   "auth": {
+    "brandWelcome": "Welcome to PlanB",
     "signInTitle": "Sign in",
     "signInSubtitle": "Use the email address Plan B has on file for you.",
     "google": "Continue with Google",
@@ -466,7 +467,7 @@
     "emptyBody": "Updates about your courses, payments and services will show up here."
   },
   "currency": {
-    "title": "Exchange Your Money",
+    "title": "Exchange Money",
     "todaysRate": "Today's rate",
     "rateLine": "1 {{base}} = {{rate}} {{quote}}",
     "openConverter": "Open the currency converter",

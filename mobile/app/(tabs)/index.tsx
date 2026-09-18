@@ -107,6 +107,14 @@ const SEARCH_PULL_UP = 12;
 const CONVERTER_PULL_UP = SEARCH_PULL_UP;
 
 /**
+ * Tightens the gap under the profile-completion strip to 16px, at the client's
+ * request. It sits inside the search / slider / converter group at the top of
+ * Home, so it takes that group's spacing rather than the 28px section gap —
+ * which is what made the page look loose whenever the strip was showing.
+ */
+const PROFILE_NUDGE_PULL_UP = SEARCH_PULL_UP;
+
+/**
  * Home — the shop window.
  *
  * Greeting, a nudge to finish the profile, the promo carousel, then the newest
@@ -344,10 +352,12 @@ export default function HomeScreen() {
           top of the screen students open most often.
         */}
         {!completion.isComplete && (
-          <ProfileCompletionCard
-            percent={completion.percent}
-            onPress={() => router.push('/profile/edit')}
-          />
+          <View style={{ marginBottom: -PROFILE_NUDGE_PULL_UP }}>
+            <ProfileCompletionCard
+              percent={completion.percent}
+              onPress={() => router.push('/profile/edit')}
+            />
+          </View>
         )}
 
         <HomeCarousel slides={banners.data} loading={banners.isLoading} />
