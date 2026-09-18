@@ -325,76 +325,20 @@ npm run build            # runs type-check (tsc -b) then vite build → web/dist
 
 If building elsewhere: `rsync -avz --delete dist/ deploy@<SERVER_IP>:/var/www/planb/web/dist/`
 
-### 6.2 Nginx — admin panel
+### 6.2 Nginx — admin panel and API
 
-```nginx
-server {
-    listen 80;
-    server_name admin.<DOMAIN>;
-    root /var/www/planb/web/dist;
-    index index.html;
-    server_tokens off;
+Use the two server blocks and the header snippet in **`docs/deployment.md` Part 7**. They are kept in
+one place because the details are easy to get subtly wrong:
 
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-Frame-Options "DENY" always;
-    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-
-    # PWA service worker and manifest must never be long-cached,
-    # or admins keep running an old version after a deploy.
-    location ~* ^/(sw\.js|registerSW\.js|workbox-.*\.js|manifest\.webmanifest|index\.html)$ {
-        add_header Cache-Control "no-cache, no-store, must-revalidate" always;
-        try_files $uri =404;
-    }
-
-    # Vite puts hashed, immutable files under /assets
-    location /assets/ {
-        expires 1y;
-        add_header Cache-Control "public, immutable" always;
-        try_files $uri =404;
-    }
-
-    # SPA fallback
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-
-    location ~ /\. { deny all; }
-}
-```
-
-> Note: `docs/deployment.md` caches every `.js` file for a year, which would also cache the PWA
-> service worker. Use the block above instead.
-
-### 6.3 Nginx — API
-
-```nginx
-server {
-    listen 80;
-    server_name api.<DOMAIN>;
-    root /var/www/planb/backend/public;
-    index index.php;
-    charset utf-8;
-    server_tokens off;
-    client_max_body_size 128M;
-
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-Frame-Options "DENY" always;
-    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-
-    location / {
-        try_files $uri $uri/ /index.php?$query_string;
-    }
-
-    location ~ \.php$ {
-        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
-        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
-        include fastcgi_params;
-        fastcgi_read_timeout 300s;
-    }
-
-    location ~ /\.(?!well-known) { deny all; }
-}
-```
+- **API host:** security headers come from Laravel (`App\Http\Middleware\SecurityHeaders`), so the
+  server block must **not** repeat them with `add_header` at server level — each would be sent twice.
+  HSTS is sent by the app in production over HTTPS.
+- **Admin host:** headers, HSTS and the Content-Security-Policy come from
+  `/etc/nginx/snippets/planb-admin-headers.conf`, included in every `location` that sets its own
+  `Cache-Control` (Nginx drops inherited headers there). The service worker, manifest and
+  `index.html` are never cached; `/assets/` is cached for a year.
+- **CSP:** `frame-ancestors 'none'` is enforced from day one; the full policy starts report-only and
+  is switched on after a clean pass through the panel (Part 7, "Switching the full CSP on").
 
 Then: `sudo certbot --nginx -d api.<DOMAIN> -d admin.<DOMAIN> --redirect`
 
@@ -412,7 +356,7 @@ Then: `sudo certbot --nginx -d api.<DOMAIN> -d admin.<DOMAIN> --redirect`
 | Inbound ports | **22** (SSH, key-only, ideally restricted), **80** (redirect to HTTPS + Certbot), **443** |
 | Internal only | 3306 MySQL (localhost) |
 | Outbound | 443 (Bunny, PayHere, Google, exchange-rate API, GitHub, package mirrors); **587 or 465** (SMTP) — confirm Contabo does not block outbound SMTP |
-| SSL | **Mandatory** on both hosts. Let's Encrypt via Certbot with auto-renewal. Secure cookies, PayHere callbacks, Google Sign-In and the mobile app all require HTTPS. Add HSTS after TLS works |
+| SSL | **Mandatory** on both hosts. Let's Encrypt via Certbot with auto-renewal. Secure cookies, PayHere callbacks, Google Sign-In and the mobile app all require HTTPS. HSTS is already configured: sent by the app on the API, by the Nginx snippet on the admin panel (`docs/deployment.md` Part 7) |
 | WebSockets | **Not required** |
 | Max upload size | Largest file through PHP is **10 MB** (student profile video). CV and receipts 5 MB, images 2 MB, CSV import 2 MB. Lesson videos go **browser → Bunny directly** and do not touch the server. Recommended: `client_max_body_size 128M`, PHP `upload_max_filesize = 128M`, `post_max_size = 128M`. Only if Bunny is ever disabled do these need raising to **550M** |
 | IP whitelisting | **None required.** Do **not** firewall or rate-limit-by-country these public callback URLs: `POST /api/v1/payments/webhook/payhere` (PayHere) and `POST /api/v1/videos/bunny/webhook` (Bunny). Both are verified in code |

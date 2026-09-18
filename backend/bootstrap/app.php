@@ -3,6 +3,7 @@
 use App\Http\Middleware\EnsureAdminActor;
 use App\Http\Middleware\EnsureStudentActor;
 use App\Http\Middleware\EnsureStudentIsActive;
+use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -53,6 +54,13 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->trustProxies(
             headers: Request::HEADER_X_FORWARDED_FOR | Request::HEADER_X_FORWARDED_PROTO,
         );
+
+        /*
+         * Prepended, so it is the outermost global middleware: responses produced
+         * by the others (maintenance mode's 503, an oversized upload's 413) still
+         * get the headers.
+         */
+        $middleware->prepend(SecurityHeaders::class);
 
         $middleware->alias([
             'role' => RoleMiddleware::class,

@@ -747,7 +747,23 @@ Not done here: `.env.example` still lists keys nothing reads (`FIREBASE_*`, `BUN
 `PLAY_REVIEW_CODE`. Remove duplicate `PAYHERE_SECRET` from `.env.example` (only
 `PAYHERE_MERCHANT_SECRET` is read).
 
-### [ ] P3-8 Security headers
+### [x] P3-8 Security headers — code done 2026-09-17, server check pending (D-3)
+
+**Built:** `App\Http\Middleware\SecurityHeaders`, **prepended** as global middleware (outermost, so
+maintenance 503 / 413 responses get it too): the four headers below on every response, never
+overwriting a value a response set itself; HSTS only when `production` **and** `isSecure()` (works
+behind Cloudflare via P2-6). No CSP on the API — `payments/checkout-redirect.blade.php` has an
+inline auto-submit script. 9 tests in `tests/Feature/SecurityHeadersTest.php` (JSON, legal page,
+404/401, maintenance, HSTS prod/https, not over http, not outside production, behind Cloudflare,
+opt-out); verified they fail with the middleware removed and with `append` instead of `prepend`.
+`docs/deployment.md` Part 7: API server block has no server-level `add_header` (would duplicate),
+headers only on `/storage/`, `fastcgi_hide_header X-Powered-By`. Admin host headers in
+`snippets/planb-admin-headers.conf`, included in every location that sets `Cache-Control` (Nginx's
+inheritance rule had silently stripped them from JS/CSS). Admin CSP: `frame-ancestors 'none'`
+enforced; full policy (`'self'`, `api.<domain>`, `*.b-cdn.net`, `video.bunnycdn.com`, `blob:`)
+**report-only** with a switch-on procedure. Admin caching fixed (service worker never cached).
+**On the server (D-3):** run the two `curl` checks in Part 7 — each header exactly once, no
+`X-Powered-By` — then do the report-only pass and enforce the CSP.
 
 **Do:** middleware on API + web responses: `Strict-Transport-Security: max-age=31536000;
 includeSubDomains` (production only), `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`,
@@ -860,7 +876,9 @@ not a secret). Update privacy policy + Data safety ("Crash logs", "Diagnostics")
 - `certbot --nginx` for both hosts; HTTP → HTTPS redirect; auto-renew timer active.
 - `client_max_body_size` ≥ largest allowed upload (course videos for admin host).
 - Deny dotfiles (`location ~ /\. { deny all; }`); `server_tokens off`.
-- Admin host headers: CSP (incl. `frame-ancestors 'none'`), HSTS.
+- Admin host headers: `snippets/planb-admin-headers.conf` per `docs/deployment.md` Part 7 (P3-8);
+  API host adds none at server level. Run the Part 7 `curl` checks, then switch the report-only
+  CSP to enforced after a clean pass.
 
 ### [ ] D-4 Deploy backend
 ```bash

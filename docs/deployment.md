@@ -322,12 +322,18 @@ server {
     server_tokens off;
     client_max_body_size 128M;
 
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-Frame-Options "DENY" always;
-    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    # No security headers at this level: Laravel sends them on everything PHP answers
+    # (App\Http\Middleware\SecurityHeaders), and a server-level add_header here would
+    # send each one twice.
 
     location / {
         try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    # Public images are served straight from disk without PHP, so they get theirs here.
+    location ^~ /storage/ {
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-Frame-Options "DENY" always;
     }
 
     location ~ \.php$ {
@@ -335,13 +341,40 @@ server {
         fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
         include fastcgi_params;
         fastcgi_read_timeout 300s;
+        fastcgi_hide_header X-Powered-By;      # backs up expose_php = Off (Part 3)
     }
 
     location ~ /\. { deny all; }
 }
 ```
 
+The API's headers — `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy`,
+and HSTS in production over HTTPS — come from the app, so they work behind Cloudflare and are
+covered by `tests/Feature/SecurityHeadersTest.php`. The API sends no Content-Security-Policy on
+purpose: the PayHere hand-off page submits itself with a small inline script.
+
 ### Admin panel host
+
+The admin panel is static files, so Nginx is the only thing that can send its headers. They live in
+a snippet because they are needed twice (see the note below the server block):
+
+```bash
+sudo nano /etc/nginx/snippets/planb-admin-headers.conf
+```
+
+```nginx
+add_header X-Content-Type-Options "nosniff" always;
+add_header X-Frame-Options "DENY" always;
+add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+# Browsers ignore HSTS over plain http, so this is harmless before Certbot runs.
+add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
+# Enforced: no other site may put the admin panel in a frame.
+add_header Content-Security-Policy "frame-ancestors 'none'" always;
+# The full policy, REPORT-ONLY for now — see "Switching the full CSP on" below.
+add_header Content-Security-Policy-Report-Only "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://api.<domain> https://*.b-cdn.net; media-src 'self' blob: https://api.<domain> https://*.b-cdn.net; connect-src 'self' https://api.<domain> https://video.bunnycdn.com https://*.b-cdn.net; font-src 'self' data:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
+```
 
 ```bash
 sudo nano /etc/nginx/sites-available/admin.<domain>
@@ -356,23 +389,38 @@ server {
     index index.html;
     server_tokens off;
 
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-Frame-Options "DENY" always;
-    add_header Content-Security-Policy "frame-ancestors 'none'" always;
+    include snippets/planb-admin-headers.conf;
+
+    # The service worker, its manifest and index.html must never be long-cached, or admins keep
+    # running the old panel after a deploy.
+    location ~* ^/(sw\.js|registerSW\.js|workbox-.*\.js|manifest\.webmanifest|index\.html)$ {
+        add_header Cache-Control "no-cache, no-store, must-revalidate" always;
+        include snippets/planb-admin-headers.conf;
+        try_files $uri =404;
+    }
+
+    # Vite puts hashed, never-changing files under /assets.
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable" always;
+        include snippets/planb-admin-headers.conf;
+        try_files $uri =404;
+    }
 
     # A single-page app: every unknown path is handled by the app, not the server.
     location / {
         try_files $uri $uri/ /index.html;
     }
 
-    location ~* \.(js|css|woff2|png|svg|jpg|ico)$ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
-
     location ~ /\. { deny all; }
 }
 ```
+
+**Why the snippet is included three times.** Nginx has a trap: a `location` with any `add_header` of
+its own inherits **none** from the server level. Both caching blocks set `Cache-Control`, so without
+their own `include` the panel's JavaScript, CSS and `index.html` would go out with no security
+headers at all — including the CSP. (An earlier version of this guide cached every `.js` file for a
+year, which also froze the service worker; the two blocks above replace it.)
 
 Enable both and get certificates:
 
@@ -386,12 +434,37 @@ sudo certbot --nginx -d api.<domain> -d admin.<domain> --redirect
 sudo systemctl status certbot.timer        # auto-renewal must be active
 ```
 
-Certbot rewrites both files to listen on 443 and redirect HTTP. Afterwards add HSTS to each server
-block and reload:
+Certbot rewrites both files to listen on 443 and redirect HTTP. Nothing to add afterwards: HSTS
+already comes from Laravel on the API host and from the snippet on the admin host.
 
-```nginx
-add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+Check both hosts once TLS works:
+
+```bash
+curl -sI https://api.<domain>/up     | grep -Ei 'strict-transport|x-frame|nosniff|referrer|permissions|x-powered'
+curl -sI https://admin.<domain>/     | grep -Ei 'strict-transport|x-frame|nosniff|content-security'
 ```
+
+Each header must appear **exactly once**, and `X-Powered-By` must not appear at all. A header
+printed twice means an `add_header` was left at the API's server level.
+
+### Switching the full CSP on
+
+The admin panel's full Content-Security-Policy starts in report-only mode, because a policy that is
+wrong blocks part of the panel with no error the admin can see — a video preview that stays black,
+an image that never loads. Report-only blocks nothing and logs what it *would* have blocked.
+
+1. Open the admin panel in Chrome with DevTools → Console open.
+2. Use every screen once: sign in, the student list and a student's photo and CV, add a course with
+   an image and a lesson video upload, preview a lesson, the home banner, settings.
+3. Look for console messages starting `[Report Only] Refused to …`. Each names the address that was
+   refused — add that address to the matching directive in the snippet and reload Nginx.
+4. When a full pass shows none, enforce it: in the snippet, delete the short
+   `Content-Security-Policy "frame-ancestors 'none'"` line, then rename
+   `Content-Security-Policy-Report-Only` to `Content-Security-Policy`.
+   `sudo nginx -t && sudo systemctl reload nginx`, and repeat step 2 once.
+
+Enforced, the policy means a script injected into the panel cannot load code from another site or
+send data anywhere except the API and Bunny.
 
 ---
 
