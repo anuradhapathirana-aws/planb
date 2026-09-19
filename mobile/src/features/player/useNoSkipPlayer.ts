@@ -36,6 +36,9 @@ const FLUSH_INTERVAL_MS = 15_000;
 /** Re-fetch the signed URL this long before it expires. */
 const URL_REFRESH_MARGIN_MS = 5 * 60_000;
 
+/** Resume slightly before where they stopped, so the sentence they left on isn't cut off. */
+const RESUME_REWIND_SECONDS = 3;
+
 /**
  * Why a lesson could not be opened. The distinction matters: "no video yet" is
  * a content problem the student cannot fix by moving nearer the router, and
@@ -113,6 +116,8 @@ export function useNoSkipPlayer(lessonId: number): NoSkipPlayerState {
   const seeded = useRef(false);
   /** Whether the lesson was already complete when this screen opened. */
   const wasWatched = useRef(false);
+  /** Where to put the playhead once the first source loads; null once applied. */
+  const resumeAt = useRef<number | null>(null);
 
   const report = useMutation({
     mutationFn: (payload: { position: number; delta: number }) =>
@@ -206,6 +211,15 @@ export function useNoSkipPlayer(lessonId: number): NoSkipPlayerState {
     wasWatched.current = stream.data.progress.is_watched;
     setProgress(stream.data.progress);
 
+    /*
+     * Continue where they stopped. Without this every lesson reopened at 0:00
+     * with the already-watched stretch still tappable on the bar, which both
+     * lost the student's place and looked exactly like skipping ahead. A
+     * finished lesson opens at the start: reopening it is a rewatch.
+     */
+    const { max_position_seconds: reached, is_watched: finished } = stream.data.progress;
+    resumeAt.current = finished ? null : Math.max(0, reached - RESUME_REWIND_SECONDS);
+
     void player.replaceAsync({ uri: stream.data.url });
   }, [stream.data, player]);
 
@@ -284,6 +298,23 @@ export function useNoSkipPlayer(lessonId: number): NoSkipPlayerState {
 
   useEventListener(player, 'sourceLoad', ({ duration }) => {
     setDurationSeconds(duration);
+
+    /*
+     * Seek on `sourceLoad`, not when `replaceAsync` resolves: an HLS stream
+     * only accepts a position once its playlists are read, and this event is
+     * the one that says they have been. Applied once — the 25-minute URL
+     * refresh reloads the source too, and restores its own position.
+     */
+    const target = resumeAt.current;
+    resumeAt.current = null;
+
+    // A duration the player could not read yet (0/NaN) is no reason to lose the place.
+    const knownDuration = Number.isFinite(duration) && duration > 0;
+
+    if (target !== null && target > 0 && (!knownDuration || target < duration)) {
+      player.currentTime = target;
+      setCurrentSeconds(target);
+    }
   });
 
   /*
