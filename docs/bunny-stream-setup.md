@@ -232,8 +232,13 @@ https://api.<domain>/api/v1/videos/bunny/webhook
 
 This flips a lesson from "Processing" to ready without the admin reloading. Bunny signs each call with
 the Read-Only key and the handler checks it. Even a genuine call is only used as a prompt: the handler
-reads the real status back from Bunny with our own key. If the webhook never arrives, the admin page
-checks every 10 seconds anyway.
+reads the real status back from Bunny with our own key. If the webhook never arrives, two things
+still catch it: the admin page checks every 10 seconds while it is open, and a scheduled job checks
+every minute (it needs the scheduler cron and queue worker from `docs/deployment.md`, which the server
+already runs).
+
+**Testing on a laptop:** the webhook cannot reach you. Keep the course page open until the lesson is
+ready, or run `php artisan schedule:work` and `php artisan queue:work` in two terminals.
 
 ---
 
@@ -313,7 +318,7 @@ php artisan videos:migrate-to-bunny --prune   # asks first, reports GB freed; on
 | 403 on `playlist.m3u8` everywhere | Wrong `BUNNY_STREAM_TOKEN_KEY` (the embed key instead of the pull zone key?), Token IP Validation ON, or the link expired |
 | Video plays **without** a valid token | Token Authentication is off on the pull zone (2.4). Fix immediately |
 | Upload fails straight away | Library ID or API key wrong, or the upload ticket expired |
-| Lesson stuck on "Processing" | Encoding queue is slow (wait), or the webhook URL is wrong. Reloading the page re-checks |
+| Lesson stuck on "Processing" / app says "not ready" | Encoding queue is slow (wait), or nothing re-checked it: webhook URL wrong **and** scheduler/queue worker not running. Reloading the course page re-checks |
 | Webhook log says "signature missing or invalid" | `BUNNY_STREAM_WEBHOOK_KEY` isn't the library's Read-Only key. Status still updates through the page's own checks |
 | Everything uses the old player | `BUNNY_STREAM_ENABLED` is false, or `config:cache` wasn't re-run |
 | All lessons suddenly stop | Account disabled for negative balance. Top up and it comes back immediately (1.6) |

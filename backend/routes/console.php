@@ -1,6 +1,7 @@
 <?php
 
 use App\Jobs\RefreshExchangeRate;
+use App\Jobs\RefreshVideoProcessingStatuses;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -24,4 +25,14 @@ Schedule::job(new RefreshExchangeRate)
     ->hourlyAt(5)
     ->when(fn () => now()->hour % max(1, (int) config('exchange.refresh_hours')) === 0)
     ->name('exchange-rate-refresh')
+    ->withoutOverlapping();
+
+/*
+ * Bunny lessons that finished encoding but were never marked ready - a missed
+ * webhook, or an admin who closed the course page before it finished. Same
+ * scheduler + queue worker dependency as above. Idle unless something is encoding.
+ */
+Schedule::job(new RefreshVideoProcessingStatuses)
+    ->everyMinute()
+    ->name('video-processing-refresh')
     ->withoutOverlapping();

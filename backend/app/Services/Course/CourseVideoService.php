@@ -127,6 +127,39 @@ class CourseVideoService
         return $video->fresh(['media']);
     }
 
+    /**
+     * Re-reads every Bunny lesson still marked as encoding. The safety net under
+     * the webhook and the admin page's poll: either can miss (a failed delivery,
+     * an admin who closed the tab), and without this the lesson would stay "not
+     * ready" for students forever although Bunny finished long ago.
+     *
+     * Rows untouched for a week are left alone — an upload the admin abandoned
+     * stays pending at Bunny indefinitely, and polling it every minute would be
+     * waste. A whole-library migration fits well inside that window.
+     *
+     * @return int how many lessons became playable
+     */
+    public function refreshUnfinished(): int
+    {
+        if (! $this->bunny->enabled()) {
+            return 0;
+        }
+
+        $finished = 0;
+
+        CourseVideo::query()
+            ->whereNotNull('external_id')
+            ->whereIn('processing_status', [VideoProcessingStatus::Pending, VideoProcessingStatus::Processing])
+            ->where('updated_at', '>=', now()->subWeek())
+            ->each(function (CourseVideo $video) use (&$finished): void {
+                if ($this->refreshProcessingStatus($video)->processing_status->isPlayable()) {
+                    $finished++;
+                }
+            });
+
+        return $finished;
+    }
+
     public function removeFile(CourseVideo $video): CourseVideo
     {
         $this->discardExistingFile($video);

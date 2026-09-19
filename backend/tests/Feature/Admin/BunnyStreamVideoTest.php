@@ -7,6 +7,7 @@ namespace Tests\Feature\Admin;
 use App\Enums\RoleName;
 use App\Enums\VideoProcessingStatus;
 use App\Enums\VideoProvider;
+use App\Jobs\RefreshVideoProcessingStatuses;
 use App\Models\CourseVideo;
 use App\Models\Student;
 use App\Models\User;
@@ -51,6 +52,9 @@ class BunnyStreamVideoTest extends TestCase
             'bunny.api_key' => 'library-master-key',
             'bunny.cdn_hostname' => 'vz-test.b-cdn.net',
             'bunny.token_key' => 'token-security-key',
+            // Unsigned by default, whatever a developer's own .env holds; the
+            // signature tests set it themselves.
+            'bunny.webhook_key' => null,
         ]);
     }
 
@@ -245,6 +249,33 @@ class BunnyStreamVideoTest extends TestCase
         $this->actingAs($this->contentManager)
             ->getJson("/api/v1/admin/course-videos/{$this->video->id}/stream")
             ->assertNotFound();
+    }
+
+    public function test_a_lesson_bunny_finished_is_marked_ready_without_webhook_or_admin(): void
+    {
+        $this->video->update([
+            'external_id' => 'abc-123',
+            'provider' => VideoProvider::External,
+            'processing_status' => VideoProcessingStatus::Processing,
+        ]);
+
+        // Abandoned a week ago: never polled again.
+        $stale = CourseVideo::factory()->create();
+        $stale->forceFill([
+            'external_id' => 'old-999',
+            'provider' => VideoProvider::External,
+            'processing_status' => VideoProcessingStatus::Pending,
+            'updated_at' => now()->subDays(8),
+        ])->saveQuietly();
+
+        Http::fake([
+            'video.bunnycdn.com/library/90210/videos/abc-123' => Http::response(['status' => 4, 'length' => 25], 200),
+        ]);
+
+        (new RefreshVideoProcessingStatuses)->handle(app(CourseVideoService::class));
+
+        $this->assertSame(VideoProcessingStatus::Ready, $this->video->fresh()->processing_status);
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), 'old-999'));
     }
 
     public function test_a_correctly_signed_webhook_is_acted_on(): void
