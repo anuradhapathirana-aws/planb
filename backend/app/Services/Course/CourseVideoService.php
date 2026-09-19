@@ -25,8 +25,8 @@ class CourseVideoService
     /**
      * Student links are shorter-lived than the admin preview's. A shared link is
      * still playable for its lifetime — that is inherent to handing a URL to a
-     * platform video player — so the window is kept small. The real fix is Bunny
-     * Stream token auth, which would change only this method.
+     * platform video player — so the window is kept small. The same window is
+     * the expiry signed into a Bunny token, so it holds at Bunny's edge too.
      */
     private const STUDENT_URL_MINUTES = 30;
 
@@ -131,7 +131,10 @@ class CourseVideoService
     {
         $this->discardExistingFile($video);
 
+        // Back to the empty state a new lesson row starts in, so nothing still
+        // describes it as Bunny-hosted.
         $video->update([
+            'provider' => VideoProvider::Upload,
             'duration_seconds' => null,
             'processing_status' => VideoProcessingStatus::Ready,
         ]);
@@ -208,8 +211,11 @@ class CourseVideoService
          * the mid-session block re-check in CourseVideoPlaybackController cannot
          * run. A student blocked during a lesson keeps playing until the token
          * expires, which is why the student window is the short one.
+         *
+         * Only once encoding has finished: until then the playlist does not
+         * exist, and a migrated lesson still has its local master to serve.
          */
-        if ($video->isRemotelyHosted() && $this->bunny->enabled()) {
+        if ($video->isReadyOnBunny() && $this->bunny->enabled()) {
             return [
                 'url' => $this->bunny->playbackUrl($video->external_id, $expiresAt->getTimestamp()),
                 'expires_at' => $expiresAt->toIso8601String(),

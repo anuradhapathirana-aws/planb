@@ -211,9 +211,9 @@ Route::prefix('v1')->group(function () {
         ->middleware('signed');
 
     /*
-     * Bunny tells us a lesson finished encoding. Unsigned because Bunny does not
-     * sign it — the handler therefore trusts nothing in the body beyond which
-     * video to re-read, and reads the real status back with our own API key.
+     * Bunny tells us a lesson finished encoding. No session or token: Bunny's
+     * HMAC signature is checked in the handler, which then trusts nothing in the
+     * body beyond which video to re-read, and reads the status with our own key.
      */
     Route::post('/videos/bunny/webhook', BunnyStreamWebhookController::class)
         ->name('videos.bunny.webhook')

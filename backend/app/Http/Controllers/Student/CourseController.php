@@ -82,7 +82,9 @@ class CourseController extends Controller
         // student who has not paid for the course is entitled to learn.
         $this->assertEnrolledInLessonCourse($student, $lesson);
 
-        abort_unless($lesson->hasVideoFile(), Response::HTTP_NOT_FOUND);
+        // A lesson Bunny is still encoding has no playlist yet; 404 is what the
+        // app shows as "not ready", which is truer than a link that fails to load.
+        abort_unless($lesson->isPlayable(), Response::HTTP_NOT_FOUND);
 
         $playback = $this->courses->playback($student, $lesson, $videos);
 

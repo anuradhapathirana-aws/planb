@@ -4,6 +4,17 @@ All notable changes to this project are documented here. Format loosely follows 
 
 ## Unreleased
 
+### Fixed
+- **Bunny Stream go-live review.** The integration was checked against Bunny's current documentation before switching it on. The signing, upload and API code were correct; these were not:
+  - **The setup guide would have stopped every lesson playing in the mobile app.** It said to turn **Block Direct URL File Access** ON with no allowed domains. That blocks any request without a website referer, and a native app never sends one. It now says OFF, with CDN token authentication as the protection.
+  - **The guide pointed at the wrong token key.** Playback URLs must be signed with the **pull zone's** URL Token Authentication key, not the library's embed-view key (which would 403 every lesson). Corrected in the guide and in `config/bunny.php`.
+  - **Moving lessons to Bunny no longer takes them offline.** `videos:migrate-to-bunny` switched a published lesson to Bunny straight away, and Bunny's free encoding queue can take hours or days for a whole library, so students would have got a broken player. A lesson now plays from its server copy until Bunny reports it ready (`CourseVideo::isPlayable()` / `isReadyOnBunny()`), then switches over by itself. A lesson that exists only on Bunny and is still encoding returns 404 on the stream endpoints, which the app already shows as "not ready", instead of a URL that fails to load.
+  - **"Keep original files" is now ON in the guide.** New uploads go browser → Bunny and never reach our server, so with it off there was no master copy of any lesson uploaded after go-live.
+  - **Webhook signatures are checked.** Bunny now signs webhooks (HMAC-SHA256 of the raw body with the library's Read-Only API key). New optional `BUNNY_STREAM_WEBHOOK_KEY`; when set, an unsigned or badly signed call is ignored. The handler still re-reads status from Bunny's API either way.
+  - Removing a lesson's file now resets its `provider` to `upload`, so nothing still describes it as Bunny-hosted.
+  - **`docs/bunny-stream-setup.md` rewritten** as a buy-and-set-up guide: trial, paying from Sri Lanka (no prepaid/virtual cards, PayPal fallback), auto-recharge, the real negative-balance timeline (services go offline after ~4 days negative, data deleted after 60 days disabled), Volume delivery tier, spending cap, team access, and costs for 50 students.
+  - 5 new tests in `BunnyStreamVideoTest` (migrated lesson keeps playing from disk, switches once encoded, Bunny-only lesson 404s while encoding, signed webhook acted on, badly signed webhook ignored).
+
 ### Changed
 - **No size limit on lesson video uploads.** The 512 MB cap is gone from the Add/Edit Course page (the check in `videoFile.ts` and the "up to 512 MB" hint, now "any size") and from the server (`UploadCourseVideoFileRequest` no longer has a `max` rule), so multi-GB recordings (3 GB+) upload. With Bunny Stream the file goes browser → Bunny over resumable tus and never touches our server. `config('courses.max_video_upload_mb')` and `COURSE_MAX_VIDEO_UPLOAD_MB` are removed; Media Library's `max_file_size` backstop is now unlimited unless `MEDIA_MAX_FILE_SIZE_MB` is set. Every other upload (photos, thumbnails, CVs, receipts, profile videos) keeps its own limit. If Bunny is ever disabled, php.ini and Nginx become the only ceiling — see `docs/deployment.md`.
 

@@ -13,7 +13,10 @@ use App\Models\User;
 use App\Services\Course\CourseVideoService;
 use App\Support\BunnyToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Testing\TestResponse;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -187,7 +190,98 @@ class BunnyStreamVideoTest extends TestCase
         Http::assertSent(fn ($request) => $request->method() === 'DELETE'
             && str_contains($request->url(), '/library/90210/videos/abc-123'));
 
-        $this->assertNull($this->video->fresh()->external_id);
+        $fresh = $this->video->fresh();
+        $this->assertNull($fresh->external_id);
+        $this->assertSame(VideoProvider::Upload, $fresh->provider);
+    }
+
+    public function test_a_migrated_lesson_keeps_playing_from_disk_while_bunny_encodes(): void
+    {
+        $this->giveLocalFile();
+
+        // State `videos:migrate-to-bunny` leaves behind: Bunny has the bytes,
+        // the free encoding queue has not got to them yet.
+        $this->video->update([
+            'external_id' => 'abc-123',
+            'provider' => VideoProvider::External,
+            'processing_status' => VideoProcessingStatus::Processing,
+        ]);
+
+        $url = $this->actingAs($this->contentManager)
+            ->getJson("/api/v1/admin/course-videos/{$this->video->id}/stream")
+            ->assertOk()
+            ->json('data.url');
+
+        // A published course must not go dark for the hours the queue can take.
+        $this->assertStringContainsString("/course-videos/{$this->video->id}/playback", $url);
+        $this->assertStringNotContainsString('b-cdn.net', $url);
+    }
+
+    public function test_a_migrated_lesson_switches_to_bunny_once_encoded(): void
+    {
+        $this->giveLocalFile();
+
+        $this->video->update([
+            'external_id' => 'abc-123',
+            'provider' => VideoProvider::External,
+            'processing_status' => VideoProcessingStatus::Ready,
+        ]);
+
+        $this->actingAs($this->contentManager)
+            ->getJson("/api/v1/admin/course-videos/{$this->video->id}/stream")
+            ->assertOk()
+            ->assertJsonPath('data.url', fn (string $url) => str_starts_with($url, 'https://vz-test.b-cdn.net/'));
+    }
+
+    public function test_a_lesson_only_on_bunny_is_not_streamable_until_encoded(): void
+    {
+        $this->video->update([
+            'external_id' => 'abc-123',
+            'provider' => VideoProvider::External,
+            'processing_status' => VideoProcessingStatus::Processing,
+        ]);
+
+        // The playlist does not exist yet; a URL to it would only fail in the player.
+        $this->actingAs($this->contentManager)
+            ->getJson("/api/v1/admin/course-videos/{$this->video->id}/stream")
+            ->assertNotFound();
+    }
+
+    public function test_a_correctly_signed_webhook_is_acted_on(): void
+    {
+        config(['bunny.webhook_key' => 'read-only-key']);
+
+        $this->video->update([
+            'external_id' => 'abc-123',
+            'provider' => VideoProvider::External,
+            'processing_status' => VideoProcessingStatus::Processing,
+        ]);
+
+        Http::fake([
+            'video.bunnycdn.com/library/90210/videos/abc-123' => Http::response(['status' => 4, 'length' => 300], 200),
+        ]);
+
+        $body = '{"VideoLibraryId":90210,"VideoGuid":"abc-123","Status":3}';
+
+        $this->postSignedWebhook($body, hash_hmac('sha256', $body, 'read-only-key'))->assertOk();
+
+        $this->assertSame(VideoProcessingStatus::Ready, $this->video->fresh()->processing_status);
+    }
+
+    public function test_a_badly_signed_webhook_is_ignored(): void
+    {
+        config(['bunny.webhook_key' => 'read-only-key']);
+
+        $this->video->update(['external_id' => 'abc-123', 'provider' => VideoProvider::External]);
+
+        Http::fake();
+
+        $body = '{"VideoLibraryId":90210,"VideoGuid":"abc-123","Status":3}';
+
+        // Still 200: Bunny retries a non-2xx, and a retry would not fix a bad key.
+        $this->postSignedWebhook($body, hash_hmac('sha256', $body, 'wrong-key'))->assertOk();
+
+        Http::assertNothingSent();
     }
 
     public function test_the_webhook_trusts_nothing_in_its_body(): void
@@ -252,5 +346,31 @@ class BunnyStreamVideoTest extends TestCase
         $this->actingAs($this->contentManager)
             ->postJson("/api/v1/admin/course-videos/{$this->video->id}/upload-ticket")
             ->assertStatus(409);
+    }
+
+    private function giveLocalFile(): void
+    {
+        Storage::fake(CourseVideo::VIDEO_DISK);
+
+        $path = tempnam(sys_get_temp_dir(), 'planb_test_mp4_').'.mp4';
+        // An MP4 `ftyp` header, so the collection's mime guard accepts it.
+        file_put_contents($path, pack('N', 32).'ftypisom'.pack('N', 512).'isomiso2avc1mp41'.str_repeat("\0", 4096));
+
+        app(CourseVideoService::class)->attachFile(
+            $this->video,
+            new UploadedFile($path, 'lesson.mp4', 'video/mp4', null, true),
+            600,
+        );
+    }
+
+    private function postSignedWebhook(string $body, string $signature): TestResponse
+    {
+        return $this->call('POST', '/api/v1/videos/bunny/webhook', [], [], [], [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_ACCEPT' => 'application/json',
+            'HTTP_X_BUNNYSTREAM_SIGNATURE_VERSION' => 'v1',
+            'HTTP_X_BUNNYSTREAM_SIGNATURE_ALGORITHM' => 'hmac-sha256',
+            'HTTP_X_BUNNYSTREAM_SIGNATURE' => $signature,
+        ], $body);
     }
 }

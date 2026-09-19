@@ -227,6 +227,7 @@ settings it carries:
 **REQUIRED FROM DEVELOPER** (blank or `<…>` in the template): every `<domain>`, `DB_PASSWORD`,
 `MAIL_USERNAME`, `MAIL_PASSWORD`, `LEGAL_COMPANY_ADDRESS`, `LEGAL_COMPANY_REGISTRATION_NUMBER`,
 `BUNNY_STREAM_LIBRARY_ID`, `BUNNY_STREAM_API_KEY`, `BUNNY_STREAM_CDN_HOSTNAME`, `BUNNY_STREAM_TOKEN_KEY`,
+`BUNNY_STREAM_WEBHOOK_KEY`,
 `GOOGLE_CLIENT_IDS`, `PLAY_REVIEW_CODE`, and `PAYHERE_MERCHANT_ID` / `PAYHERE_MERCHANT_SECRET` once
 payments are switched on. `APP_KEY` is filled by `php artisan key:generate`. Step-by-step:
 `docs/deployment.md` Part 6.
@@ -379,7 +380,7 @@ Server timezone may be `Asia/Colombo`; the application itself runs in UTC.
 | SMS / OTP | **No** | — | Nothing |
 | **PayHere** (payment gateway) | **Yes** | Card payments via PayHere hosted checkout | Live Merchant ID; **Merchant Secret generated for `api.<DOMAIN>`** (PayHere issues secrets per approved domain/app); live checkout URL. Notify URL is automatic: `https://api.<DOMAIN>/api/v1/payments/webhook/payhere` |
 | Bank transfer | Yes | Manual payment with receipt upload, admin approval | Bank account details are entered in the admin panel (Settings), not `.env` |
-| **Bunny Stream** | **Yes** | Lesson video hosting, encoding, signed playback | Library ID, API key, CDN hostname, Token Authentication key. In Bunny dashboard: **Token Authentication ON**, **Webhook URL** = `https://api.<DOMAIN>/api/v1/videos/bunny/webhook`. See `docs/bunny-stream-setup.md` |
+| **Bunny Stream** | **Yes** | Lesson video hosting, encoding, signed playback | Library ID, API key, Read-Only API key, CDN hostname, pull zone Token Authentication key. In Bunny dashboard: **pull zone Token Authentication ON**, **Block Direct URL File Access OFF** (ON breaks the mobile app), **Keep original files ON**, **Webhook URL** = `https://api.<DOMAIN>/api/v1/videos/bunny/webhook`. See `docs/bunny-stream-setup.md` |
 | **Google Sign-In** | **Yes** | Student login in the mobile app | OAuth client IDs for Web, Android, iOS (Google Cloud Console). Android client needs the release SHA-1 from EAS/Play. No client secret is used by the server |
 | Exchange-rate API | Yes | AED→LKR converter on student home screen (display only) | Nothing — `open.er-api.com`, no key. Needs outbound HTTPS |
 | Firebase / FCM | **No (not built yet)** | Push notifications are planned, not implemented | Nothing for this deployment |
@@ -491,7 +492,7 @@ database before go-live and then quarterly. A ready backup script is in `docs/de
 4. VPS plan and region confirmation.
 5. SMTP provider credentials.
 6. PayHere live Merchant ID and domain-specific Merchant Secret.
-7. Bunny Stream Library ID, API key, CDN hostname, Token Authentication key.
+7. Bunny Stream Library ID, API key, Read-Only API key, CDN hostname, pull zone Token Authentication key.
 8. Google OAuth client IDs (web, Android, iOS).
 9. Company address and registration number for the legal pages.
 10. Backblaze B2 bucket and application key for backups.

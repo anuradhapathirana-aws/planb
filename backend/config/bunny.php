@@ -44,13 +44,25 @@ return [
 
     /*
     | Token authentication key for the library's pull zone (Stream → library →
-    | Security, or the pull zone's Token Authentication panel). This is what
+    | API → Pull Zone → Manage → Security → Token Authentication). NOT the
+    | library's embed-view token key — that one signs Bunny's own iframe
+    | player, which we don't use, and every playback would 403. This is what
     | signs playback URLs. Token authentication must also be switched ON in the
     | dashboard — otherwise every video is world-readable to anyone who learns a
     | guid, and the signing below becomes decoration.
     */
 
     'token_key' => env('BUNNY_STREAM_TOKEN_KEY'),
+
+    /*
+    | The library's Read-Only API key (Stream → library → API). Bunny signs every
+    | webhook with it (HMAC-SHA256 of the raw body). When set, an unsigned or
+    | mis-signed webhook is ignored. When blank the webhook is still safe — it is
+    | only ever a nudge to re-read status with our own key — but anyone could
+    | make us spend Bunny API calls, so fill it in production.
+    */
+
+    'webhook_key' => env('BUNNY_STREAM_WEBHOOK_KEY'),
 
     /*
     | Resolutions Bunny is asked to encode. Each one is stored and billed, so

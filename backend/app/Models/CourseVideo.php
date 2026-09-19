@@ -94,13 +94,32 @@ class CourseVideo extends Model implements HasMedia
      */
     public function hasVideoFile(): bool
     {
-        return $this->isRemotelyHosted() || $this->videoMedia() !== null;
+        return $this->isRemotelyHosted() || $this->hasLocalFile();
     }
 
-    /** Uploaded, encoded and actually playable right now. */
+    /** A copy on the server's private disk — a local upload, or a master kept through migration. */
+    public function hasLocalFile(): bool
+    {
+        return $this->videoMedia() !== null;
+    }
+
+    /** Bunny has finished encoding, so the adaptive stream exists. */
+    public function isReadyOnBunny(): bool
+    {
+        return $this->isRemotelyHosted() && $this->processing_status->isPlayable();
+    }
+
+    /**
+     * Something a student could watch right now.
+     *
+     * A lesson moved by `videos:migrate-to-bunny` keeps its local master while
+     * Bunny encodes — which the free tier can stretch to hours or days for a
+     * whole library — so it stays playable from disk throughout instead of going
+     * dark in a published course.
+     */
     public function isPlayable(): bool
     {
-        return $this->hasVideoFile() && $this->processing_status->isPlayable();
+        return $this->isReadyOnBunny() || $this->hasLocalFile();
     }
 
     public function getThumbnailUrlAttribute(): ?string

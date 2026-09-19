@@ -27,6 +27,9 @@
         <env name="MAIL_MAILER" value="array"/>
         <!-- The payment-flow tests need the switch on; PaymentsDisabledTest turns it off. -->
         <env name="PAYMENTS_ENABLED" value="true"/>
+        <!-- Tests never touch the network, even if a developer's .env has Bunny on for manual
+             testing; BunnyStreamVideoTest switches it on with faked HTTP. -->
+        <env name="BUNNY_STREAM_ENABLED" value="false"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>

@@ -93,7 +93,7 @@ class CourseVideoController extends Controller
     {
         $this->authorize('view', $video->topic->programme);
 
-        abort_unless($video->hasVideoFile(), 404);
+        abort_unless($video->isPlayable(), 404);
 
         return response()->json(['data' => $this->videos->playbackUrl($video)]);
     }
