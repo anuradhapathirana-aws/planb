@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { TextInput, View, type TextInputProps } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import type { LucideIcon } from '@/components/icons';
 
-import { colors, fonts } from '@shared/theme/tokens';
+import { colors } from '@shared/theme/tokens';
 import { cn } from '@/lib/cn';
+import { useFontFamily } from '@/lib/useLanguage';
 import { Text } from './Text';
 
 export interface InputProps extends Omit<TextInputProps, 'className' | 'style'> {
@@ -38,7 +40,9 @@ export function Input({
   onBlur,
   ...props
 }: InputProps) {
+  const { t } = useTranslation();
   const [focused, setFocused] = useState(false);
+  const fontFamily = useFontFamily(400);
   const hasError = Boolean(error);
   const isSmall = size === 'sm';
 
@@ -91,17 +95,17 @@ export function Input({
            * address" rather than leaving a blind user with a red border they
            * cannot see and no idea what is wrong.
            */
-          accessibilityLabel={hasError ? `${label}, error: ${error}` : label}
+          accessibilityLabel={hasError ? t('common.fieldError', { label, error }) : label}
           accessibilityHint={hint}
           placeholderTextColor={colors['muted-foreground']}
           multiline={multiline}
           // Android centres multiline text vertically without this; iOS ignores it.
           textAlignVertical={multiline ? 'top' : undefined}
           // A `TextInput` renders its own text, outside `Text`, so it does not get
-          // the Poppins translation there — the face is set here directly. Regular
-          // weight, and no `font-*` class, for the Android fallback reason in
-          // `fonts` (shared/src/theme/tokens.ts).
-          style={{ fontFamily: fonts.poppins[400] }}
+          // the per-language face `Text` resolves — it is set here directly.
+          // Regular weight, and no `font-*` class, for the Android fallback
+          // reason in `fonts` (shared/src/theme/tokens.ts).
+          style={{ fontFamily }}
           className={cn(
             'flex-1 text-foreground',
             isSmall ? 'py-2 text-[13px] leading-5' : 'py-3 text-[15px] leading-6',

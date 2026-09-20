@@ -27,10 +27,17 @@ import { Poppins_400Regular } from '@expo-google-fonts/poppins/400Regular';
 import { Poppins_500Medium } from '@expo-google-fonts/poppins/500Medium';
 import { Poppins_600SemiBold } from '@expo-google-fonts/poppins/600SemiBold';
 import { Poppins_700Bold } from '@expo-google-fonts/poppins/700Bold';
+/*
+ * Noto Sans Sinhala, at the same four weights as Poppins. Poppins draws no
+ * Sinhala at all, so in Sinhala `Text` swaps family maps — and a weight with no
+ * Sinhala face loaded would fall back to the system font mid-screen.
+ */
 import { NotoSansSinhala_400Regular } from '@expo-google-fonts/noto-sans-sinhala/400Regular';
+import { NotoSansSinhala_500Medium } from '@expo-google-fonts/noto-sans-sinhala/500Medium';
 import { NotoSansSinhala_600SemiBold } from '@expo-google-fonts/noto-sans-sinhala/600SemiBold';
+import { NotoSansSinhala_700Bold } from '@expo-google-fonts/noto-sans-sinhala/700Bold';
 
-import i18n from '@/lib/i18n';
+import i18n, { initLanguage } from '@/lib/i18n';
 import { registerUnauthenticatedHandler } from '@/api/client';
 import { ToastProvider } from '@/components/ui/Toast';
 import { queryClient } from '@/lib/queryClient';
@@ -206,8 +213,22 @@ export default function RootLayout() {
     Poppins_600SemiBold,
     Poppins_700Bold,
     NotoSansSinhala_400Regular,
+    NotoSansSinhala_500Medium,
     NotoSansSinhala_600SemiBold,
+    NotoSansSinhala_700Bold,
   });
+
+  /*
+   * The saved language, restored before the first screen renders — applying it
+   * later would flash English at a Sinhala student on every cold start. It is a
+   * SecureStore read like the session's, so it is gated the same way rather
+   * than being allowed to hold the splash on its own.
+   */
+  const [languageLoaded, setLanguageLoaded] = useState(false);
+
+  useEffect(() => {
+    void initLanguage().finally(() => setLanguageLoaded(true));
+  }, []);
 
   /*
    * Course videos are the product, so screenshots and screen recording are
@@ -314,7 +335,16 @@ export default function RootLayout() {
     return () => clearTimeout(timer);
   }, []);
 
-  const ready = (fontsLoaded || fontError !== null || fontWaitElapsed) && isInitialized;
+  /*
+   * `fontWaitElapsed` covers the language read too: a keystore that never
+   * answers must not hold the app on the splash forever. Falling through means
+   * starting in the device language, which is the same default a first-time
+   * student gets.
+   */
+  const ready =
+    (fontsLoaded || fontError !== null || fontWaitElapsed) &&
+    (languageLoaded || fontWaitElapsed) &&
+    isInitialized;
 
   const fontsGate = fontsLoaded
     ? 'loaded'
@@ -391,6 +421,7 @@ export default function RootLayout() {
             <StatusBar style="dark" />
             <Stack screenOptions={{ headerShown: false, animation: 'fade' }}>
               <Stack.Screen name="index" />
+              <Stack.Screen name="language" />
               <Stack.Screen name="sign-in" />
               <Stack.Screen name="verify" />
               <Stack.Screen name="(tabs)" />

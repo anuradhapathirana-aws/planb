@@ -4,6 +4,15 @@ All notable changes to this project are documented here. Format loosely follows 
 
 ## Unreleased
 
+### Added
+- **Sinhala in the student app.** The app could already be translated but never was: 19 of 437 strings had Sinhala, nothing let a student choose a language, and the bundled Sinhala font was loaded but never used.
+  - **All 442 strings are now in Sinhala** (`shared/src/i18n/si.json`), **drafted by the dev team and pending client review**. `docs/translations/si-review.csv` is the sheet for that review — key, English, the draft, and a column for corrections — and corrections come straight back into `si.json`. Anything missing there still falls back to English, so a new key is never a raw `courses.title` on screen.
+  - **Students pick a language on first launch** (new `app/language.tsx`, shown once before the intro so the intro's own greeting is already in the right language) **and change it any time under Profile → App language**. Both options are written in their own script — "Sinhala" in English is no help to someone who can't read the screen they're stuck on. The choice applies instantly and is remembered on the device (SecureStore; no new package, so no rebuild needed).
+  - **Sinhala is drawn in Noto Sans Sinhala at all four weights.** Poppins has no Sinhala glyphs, so every Sinhala string was previously substituted by the phone's own font at a single weight — a different look per handset, with headings that didn't read as headings. `Text` now resolves the family from the active language (`useFontFamily`), and the two raw text inputs do the same.
+  - **Dates follow the language** (Sinhala month names via `setDateLocale`). Money deliberately does not: prices stay Western digits with an LKR/AED prefix in both languages, as on a Sri Lankan invoice.
+  - Six screen-reader labels that were hardcoded English (the player's rewind and seek bar, the sheet close buttons, clear-search, the brand avatar) now go through `t()` like the rest.
+  - Out of scope, unchanged: course, service and checklist content typed by admins, and server-sent error messages, which stay in the language they were entered/generated in.
+
 ### Fixed
 - **Bunny Stream go-live review.** The integration was checked against Bunny's current documentation before switching it on. The signing, upload and API code were correct; these were not:
   - **The setup guide would have stopped every lesson playing in the mobile app.** It said to turn **Block Direct URL File Access** ON with no allowed domains. That blocks any request without a website referer, and a native app never sends one. It now says OFF, with CDN token authentication as the protection.

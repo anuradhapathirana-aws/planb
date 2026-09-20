@@ -206,7 +206,7 @@ export default function LessonScreen() {
               <View className="flex-row items-center gap-8">
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Rewind 10 seconds"
+                  accessibilityLabel={t('player.rewind', { seconds: 10 })}
                   hitSlop={12}
                   onPress={() => seekTo(currentSeconds - 10)}
                   className="h-14 w-14 items-center justify-center rounded-full bg-black/40 active:bg-black/60"
@@ -289,6 +289,7 @@ function SeekBar({
   maxReachedSeconds: number;
   onSeek: (seconds: number) => void;
 }) {
+  const { t } = useTranslation();
   const [trackWidth, setTrackWidth] = useState(0);
 
   return (
@@ -302,7 +303,7 @@ function SeekBar({
       {/* Watched-and-therefore-seekable region */}
       <Pressable
         accessibilityRole="adjustable"
-        accessibilityLabel="Lesson position"
+        accessibilityLabel={t('player.position')}
         accessibilityValue={{
           min: 0,
           max: Math.round(duration),

@@ -1,9 +1,11 @@
 import { forwardRef, useState } from 'react';
 import { Pressable, TextInput, View, type TextInputProps } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Search, X } from '@/components/icons';
 
-import { colors, fonts } from '@shared/theme/tokens';
+import { colors } from '@shared/theme/tokens';
 import { cn } from '@/lib/cn';
+import { useFontFamily } from '@/lib/useLanguage';
 
 export interface SearchFieldProps extends Omit<
   TextInputProps,
@@ -37,7 +39,9 @@ export const SearchField = forwardRef<TextInput, SearchFieldProps>(function Sear
   { value, onChangeText, onClear, accessibilityLabel, onFocus, onBlur, ...props },
   ref,
 ) {
+  const { t } = useTranslation();
   const [focused, setFocused] = useState(false);
+  const fontFamily = useFontFamily(400);
 
   return (
     <View
@@ -92,10 +96,10 @@ export const SearchField = forwardRef<TextInput, SearchFieldProps>(function Sear
           onBlur?.(event);
         }}
         // A `TextInput` renders its own text, outside `Text`, so it does not get
-        // the Poppins translation there — the face is set here directly. Regular
-        // weight, and no `font-*` class, for the Android fallback reason in
-        // `fonts` (shared/src/theme/tokens.ts).
-        style={{ fontFamily: fonts.poppins[400] }}
+        // the per-language face `Text` resolves — it is set here directly.
+        // Regular weight, and no `font-*` class, for the Android fallback
+        // reason in `fonts` (shared/src/theme/tokens.ts).
+        style={{ fontFamily }}
         className="flex-1 py-1.5 text-[13px] leading-5 text-foreground"
         {...props}
       />
@@ -103,7 +107,7 @@ export const SearchField = forwardRef<TextInput, SearchFieldProps>(function Sear
       {value.length > 0 && (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Clear search"
+          accessibilityLabel={t('common.clearSearch')}
           hitSlop={10}
           onPress={() => {
             onChangeText('');

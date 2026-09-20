@@ -1,15 +1,32 @@
+/**
+ * The locale dates are written in. Sri Lanka, English, unless an app says
+ * otherwise — `mobile` sets 'si-LK' from its language picker so month names
+ * follow the app's language, and `web` (admin, English only) never calls this.
+ *
+ * Module state rather than an argument on every call: the alternative is
+ * threading a locale through every one of the ~30 call sites and forgetting it
+ * in the next one. Money is deliberately NOT included — prices stay in Western
+ * digits with an LKR/AED prefix in both languages, which is how they are
+ * written on a Sri Lankan invoice.
+ */
+let dateLocale = 'en-LK';
+
+export function setDateLocale(locale: string): void {
+  dateLocale = locale;
+}
+
 export function formatDate(value: string | null | undefined, options?: Intl.DateTimeFormatOptions): string {
   if (!value) return '—';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '—';
-  return date.toLocaleDateString('en-LK', options ?? { year: 'numeric', month: 'short', day: 'numeric' });
+  return date.toLocaleDateString(dateLocale, options ?? { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 export function formatDateTime(value: string | null | undefined): string {
   if (!value) return '—';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '—';
-  return date.toLocaleString('en-LK', {
+  return date.toLocaleString(dateLocale, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',

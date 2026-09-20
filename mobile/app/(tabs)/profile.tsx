@@ -7,6 +7,7 @@ import {
   ChevronRight,
   FileText,
   Heart,
+  Languages,
   LogOut,
   Mail,
   Phone,
@@ -15,13 +16,15 @@ import {
 } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 
-import { colors } from '@shared/theme/tokens';
+import { colors, fonts } from '@shared/theme/tokens';
 import { fetchMe, signOut as signOutRequest } from '@/api/auth.api';
 import { fetchCourses } from '@/api/courses.api';
 import { Button } from '@/components/ui/Button';
 import { Card, PressableCard } from '@/components/ui/Card';
+import { Sheet } from '@/components/ui/Sheet';
 import { Text } from '@/components/ui/Text';
 import { useChecklistOverview } from '@/features/checklist/useChecklists';
+import { LANGUAGE_NAMES, LanguageOptions } from '@/features/language/LanguageOptions';
 import { ContinueLearningCard } from '@/features/profile/ContinueLearningCard';
 import { useLegalLinks } from '@/features/legal/useLegalLinks';
 import { DeleteAccountSheet } from '@/features/profile/DeleteAccountSheet';
@@ -30,6 +33,7 @@ import { ProfileStats } from '@/features/profile/ProfileStats';
 import { useServicePurchases } from '@/features/services/useServices';
 import { useWishlist } from '@/features/wishlist/useWishlist';
 import { resetTo } from '@/lib/resetTo';
+import { useLanguage } from '@/lib/useLanguage';
 import { openExternalUrl } from '@/lib/webBrowser';
 import { useStatusBarStyle } from '@/lib/useStatusBarStyle';
 import { useAuthStore } from '@/stores/authStore';
@@ -46,6 +50,8 @@ export default function ProfileScreen() {
   const setStudent = useAuthStore((state) => state.setStudent);
   const cached = useAuthStore((state) => state.student);
   const [deleteSheetOpen, setDeleteSheetOpen] = useState(false);
+  const [languageSheetOpen, setLanguageSheetOpen] = useState(false);
+  const language = useLanguage();
   const legal = useLegalLinks();
 
   /*
@@ -196,6 +202,32 @@ export default function ProfileScreen() {
           </PressableCard>
 
           {/*
+            The language a student reads the app in. A row here, and the same
+            options on the first-launch screen — a setting they set once and
+            rarely revisit does not earn a place higher up the page. The current
+            value is written in its own script, so it is recognisable to someone
+            who has ended up in the wrong language and is looking for the way out.
+          */}
+          <PressableCard
+            accessibilityLabel={`${t('profile.language')}. ${LANGUAGE_NAMES[language]}`}
+            onPress={() => setLanguageSheetOpen(true)}
+            className="mt-3 flex-row items-center gap-3 p-4"
+          >
+            <Languages size={18} color={colors['muted-foreground']} />
+
+            <Text className="flex-1 font-medium">{t('profile.language')}</Text>
+
+            <Text
+              variant="caption"
+              style={{ fontFamily: language === 'si' ? fonts.sinhala[500] : fonts.poppins[500] }}
+            >
+              {LANGUAGE_NAMES[language]}
+            </Text>
+
+            <ChevronRight size={20} color={colors['muted-foreground']} />
+          </PressableCard>
+
+          {/*
             Google Play wants the privacy policy reachable from inside the app,
             not only from the store listing. The pages open in an in-app browser
             tab; support opens the student's own mail app.
@@ -262,6 +294,22 @@ export default function ProfileScreen() {
           </Pressable>
         </View>
       </ScrollView>
+
+      {/*
+        The sheet stays open after a tap rather than closing on selection: the
+        student sees the whole app — this screen behind it included — switch
+        language while they are still looking at the control that did it.
+      */}
+      <Sheet
+        visible={languageSheetOpen}
+        title={t('profile.language')}
+        onClose={() => setLanguageSheetOpen(false)}
+        scroll={false}
+      >
+        <View className="pb-2">
+          <LanguageOptions />
+        </View>
+      </Sheet>
 
       <DeleteAccountSheet
         visible={deleteSheetOpen}

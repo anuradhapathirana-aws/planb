@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { colors } from '@shared/theme/tokens';
 import { formatDate } from '@shared/lib/formatters';
 import { cn } from '@/lib/cn';
+import { useLocale } from '@/lib/useLanguage';
 import { Button } from './Button';
 import { Sheet } from './Sheet';
 import { Text } from './Text';
@@ -96,15 +97,17 @@ export function DateField({
 
   /*
    * Month names come from Intl rather than the translation files: they are
-   * locale data, not Plan B copy. 'en-LK' matches `formatDate`, so the picker
-   * and the field below it never disagree about how a month is spelled.
+   * locale data, not Plan B copy. The locale follows the app's language, and
+   * matches `formatDate`'s, so the picker and the field below it never
+   * disagree about how a month is spelled.
    */
+  const locale = useLocale();
   const monthNames = useMemo(
     () =>
       months.map((month) =>
-        new Date(2000, month, 1).toLocaleDateString('en-LK', { month: 'long' }),
+        new Date(2000, month, 1).toLocaleDateString(locale, { month: 'long' }),
       ),
-    [months],
+    [months, locale],
   );
 
   function outOfBounds(date: Date): boolean {

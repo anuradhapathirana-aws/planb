@@ -5,9 +5,10 @@ import {
   type TextStyle,
 } from 'react-native';
 
-import { fonts, type FontWeight } from '@shared/theme/tokens';
+import { type FontWeight } from '@shared/theme/tokens';
 
 import { cn } from '@/lib/cn';
+import { useFontFamily } from '@/lib/useLanguage';
 
 /**
  * The only text component. Every string on screen goes through it, which is
@@ -142,18 +143,20 @@ export function Text({ variant = 'body', className, style, ...props }: TextProps
   const flat = StyleSheet.flatten(style) as TextStyle | undefined;
 
   /*
+   * The family also depends on the language: Poppins draws no Sinhala, so in
+   * Sinhala the same weight resolves to the Noto Sans Sinhala face instead.
+   * Every screen re-renders on a language change through this hook.
+   */
+  const fontFamily = useFontFamily(resolveFontWeight(variantClasses, className, flat));
+
+  /*
    * A caller that names its own family keeps it — `RichText` sets a monospace
    * face for code, and that must not be turned into Poppins. Everything else
    * gets the face for its weight, applied AFTER the caller's style so it wins,
    * with `fontWeight` reset for the Android reason above.
    */
   const fontStyle: TextStyle | undefined =
-    flat?.fontFamily === undefined
-      ? {
-          fontFamily: fonts.poppins[resolveFontWeight(variantClasses, className, flat)],
-          fontWeight: 'normal',
-        }
-      : undefined;
+    flat?.fontFamily === undefined ? { fontFamily, fontWeight: 'normal' } : undefined;
 
   return (
     <RNText

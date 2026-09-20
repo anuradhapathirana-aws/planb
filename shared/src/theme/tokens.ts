@@ -85,7 +85,19 @@ export const fonts = {
     600: 'Poppins_600SemiBold',
     700: 'Poppins_700Bold',
   },
-  sinhala: 'NotoSansSinhala',
+  /*
+   * Poppins has no Sinhala glyphs at all. Left in place for Sinhala text the OS
+   * substitutes its own font per glyph — a different face on every handset, and
+   * on Android the substitute is drawn at one weight, so headings stop reading
+   * as headings. Noto Sans Sinhala is loaded at the same four weights and
+   * `mobile`'s `useFontFamily` picks between the two maps by language.
+   */
+  sinhala: {
+    400: 'NotoSansSinhala_400Regular',
+    500: 'NotoSansSinhala_500Medium',
+    600: 'NotoSansSinhala_600SemiBold',
+    700: 'NotoSansSinhala_700Bold',
+  },
 } as const;
 
 export type FontWeight = keyof typeof fonts.poppins;

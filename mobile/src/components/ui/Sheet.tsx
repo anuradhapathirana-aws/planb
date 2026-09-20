@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Modal, Pressable, ScrollView, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { X } from '@/components/icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -26,6 +27,7 @@ export interface SheetProps {
  * the middle, which is where a one-handed user can actually reach it.
  */
 export function Sheet({ visible, title, onClose, children, scroll = true }: SheetProps) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
 
   return (
@@ -41,7 +43,7 @@ export function Sheet({ visible, title, onClose, children, scroll = true }: Shee
         {/* Tapping the scrim closes, as every native sheet does. */}
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Close"
+          accessibilityLabel={t('common.close')}
           className="flex-1"
           onPress={onClose}
         />
@@ -62,7 +64,7 @@ export function Sheet({ visible, title, onClose, children, scroll = true }: Shee
 
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Close"
+              accessibilityLabel={t('common.close')}
               hitSlop={12}
               onPress={onClose}
               className="h-11 w-11 items-center justify-center rounded-full active:bg-muted"

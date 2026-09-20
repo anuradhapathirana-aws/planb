@@ -308,8 +308,12 @@ Established on course pricing and enrolment. Read before touching anything that 
 
 - All user-facing text through `t('key')` (react-i18next).
 - Two locales: English (default) + Sinhala.
-- Sinhala translations supplied by client.
-- Numbers and dates formatted per locale.
+- **Sinhala is drafted by the dev team and reviewed by the client**, not supplied by them — the app
+  shipped 4% translated while waiting for it. `docs/translations/si-review.csv` is the review sheet;
+  corrections come back into `shared/src/i18n/si.json`. A key missing there falls back to English.
+- Dates follow the chosen language (`setDateLocale` in `shared/src/lib/formatters.ts`). Money does
+  not: prices stay Western digits with an LKR/AED prefix in both languages.
+- On `mobile/`, the student picks a language on first launch and in Profile; see `mobile/CLAUDE.md`.
 
 ## 9. Testing Expectations
 

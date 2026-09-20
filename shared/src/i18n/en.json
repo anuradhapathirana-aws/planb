@@ -15,7 +15,10 @@
     "noResults": "No matches",
     "optional": "Optional",
     "done": "Done",
-    "comingSoon": "Coming soon"
+    "comingSoon": "Coming soon",
+    "clearSearch": "Clear search",
+    "brandAvatar": "Plan B Academy",
+    "fieldError": "{{label}}, error: {{error}}"
   },
   "appError": {
     "title": "Something went wrong",
@@ -244,7 +247,9 @@
     "blockedTitle": "You can’t open this lesson",
     "blockedBody": "Your account may be suspended, or this course isn’t available to you. Please contact Plan B support.",
     "unknownTitle": "This lesson couldn’t be loaded",
-    "unknownBody": "Something went wrong on our side. Please try again in a moment."
+    "unknownBody": "Something went wrong on our side. Please try again in a moment.",
+    "rewind": "Rewind {{seconds}} seconds",
+    "position": "Lesson position"
   },
   "paper": {
     "title": "Assessment",

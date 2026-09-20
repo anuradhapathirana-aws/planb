@@ -1,5 +1,6 @@
 import { View } from 'react-native';
 import { Image } from 'expo-image';
+import { useTranslation } from 'react-i18next';
 
 /**
  * The Plan B badge, as a round avatar.
@@ -18,13 +19,15 @@ import { Image } from 'expo-image';
  * container is `rounded-full overflow-hidden` and the fit is `cover`.
  */
 export function BrandAvatar({ size = 28 }: { size?: number }) {
+  const { t } = useTranslation();
+
   return (
     <View
       style={{ width: size, height: size, borderRadius: size / 2 }}
       className="overflow-hidden bg-card"
       accessible
       accessibilityRole="image"
-      accessibilityLabel="Plan B Academy"
+      accessibilityLabel={t('common.brandAvatar')}
     >
       {/* Layout classes never go on an expo-image element — it is not registered
           with NativeWind, so a `className` there is silently dropped. */}

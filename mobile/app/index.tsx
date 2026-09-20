@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { fetchMe } from '@/api/auth.api';
 import { INTRO_DURATION_MS, IntroSplash } from '@/features/intro/IntroSplash';
 import { useAppConfig } from '@/features/intro/useAppConfig';
+import { hasChosenLanguage } from '@/lib/i18n';
 import { useAuthStore } from '@/stores/authStore';
 
 /**
@@ -59,8 +60,21 @@ export default function LaunchScreen() {
     return () => clearTimeout(timer);
   }, [configSettled, showIntro]);
 
+  /*
+   * The language picker comes BEFORE the intro, not after it: the intro's
+   * greeting is itself translated (`greeting_si` below), so asking first is
+   * what lets a Sinhala student see a Sinhala greeting on their very first
+   * launch. Read once into state — `hasChosenLanguage` is a module flag, and
+   * re-reading it on every render would send this screen back and forth.
+   */
+  const [languageChosen] = useState(hasChosenLanguage);
+
   useEffect(() => {
-    if (!introDone) return;
+    if (!languageChosen) router.replace('/language');
+  }, [languageChosen]);
+
+  useEffect(() => {
+    if (!introDone || !languageChosen) return;
 
     if (!hasSession || isError) {
       router.replace('/sign-in');
@@ -68,7 +82,10 @@ export default function LaunchScreen() {
       setStudent(data);
       router.replace('/(tabs)');
     }
-  }, [introDone, hasSession, isSuccess, isError, data, setStudent]);
+  }, [introDone, languageChosen, hasSession, isSuccess, isError, data, setStudent]);
+
+  // Navy while the redirect lands, so the intro does not flash for one frame.
+  if (!languageChosen) return <View className="flex-1 bg-primary" />;
 
   if (showIntro && intro) {
     // Sinhala falls back to English when the admin has not translated it. The

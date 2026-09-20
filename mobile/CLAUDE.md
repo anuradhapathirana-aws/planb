@@ -46,7 +46,13 @@ If a pattern is used by more than one feature it belongs in `components/shared/`
   list or `ScrollView` in `app/(tabs)/` ends with `useTabBarClearance()` of bottom padding (from
   `@/components/shared/TabBar`), or its last row sits under the bar with no way to scroll it clear.
   A new tab screen, or a new list on an existing one, must do the same.
-- **Every user-facing string goes through `t('key')`.** EN + SI live in `@shared/i18n`.
+- **Every user-facing string goes through `t('key')`.** EN + SI live in `@shared/i18n`, key for key —
+  a key missing from `si.json` falls back to English, so a new key is EN-only until it is translated.
+  That includes `accessibilityLabel`s: a screen reader reads them aloud like any other copy.
+  The chosen language is saved in SecureStore by `lib/i18n.ts` (`setLanguage`), restored by
+  `initLanguage()` inside the root layout's startup gate, and picked on `app/language.tsx` — which the
+  launch gate shows once, **before the intro**, because the intro greeting is itself translated. Dates
+  follow the language automatically (`setDateLocale`); money stays Western digits in both.
 - **Server state is TanStack Query. Client state is Zustand.** No `useEffect + fetch`.
 - **Forms are React Hook Form + Zod**, schema imported from `@shared/schemas`.
 - **Every failed mutation surfaces a toast** (`sonner-native`). Never fail silently.
@@ -86,6 +92,12 @@ so patterns transfer between the two codebases.
 - **Touch targets ≥ 44×44 are structural, not per-screen discipline.** `Button` and every touchable
   bake in `minHeight: 44`, `minWidth: 44`, and `hitSlop`.
 - **Modals are bottom sheets** (root §8). There is no centred-dialog variant on mobile — only `Sheet`.
+- **Never name a font family in a component — `Text` resolves it.** Poppins has NO Sinhala glyphs, so
+  `Text` swaps to the matching Noto Sans Sinhala face when the language is `si` (`lib/useLanguage.ts`,
+  `useFontFamily`). Hardcode `fonts.poppins[...]` and Sinhala falls back to whatever face the OS
+  picks, at one weight — headings stop reading as headings. A raw `TextInput` must call
+  `useFontFamily()` itself. The only exception is text whose script is fixed regardless of the app's
+  language, such as the language names in the picker.
 - **Never set `height` on anything containing text — use `minHeight` + `paddingVertical`.** Sinhala
   glyphs carry loops above and below the baseline and clip inside a fixed-height box. Keep
   `lineHeight` ≥ 1.6× the font size, and never set `allowFontScaling={false}`.
