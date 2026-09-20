@@ -226,7 +226,7 @@ export function CoursesListPage() {
         open={!!deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
         title="Delete this course?"
-        description={`${deleteTarget?.name} and its topics will be removed from the list. Video files are kept, so this can be undone by a developer if it was a mistake.`}
+        description={`${deleteTarget?.name} and its topics will be removed from the list, and its uploaded videos will be permanently deleted from video hosting. This cannot be undone.`}
         confirmLabel="Delete"
         variant="destructive"
         isLoading={deleteCourse.isPending}

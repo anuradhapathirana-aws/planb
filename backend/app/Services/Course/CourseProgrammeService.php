@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Course;
 
 use App\Enums\CourseStatus;
+use App\Jobs\DeleteProgrammeVideosFromBunny;
 use App\Models\CourseProgramme;
 use App\Models\CourseTopic;
 use App\Models\CourseVideo;
@@ -127,12 +128,19 @@ class CourseProgrammeService
     }
 
     /**
-     * Soft delete: topics, videos and uploaded files are left intact so a
+     * Soft delete: topics, videos and locally stored files are left intact so a
      * mistaken delete stays recoverable, matching how students are deleted.
+     *
+     * The Bunny copies are the exception, and they are gone for good. Bunny
+     * bills storage for as long as a video exists there, and a deleted course's
+     * lessons are reachable by nobody — so keeping them is paying rent on
+     * footage no one can watch. The admin's confirm dialog says so.
      */
     public function delete(CourseProgramme $programme): void
     {
         $programme->delete();
+
+        DeleteProgrammeVideosFromBunny::dispatch($programme->id);
     }
 
     public function publish(CourseProgramme $programme): CourseProgramme

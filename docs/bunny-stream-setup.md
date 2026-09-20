@@ -217,7 +217,12 @@ Then:
 ```bash
 php artisan migrate --force        # adds external_id + processing_status if not yet run
 php artisan config:cache
+php artisan bunny:check            # confirms all five values against Bunny itself
 ```
+
+`bunny:check` prints a pass/fail line per setting and names the `.env` key to fix. It prints no keys,
+so its output is safe to send to someone. **Run it after every change to these values**, and always
+`php artisan config:cache` first — the app reads the cached copy, not `.env`.
 
 **Leave `BUNNY_STREAM_ENABLED=false` in local `.env` files.** Local development and the test suite
 use the disk path: there are no credentials on a laptop, and tests never touch the network.
@@ -298,7 +303,9 @@ php artisan videos:migrate-to-bunny --prune   # asks first, reports GB freed; on
   negative and every lesson stops. Auto-recharge plus alerts (1.6) prevent it.
 - **Check the monthly invoice** (Account → Billing → history) against the estimate above. If it grows,
   raise the bandwidth cap (2.5) on purpose; don't just remove it.
-- **Deleting a lesson** in the admin panel deletes it at Bunny too, so its storage stops being billed.
+- **Deleting a lesson, or a whole course**, deletes the videos at Bunny too, so their storage stops
+  being billed. The lesson rows stay, the videos do not come back, and the confirm dialog says so.
+  (A course delete does this through a queued job, so the queue worker must be running.)
 - **Replacing a lesson's video** in a published course: the old video is removed when the new upload
   starts, so students see "not ready" for that lesson until the new one finishes encoding (usually a
   few minutes). Replace videos outside busy hours.
@@ -321,4 +328,5 @@ php artisan videos:migrate-to-bunny --prune   # asks first, reports GB freed; on
 | Lesson stuck on "Processing" / app says "not ready" | Encoding queue is slow (wait), or nothing re-checked it: webhook URL wrong **and** scheduler/queue worker not running. Reloading the course page re-checks |
 | Webhook log says "signature missing or invalid" | `BUNNY_STREAM_WEBHOOK_KEY` isn't the library's Read-Only key. Status still updates through the page's own checks |
 | Everything uses the old player | `BUNNY_STREAM_ENABLED` is false, or `config:cache` wasn't re-run |
+| Lessons show "Processing failed. Upload this lesson again." after changing Bunny account | Those lessons live in the **old** library. The new one has never heard of them — upload them again, or point the keys back |
 | All lessons suddenly stop | Account disabled for negative balance. Top up and it comes back immediately (1.6) |

@@ -176,6 +176,31 @@ class CourseVideoService
     }
 
     /**
+     * Deletes the Bunny copy and forgets it, leaving any local file alone.
+     *
+     * For a deleted course: the lesson rows stay (a developer can still see what
+     * the course held) but Bunny stops billing for footage nobody can reach.
+     * The lesson is marked failed so that a restored course shows "upload this
+     * again" rather than a play button over nothing.
+     */
+    public function releaseRemoteCopy(CourseVideo $video): void
+    {
+        if ($video->external_id === null || ! $this->bunny->enabled()) {
+            return;
+        }
+
+        $this->bunny->deleteVideo($video->external_id);
+
+        $video->update([
+            'external_id' => null,
+            'processing_status' => $video->hasLocalFile()
+                ? VideoProcessingStatus::Ready
+                : VideoProcessingStatus::Failed,
+            'provider' => VideoProvider::Upload,
+        ]);
+    }
+
+    /**
      * Drops whichever copy exists — local file, remote video, or both after a
      * half-finished migration. Bunny bills storage until the video is deleted
      * there, so an abandoned upload must not be left behind.

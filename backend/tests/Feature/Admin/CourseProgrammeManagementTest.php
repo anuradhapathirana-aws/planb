@@ -6,6 +6,7 @@ namespace Tests\Feature\Admin;
 
 use App\Enums\CourseStatus;
 use App\Enums\RoleName;
+use App\Enums\VideoProvider;
 use App\Models\CourseCategory;
 use App\Models\CourseProgramme;
 use App\Models\CourseTopic;
@@ -13,6 +14,7 @@ use App\Models\CourseVideo;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -178,6 +180,29 @@ class CourseProgrammeManagementTest extends TestCase
             ->assertCreated();
     }
 
+    public function test_a_deleted_programmes_name_can_be_used_again(): void
+    {
+        $id = $this->actingAs($this->superAdmin)
+            ->postJson('/api/v1/admin/course-programmes', $this->payload())
+            ->assertCreated()
+            ->json('data.id');
+
+        $this->actingAs($this->superAdmin)
+            ->deleteJson("/api/v1/admin/course-programmes/{$id}")
+            ->assertNoContent();
+
+        /*
+         * The deleted row keeps the name in the table. Before the index carried
+         * `deleted_at`, this second create passed validation and then died on a
+         * duplicate key — "Could not save the course." with nothing to act on.
+         */
+        $this->actingAs($this->superAdmin)
+            ->postJson('/api/v1/admin/course-programmes', $this->payload())
+            ->assertCreated();
+
+        $this->assertSame(1, CourseProgramme::query()->where('name', $this->payload()['name'])->count());
+    }
+
     public function test_a_role_without_content_rights_cannot_create_a_programme(): void
     {
         $this->actingAs($this->accountant)
@@ -284,6 +309,38 @@ class CourseProgrammeManagementTest extends TestCase
             ->postJson("/api/v1/admin/course-programmes/{$programme->id}/publish")
             ->assertStatus(422)
             ->assertJsonValidationErrors('status');
+    }
+
+    public function test_deleting_a_programme_deletes_its_lessons_from_bunny(): void
+    {
+        config([
+            'bunny.enabled' => true,
+            'bunny.library_id' => '90210',
+            'bunny.api_key' => 'library-master-key',
+        ]);
+
+        $video = CourseVideo::factory()->for(
+            CourseTopic::factory()->create([
+                'course_programme_id' => CourseProgramme::factory()->create([
+                    'course_category_id' => $this->category->id,
+                ])->id,
+            ]),
+            'topic',
+        )->create(['provider' => VideoProvider::External, 'external_id' => 'abc-123']);
+
+        Http::fake();
+
+        $this->actingAs($this->superAdmin)
+            ->deleteJson("/api/v1/admin/course-programmes/{$video->topic->course_programme_id}")
+            ->assertNoContent();
+
+        // Bunny bills storage until the video is gone from their side too.
+        Http::assertSent(fn ($request) => $request->method() === 'DELETE'
+            && str_contains($request->url(), '/library/90210/videos/abc-123'));
+
+        // The lesson row survives the course; only its hosted copy is gone.
+        $this->assertNull($video->fresh()->external_id);
+        $this->assertDatabaseCount('course_videos', 1);
     }
 
     /** A programme whose single lesson has a real file and a known duration. */

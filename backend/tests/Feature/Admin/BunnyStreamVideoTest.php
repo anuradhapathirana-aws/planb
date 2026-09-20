@@ -86,6 +86,21 @@ class BunnyStreamVideoTest extends TestCase
         $this->assertSame(VideoProcessingStatus::Pending, $this->video->processing_status);
     }
 
+    public function test_a_rejected_key_explains_itself_instead_of_a_blank_500(): void
+    {
+        Http::fake([
+            'video.bunnycdn.com/library/90210/videos' => Http::response(['Message' => 'Unauthorized'], 401),
+        ]);
+
+        $this->actingAs($this->contentManager)
+            ->postJson("/api/v1/admin/course-videos/{$this->video->id}/upload-ticket")
+            ->assertStatus(502)
+            ->assertJsonPath('message', fn (string $m) => str_contains($m, 'BUNNY_STREAM_API_KEY'));
+
+        // Nothing half-written: the lesson is still whatever it was before.
+        $this->assertNull($this->video->fresh()->external_id);
+    }
+
     public function test_a_role_without_content_rights_cannot_request_a_ticket(): void
     {
         $accountant = User::factory()->create();
@@ -136,6 +151,29 @@ class BunnyStreamVideoTest extends TestCase
             // The no-skip rule is computed against this number, so the host's
             // measurement beats what the browser guessed off the picked file.
             ->assertJsonPath('data.duration_seconds', 637);
+    }
+
+    public function test_a_video_bunny_has_never_heard_of_is_marked_failed(): void
+    {
+        // What every lesson looks like after the keys are pointed at a new
+        // Bunny account: the guid belongs to the old library.
+        $this->video->update([
+            'external_id' => 'from-the-old-library',
+            'provider' => VideoProvider::External,
+            'processing_status' => VideoProcessingStatus::Processing,
+        ]);
+
+        Http::fake([
+            'video.bunnycdn.com/library/90210/videos/from-the-old-library' => Http::response(
+                ['success' => false, 'message' => 'Video Not Found', 'statusCode' => 404],
+                404,
+            ),
+        ]);
+
+        $this->actingAs($this->contentManager)
+            ->getJson("/api/v1/admin/course-videos/{$this->video->id}/processing-status")
+            ->assertOk()
+            ->assertJsonPath('data.processing_status', 'failed');
     }
 
     public function test_playback_returns_a_token_signed_hls_url(): void
