@@ -31,4 +31,13 @@ class CourseCategoryPolicy
     {
         return $user->hasAnyRole([RoleName::SuperAdmin->value, RoleName::ContentManager->value]);
     }
+
+    /**
+     * Deleting a category deletes the courses in it, so it sits with Super Admin
+     * like deleting a single course does.
+     */
+    public function delete(User $user, CourseCategory $category): bool
+    {
+        return $user->hasRole(RoleName::SuperAdmin->value);
+    }
 }

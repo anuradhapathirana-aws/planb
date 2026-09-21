@@ -1,6 +1,5 @@
 {
   "_comment": "Sinhala. Drafted by the dev team and PENDING CLIENT REVIEW — docs/translations/si-review.csv is the sheet the client checks it against, and their corrections come back here. Keys missing from this file fall back to en.json, so an untranslated string shows in English rather than as a raw key. Keep every {{placeholder}} and every _one/_other suffix exactly as en.json has them. Brand and payment terms (Plan B, Google, PDF, LKR, AED, UAE) stay in English on purpose — that is how students write them.",
-
   "common": {
     "appName": "Plan B",
     "continue": "ඉදිරියට",
@@ -211,13 +210,16 @@
     "filters": "ප්‍රවර්ගය අනුව පෙරන්න",
     "filtersActive": "පෙරහන්, {{count}}ක් තෝරා ඇත",
     "categoriesTitle": "ප්‍රවර්ග",
+    "subCategoriesTitle": "උප ප්‍රවර්ගය",
+    "allInCategory": "{{name}} තුළ සියල්ල",
+    "applyFilters": "යොදන්න",
     "clearFilters": "මකන්න",
     "resultCount_one": "පාඨමාලා {{count}}",
     "resultCount_other": "පාඨමාලා {{count}}",
     "idleTitle": "පාඨමාලාවක් සොයන්න",
     "idleBody": "ඔබට ඉගෙන ගැනීමට අවශ්‍ය දේ ටයිප් කරන්න, නැතහොත් ප්‍රවර්ගය අනුව පෙරන්න.",
-    "filteredOutTitle": "එම ප්‍රවර්ගවල කිසිවක් නැත",
-    "filteredOutBody": "ඔබේ සෙවුමට පාඨමාලා හමු වුවද, ඔබ තෝරාගත් ප්‍රවර්ගවල ඒවා නැත."
+    "filteredOutTitle": "මෙම ප්‍රවර්ගයේ කිසිවක් නැත",
+    "filteredOutBody": "වෙනත් ප්‍රවර්ගයක් තෝරන්න, නැතහොත් පෙරහන ඉවත් කරන්න."
   },
   "checklist": {
     "title": "පිරික්සුම් ලැයිස්තු",

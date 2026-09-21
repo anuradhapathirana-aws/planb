@@ -28,4 +28,9 @@ class CourseCategoryFactory extends Factory
     {
         return $this->state(fn () => ['is_active' => false]);
     }
+
+    public function childOf(CourseCategory $parent): static
+    {
+        return $this->state(fn () => ['parent_id' => $parent->id]);
+    }
 }

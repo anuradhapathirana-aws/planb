@@ -1,19 +1,36 @@
 import type { ColumnDef } from '@tanstack/react-table';
-import { Pencil, Power, PowerOff } from 'lucide-react';
+import { ChevronRight, FolderPlus, Pencil, Power, PowerOff, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { RowActions } from '@/components/shared/RowActions';
-import { COURSE_CATEGORY_ICON_GLYPHS } from '@/features/admin/courseCategories/courseCategoryIcons';
+import { CourseCategoryIconTile } from '@/features/admin/courseCategories/components/CourseCategoryIconTile';
 import { formatDate } from '@/lib/formatters';
+import { cn } from '@/lib/utils';
 import type { CourseCategory } from '@shared/types/course';
 
 interface CourseCategoryColumnActions {
+  onAddChild: (parent: CourseCategory) => void;
   onEdit: (category: CourseCategory) => void;
   onToggleActive: (category: CourseCategory) => void;
+  onDelete: (category: CourseCategory) => void;
 }
 
+/** Courses on a parent and on every sub-category under it. */
+export function branchCourseCount(category: CourseCategory): number {
+  return (
+    (category.programmes_count ?? 0) +
+    (category.children ?? []).reduce((sum, child) => sum + (child.programmes_count ?? 0), 0)
+  );
+}
+
+/**
+ * Columns for the category tree. Sub-categories are nested rows (`row.depth` 1),
+ * indented under their parent with a connector line so the tree reads at a glance.
+ */
 export function getCourseCategoryColumns({
+  onAddChild,
   onEdit,
   onToggleActive,
+  onDelete,
 }: CourseCategoryColumnActions): ColumnDef<CourseCategory>[] {
   return [
     {
@@ -21,31 +38,46 @@ export function getCourseCategoryColumns({
       header: 'Category',
       meta: { sortId: 'name' },
       cell: ({ row }) => {
-        const { icon } = row.original;
-        const Glyph = icon ? COURSE_CATEGORY_ICON_GLYPHS[icon] : null;
+        const category = row.original;
+        const isChild = row.depth > 0;
+        const childCount = category.children?.length ?? 0;
 
         return (
-          <div className="flex min-w-0 items-center gap-2.5">
-            {/*
-              The icon the Home tile uses, so an admin scanning the list sees which
-              categories still have none. Empty categories show a dashed slot
-              rather than nothing, which would misalign the names.
-            */}
-            <span
-              className={
-                Glyph
-                  ? 'flex size-7 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary'
-                  : 'size-7 shrink-0 rounded-md border border-dashed border-border'
-              }
-              title={Glyph ? undefined : 'No icon — the app guesses one from the name'}
-            >
-              {Glyph && <Glyph className="size-4" aria-hidden />}
-            </span>
+          <div className={cn('flex min-w-0 items-center gap-2', isChild && 'pl-4')}>
+            {isChild ? (
+              // └ connector: ties the child to the parent row above it.
+              <span aria-hidden className="-mt-4 h-6 w-4 shrink-0 rounded-bl-md border-b border-l border-border" />
+            ) : childCount > 0 ? (
+              <button
+                type="button"
+                onClick={row.getToggleExpandedHandler()}
+                aria-label={row.getIsExpanded() ? `Collapse ${category.name}` : `Expand ${category.name}`}
+                aria-expanded={row.getIsExpanded()}
+                className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground"
+              >
+                <ChevronRight className={cn('size-4 transition-transform', row.getIsExpanded() && 'rotate-90')} />
+              </button>
+            ) : (
+              <span aria-hidden className="size-6 shrink-0" />
+            )}
+
+            <CourseCategoryIconTile category={category} size={isChild ? 'sm' : 'md'} />
+
             <div className="min-w-0">
-              <span className="font-medium">{row.original.name}</span>
-              {row.original.description && (
-                <p className="line-clamp-1 text-xs text-muted-foreground" title={row.original.description}>
-                  {row.original.description}
+              <div className="flex items-center gap-1.5">
+                <span className={cn('truncate', isChild ? 'text-sm' : 'font-medium')}>{category.name}</span>
+                {!isChild && childCount > 0 && (
+                  <Badge variant="secondary" className="h-4 px-1.5 text-[10px] font-normal">
+                    {childCount} sub
+                  </Badge>
+                )}
+              </div>
+              {(category.name_si || category.description) && (
+                <p
+                  className="line-clamp-1 text-xs text-muted-foreground"
+                  title={category.name_si ?? category.description ?? undefined}
+                >
+                  {category.name_si ?? category.description}
                 </p>
               )}
             </div>
@@ -56,16 +88,44 @@ export function getCourseCategoryColumns({
     {
       id: 'programmes_count',
       header: 'Courses',
-      cell: ({ row }) => <span className="text-sm text-muted-foreground">{row.original.programmes_count ?? 0}</span>,
+      cell: ({ row }) => {
+        const category = row.original;
+        const total = row.depth === 0 ? branchCourseCount(category) : (category.programmes_count ?? 0);
+        const direct = category.programmes_count ?? 0;
+
+        return (
+          <span
+            className="text-sm text-muted-foreground"
+            // A parent's number includes its sub-categories; say so when it differs.
+            title={total !== direct ? `${direct} directly in this category, ${total - direct} in sub-categories` : undefined}
+          >
+            {total}
+          </span>
+        );
+      },
     },
     {
       id: 'is_active',
       header: 'Status',
-      cell: ({ row }) => (
-        <Badge variant={row.original.is_active ? 'success' : 'secondary'}>
-          {row.original.is_active ? 'Active' : 'Inactive'}
-        </Badge>
-      ),
+      cell: ({ row }) => {
+        const category = row.original;
+        const parent = row.getParentRow()?.original;
+
+        // Switched on itself, but hidden from students because its parent is off.
+        if (category.is_active && parent && !parent.is_active) {
+          return (
+            <Badge variant="secondary" title="Hidden from students because the main category is inactive">
+              Hidden
+            </Badge>
+          );
+        }
+
+        return (
+          <Badge variant={category.is_active ? 'success' : 'secondary'}>
+            {category.is_active ? 'Active' : 'Inactive'}
+          </Badge>
+        );
+      },
     },
     {
       id: 'created_at',
@@ -79,15 +139,25 @@ export function getCourseCategoryColumns({
       meta: { sticky: 'right' },
       cell: ({ row }) => {
         const category = row.original;
+        const isParent = row.depth === 0;
+
         return (
           <RowActions
+            maxInline={4}
             actions={[
+              {
+                label: 'Add sub-category',
+                icon: FolderPlus,
+                onClick: () => onAddChild(category),
+                hidden: !isParent,
+              },
               { label: 'Edit', icon: Pencil, onClick: () => onEdit(category) },
               {
                 label: category.is_active ? 'Deactivate' : 'Activate',
                 icon: category.is_active ? PowerOff : Power,
                 onClick: () => onToggleActive(category),
               },
+              { label: 'Delete', icon: Trash2, onClick: () => onDelete(category), variant: 'destructive' },
             ]}
           />
         );

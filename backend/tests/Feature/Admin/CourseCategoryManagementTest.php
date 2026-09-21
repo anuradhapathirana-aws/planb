@@ -4,11 +4,16 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Admin;
 
+use App\Enums\EnrolmentSource;
 use App\Enums\RoleName;
 use App\Models\CourseCategory;
 use App\Models\CourseProgramme;
+use App\Models\Enrolment;
+use App\Models\Student;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -149,14 +154,139 @@ class CourseCategoryManagementTest extends TestCase
             ->assertJsonPath('data.is_active', true);
     }
 
-    /** Categories are deactivated, never deleted — no destroy route exists. */
-    public function test_categories_cannot_be_deleted(): void
+    public function test_admin_can_add_a_sub_category_under_a_parent(): void
+    {
+        $parent = CourseCategory::factory()->create(['name' => 'Migration']);
+
+        $this->actingAs($this->contentManager)
+            ->postJson('/api/v1/admin/course-categories', [
+                'parent_id' => $parent->id,
+                'name' => 'UAE',
+                'name_si' => 'එක්සත් අරාබි එමීර් රාජ්‍යය',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.parent_id', $parent->id)
+            ->assertJsonPath('data.name_si', 'එක්සත් අරාබි එමීර් රාජ්‍යය');
+
+        $this->actingAs($this->contentManager)
+            ->getJson('/api/v1/admin/course-categories')
+            ->assertOk()
+            // Pagination counts parents; the child is nested, not a row of its own.
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.children.0.name', 'UAE');
+    }
+
+    public function test_the_tree_is_two_levels_deep_only(): void
+    {
+        $parent = CourseCategory::factory()->create();
+        $child = CourseCategory::factory()->childOf($parent)->create();
+
+        $this->actingAs($this->contentManager)
+            ->postJson('/api/v1/admin/course-categories', ['parent_id' => $child->id, 'name' => 'Too deep'])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('parent_id');
+
+        // A parent with children cannot itself be moved under another category.
+        $other = CourseCategory::factory()->create();
+        $this->actingAs($this->contentManager)
+            ->putJson("/api/v1/admin/course-categories/{$parent->id}", [
+                'parent_id' => $other->id,
+                'name' => $parent->name,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('parent_id');
+    }
+
+    public function test_sub_category_names_are_unique_per_parent_only(): void
+    {
+        $migration = CourseCategory::factory()->create(['name' => 'Migration']);
+        $jobs = CourseCategory::factory()->create(['name' => 'Jobs']);
+        CourseCategory::factory()->childOf($migration)->create(['name' => 'UAE']);
+
+        $this->actingAs($this->contentManager)
+            ->postJson('/api/v1/admin/course-categories', ['parent_id' => $jobs->id, 'name' => 'UAE'])
+            ->assertCreated();
+
+        $this->actingAs($this->contentManager)
+            ->postJson('/api/v1/admin/course-categories', ['parent_id' => $migration->id, 'name' => 'UAE'])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('name');
+    }
+
+    public function test_deleting_a_category_soft_deletes_its_branch_and_courses(): void
+    {
+        $parent = CourseCategory::factory()->create();
+        $child = CourseCategory::factory()->childOf($parent)->create();
+        $onParent = CourseProgramme::factory()->create(['course_category_id' => $parent->id]);
+        $onChild = CourseProgramme::factory()->create(['course_category_id' => $child->id]);
+
+        $this->actingAs($this->superAdmin)
+            ->deleteJson("/api/v1/admin/course-categories/{$parent->id}")
+            ->assertNoContent();
+
+        $this->assertSoftDeleted($parent);
+        $this->assertSoftDeleted($child);
+        $this->assertSoftDeleted($onParent);
+        $this->assertSoftDeleted($onChild);
+    }
+
+    public function test_a_category_with_enrolled_students_cannot_be_deleted(): void
+    {
+        $parent = CourseCategory::factory()->create();
+        $child = CourseCategory::factory()->childOf($parent)->create();
+        $programme = CourseProgramme::factory()->create(['course_category_id' => $child->id]);
+        Enrolment::create([
+            'student_id' => Student::factory()->create()->id,
+            'course_programme_id' => $programme->id,
+            'source' => EnrolmentSource::Free,
+            'enrolled_at' => now(),
+        ]);
+
+        $this->actingAs($this->superAdmin)
+            ->deleteJson("/api/v1/admin/course-categories/{$parent->id}")
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('category');
+
+        $this->assertNotSoftDeleted($parent);
+        $this->assertNotSoftDeleted($programme);
+    }
+
+    public function test_only_a_super_admin_can_delete_a_category(): void
     {
         $category = CourseCategory::factory()->create();
 
-        $this->actingAs($this->superAdmin)
+        $this->actingAs($this->contentManager)
             ->deleteJson("/api/v1/admin/course-categories/{$category->id}")
-            ->assertMethodNotAllowed();
+            ->assertForbidden();
+    }
+
+    public function test_a_sub_category_can_upload_a_png_icon(): void
+    {
+        Storage::fake('public');
+        $parent = CourseCategory::factory()->create();
+        $child = CourseCategory::factory()->childOf($parent)->create();
+
+        $url = $this->actingAs($this->contentManager)
+            ->postJson("/api/v1/admin/course-categories/{$child->id}/icon-image", [
+                'icon_image' => UploadedFile::fake()->image('uae.png', 300, 300),
+            ])
+            ->assertOk()
+            ->json('data.icon_image_url');
+
+        $this->assertNotNull($url);
+    }
+
+    public function test_a_top_level_category_cannot_upload_an_icon(): void
+    {
+        Storage::fake('public');
+        $parent = CourseCategory::factory()->create();
+
+        $this->actingAs($this->contentManager)
+            ->postJson("/api/v1/admin/course-categories/{$parent->id}/icon-image", [
+                'icon_image' => UploadedFile::fake()->image('migration.png', 256, 256),
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('icon_image');
     }
 
     public function test_the_list_reports_how_many_programmes_a_category_holds(): void

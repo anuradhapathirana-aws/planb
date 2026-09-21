@@ -1,4 +1,13 @@
-import { flexRender, getCoreRowModel, useReactTable, type ColumnDef } from '@tanstack/react-table';
+import { useState } from 'react';
+import {
+  flexRender,
+  getCoreRowModel,
+  getExpandedRowModel,
+  useReactTable,
+  type ColumnDef,
+  type ExpandedState,
+  type Row,
+} from '@tanstack/react-table';
 import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -14,6 +23,14 @@ interface DataTableProps<TData, TValue> {
   onSortChange?: (columnId: string) => void;
   onRowClick?: (row: TData) => void;
   emptyState?: React.ReactNode;
+  /**
+   * Nested rows (e.g. sub-categories under a category). Rows start expanded;
+   * a cell toggles one with `row.getToggleExpandedHandler()` and reads
+   * `row.depth` to indent itself.
+   */
+  getSubRows?: (row: TData) => TData[] | undefined;
+  /** Extra classes per row — e.g. tinting child rows so the tree reads at a glance. */
+  getRowClassName?: (row: Row<TData>) => string | undefined;
 }
 
 export function DataTable<TData, TValue>({
@@ -26,11 +43,21 @@ export function DataTable<TData, TValue>({
   onSortChange,
   onRowClick,
   emptyState,
+  getSubRows,
+  getRowClassName,
 }: DataTableProps<TData, TValue>) {
+  const [expanded, setExpanded] = useState<ExpandedState>(true);
+
   const table = useReactTable({
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
+    ...(getSubRows && {
+      getSubRows,
+      getExpandedRowModel: getExpandedRowModel(),
+      state: { expanded },
+      onExpandedChange: setExpanded,
+    }),
   });
 
   const showEmpty = !isLoading && data.length === 0;
@@ -91,7 +118,7 @@ export function DataTable<TData, TValue>({
               <TableRow
                 key={row.id}
                 onClick={() => onRowClick?.(row.original)}
-                className={cn(onRowClick && 'cursor-pointer')}
+                className={cn(onRowClick && 'cursor-pointer', getRowClassName?.(row))}
               >
                 {row.getVisibleCells().map((cell) => {
                   const sticky = cell.column.columnDef.meta?.sticky === 'right';

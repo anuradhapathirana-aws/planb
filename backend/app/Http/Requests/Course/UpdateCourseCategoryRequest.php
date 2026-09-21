@@ -4,41 +4,20 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Course;
 
-use App\Enums\CourseCategoryIcon;
-use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
+use App\Models\CourseCategory;
 
-class UpdateCourseCategoryRequest extends FormRequest
+class UpdateCourseCategoryRequest extends CourseCategoryRequest
 {
     public function authorize(): bool
     {
         return $this->user()->can('update', $this->route('category'));
     }
 
-    public function rules(): array
+    protected function editing(): ?CourseCategory
     {
-        return [
-            'name' => [
-                'required',
-                'string',
-                'max:255',
-                Rule::unique('course_categories', 'name')->ignore($this->route('category')),
-            ],
-            'description' => ['nullable', 'string', 'max:500'],
-            /*
-             * The Home tile's glyph. Optional: left empty, the app guesses one
-             * from the category name, so existing categories need no backfill.
-             */
-            'icon' => ['nullable', Rule::in(CourseCategoryIcon::values())],
-        ];
-    }
+        /** @var CourseCategory $category */
+        $category = $this->route('category');
 
-    public function messages(): array
-    {
-        return [
-            'name.required' => 'Enter a category name.',
-            'name.unique' => 'A category with this name already exists.',
-            'icon.in' => 'Pick an icon from the list.',
-        ];
+        return $category;
     }
 }

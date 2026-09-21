@@ -15,7 +15,8 @@ import {
   useDeleteCourseProgramme,
   useToggleCoursePublished,
 } from '@/features/admin/courses/hooks/useCourses';
-import { useCourseCategories } from '@/features/admin/courseCategories/hooks/useCourseCategories';
+import { useCourseCategoryTree } from '@/features/admin/courseCategories/hooks/useCourseCategories';
+import { useCategoryCascade } from '@/features/admin/courseCategories/hooks/useCategoryCascade';
 import { paths } from '@/routes/paths';
 import type { CourseProgramme, CourseProgrammeListFilters } from '@shared/types/course';
 
@@ -63,12 +64,13 @@ export function CoursesListPage() {
   );
 
   const { data, isLoading, isFetching } = useCourseProgrammes(filters);
-  const { data: categoryOptions } = useCourseCategories({
-    is_active: 'all',
-    sort: 'name',
-    direction: 'asc',
-    per_page: 100,
-  });
+  // Every category, inactive ones too — an admin may be looking for a course in one.
+  const { data: categoryTree } = useCourseCategoryTree();
+  const categoryCascade = useCategoryCascade(
+    categoryTree ?? [],
+    draftCategory === 'all' ? null : draftCategory,
+    (value) => setDraftCategory(value ?? 'all'),
+  );
   const togglePublished = useToggleCoursePublished();
   const deleteCourse = useDeleteCourseProgramme();
 
@@ -139,17 +141,38 @@ export function CoursesListPage() {
 
         <FilterField label="Category">
           <Select
-            value={String(draftCategory)}
-            onValueChange={(v) => setDraftCategory(v === 'all' ? 'all' : Number(v))}
+            value={categoryCascade.parentId ? String(categoryCascade.parentId) : 'all'}
+            onValueChange={(v) => v !== '' && categoryCascade.selectParent(v === 'all' ? null : Number(v))}
           >
             <SelectTrigger size="sm" className="w-full">
               <SelectValue placeholder="All categories" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All categories</SelectItem>
-              {categoryOptions?.data.map((category) => (
+              {(categoryTree ?? []).map((category) => (
                 <SelectItem key={category.id} value={String(category.id)}>
                   {category.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FilterField>
+
+        {/* A main category alone already includes its sub-categories' courses. */}
+        <FilterField label="Sub-category">
+          <Select
+            value={categoryCascade.subId ? String(categoryCascade.subId) : 'all'}
+            onValueChange={(v) => v !== '' && categoryCascade.selectSub(v === 'all' ? null : Number(v))}
+            disabled={categoryCascade.children.length === 0}
+          >
+            <SelectTrigger size="sm" className="w-full">
+              <SelectValue placeholder="All sub-categories" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All sub-categories</SelectItem>
+              {categoryCascade.children.map((child) => (
+                <SelectItem key={child.id} value={String(child.id)}>
+                  {child.name}
                 </SelectItem>
               ))}
             </SelectContent>

@@ -100,7 +100,8 @@ export function ImageDropzone({
 
   const validate = (file: File): boolean => {
     if (!acceptedTypes.includes(file.type)) {
-      toast.error('Use a JPG or PNG image.');
+      const names = acceptedTypes.map((type) => (type === 'image/jpeg' ? 'JPG' : type.replace('image/', '').toUpperCase()));
+      toast.error(`Use a ${names.join(' or ')} image.`);
       return false;
     }
     if (file.size > maxBytes) {

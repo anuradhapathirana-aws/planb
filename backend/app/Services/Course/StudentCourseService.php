@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Course;
 
 use App\Enums\CourseStatus;
+use App\Models\CourseCategory;
 use App\Models\CourseProgramme;
 use App\Models\CourseTopic;
 use App\Models\CourseVideo;
@@ -33,15 +34,31 @@ class StudentCourseService
         private readonly CourseWishlistService $wishlist,
     ) {}
 
-    /** Published programmes, each with a progress summary. */
+    /**
+     * Published programmes, each with a progress summary.
+     *
+     * `category_id` filters server-side, by id: a top-level category means the
+     * whole branch (courses on it and on every sub-category), a sub-category means
+     * just its own. Search and category combine, so "visa" inside "UAE" works;
+     * search with no category covers every category.
+     *
+     * @param  array{search?: string, category_id?: int, per_page?: int}  $filters
+     */
     public function list(Student $student, array $filters): LengthAwarePaginator
     {
         $perPage = min(max((int) ($filters['per_page'] ?? 20), 1), 50);
 
-        $programmes = $this->summaryQuery()
+        $programmes = $this->summaryQuery($student)
             ->when(
                 filled($filters['search'] ?? null),
                 fn ($query) => $this->applySearch($query, (string) $filters['search']),
+            )
+            ->when(
+                ! empty($filters['category_id']),
+                fn ($query) => $query->whereIn(
+                    'course_category_id',
+                    CourseCategory::find((int) $filters['category_id'])?->selfAndChildIds() ?? [],
+                ),
             )
             ->orderBy('sort_order')
             ->orderBy('name')
@@ -79,7 +96,7 @@ class StudentCourseService
 
         $order = array_flip($ids);
 
-        $programmes = $this->summaryQuery()
+        $programmes = $this->summaryQuery($student)
             ->whereIn('id', $ids)
             ->get()
             // The list's own order — when each was saved — not the catalogue's.
@@ -101,12 +118,21 @@ class StudentCourseService
      * same query. Shared by the catalogue and the wishlist so the two return
      * identical rows — the app draws both with one tile.
      *
+     * A course whose category (or parent category) is switched off drops out —
+     * EXCEPT for a student already enrolled in it. They paid for it, and it stays
+     * on their Courses tab; switching a category off only stops new sales.
+     *
      * @return Builder<CourseProgramme>
      */
-    private function summaryQuery(): Builder
+    private function summaryQuery(Student $student): Builder
     {
+        $enrolledIds = $this->enrolments->enrolledProgrammeIds($student);
+
         return CourseProgramme::query()
             ->where('status', CourseStatus::Published)
+            ->where(fn (Builder $visible) => $visible
+                ->whereHas('category', fn (Builder $category) => $category->visibleToStudents())
+                ->orWhereIn('id', $enrolledIds))
             ->withCount(['topics', 'videos'])
             /*
              * Total run time, summed in the same query rather than by loading

@@ -17,7 +17,7 @@ class UpdateCourseProgrammeRequest extends CourseProgrammeRequest
     protected function programmeRules(): array
     {
         return [
-            'course_category_id' => ['required', 'integer', 'exists:course_categories,id'],
+            'course_category_id' => $this->categoryRules(),
             'name' => [
                 'required',
                 'string',

@@ -7,16 +7,19 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Course\StoreCourseCategoryRequest;
 use App\Http\Requests\Course\UpdateCourseCategoryRequest;
+use App\Http\Requests\Course\UploadCourseCategoryIconRequest;
 use App\Http\Resources\CourseCategoryResource;
 use App\Models\CourseCategory;
 use App\Services\Course\CourseCategoryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 
 class CourseCategoryController extends Controller
 {
     public function __construct(private readonly CourseCategoryService $categories) {}
 
+    /** Top-level categories, paginated, each with its sub-categories nested. */
     public function index(Request $request): JsonResponse
     {
         $this->authorize('viewAny', CourseCategory::class);
@@ -47,7 +50,9 @@ class CourseCategoryController extends Controller
     {
         $this->authorize('view', $category);
 
-        return response()->json(['data' => new CourseCategoryResource($category->loadCount('programmes'))]);
+        return response()->json([
+            'data' => new CourseCategoryResource($category->loadCount('programmes')->load(['media', 'children'])),
+        ]);
     }
 
     public function update(UpdateCourseCategoryRequest $request, CourseCategory $category): JsonResponse
@@ -55,6 +60,19 @@ class CourseCategoryController extends Controller
         $updated = $this->categories->update($category, $request->validated());
 
         return response()->json(['data' => new CourseCategoryResource($updated)]);
+    }
+
+    /**
+     * Soft-deletes the category, its sub-categories and their courses. Refused
+     * with a 422 while any student is enrolled or mid-payment.
+     */
+    public function destroy(CourseCategory $category): Response
+    {
+        $this->authorize('delete', $category);
+
+        $this->categories->delete($category);
+
+        return response()->noContent();
     }
 
     public function activate(CourseCategory $category): JsonResponse
@@ -69,5 +87,19 @@ class CourseCategoryController extends Controller
         $this->authorize('update', $category);
 
         return response()->json(['data' => new CourseCategoryResource($this->categories->deactivate($category))]);
+    }
+
+    public function uploadIconImage(UploadCourseCategoryIconRequest $request, CourseCategory $category): JsonResponse
+    {
+        $updated = $this->categories->updateIconImage($category, $request->file('icon_image'));
+
+        return response()->json(['data' => new CourseCategoryResource($updated)]);
+    }
+
+    public function deleteIconImage(CourseCategory $category): JsonResponse
+    {
+        $this->authorize('update', $category);
+
+        return response()->json(['data' => new CourseCategoryResource($this->categories->removeIconImage($category))]);
     }
 }

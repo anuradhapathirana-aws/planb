@@ -50,7 +50,17 @@ export function getCourseColumns({
     {
       id: 'category',
       header: 'Category',
-      cell: ({ row }) => <span className="text-sm text-muted-foreground">{row.original.category?.name ?? '—'}</span>,
+      cell: ({ row }) => {
+        const category = row.original.category;
+        if (!category) return <span className="text-sm text-muted-foreground">—</span>;
+
+        return (
+          <span className="text-sm text-muted-foreground">
+            {category.parent && <span>{category.parent.name} › </span>}
+            <span className={category.parent ? 'text-foreground' : undefined}>{category.name}</span>
+          </span>
+        );
+      },
     },
     {
       id: 'content',

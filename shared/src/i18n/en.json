@@ -209,13 +209,16 @@
     "filters": "Filter by category",
     "filtersActive": "Filters, {{count}} selected",
     "categoriesTitle": "Categories",
+    "subCategoriesTitle": "Sub-category",
+    "allInCategory": "All in {{name}}",
+    "applyFilters": "Apply",
     "clearFilters": "Clear",
     "resultCount_one": "{{count}} course",
     "resultCount_other": "{{count}} courses",
     "idleTitle": "Find a course",
     "idleBody": "Type what you want to learn, or filter by category.",
-    "filteredOutTitle": "Nothing in those categories",
-    "filteredOutBody": "Your search found courses, but none in the categories you picked."
+    "filteredOutTitle": "Nothing in this category",
+    "filteredOutBody": "Try another category, or clear the filter."
   },
   "checklist": {
     "title": "Checklists",

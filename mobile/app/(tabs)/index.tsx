@@ -165,7 +165,7 @@ export default function HomeScreen() {
 
   /*
    * Search lives in a full-screen sheet, but its STATE lives here, so the query
-   * and the ticked categories survive closing and reopening it. A student who
+   * and the applied category survive closing and reopening it. A student who
    * taps a result, reads the course and comes back finds their search where they
    * left it rather than an empty box.
    *
@@ -305,8 +305,6 @@ export default function HomeScreen() {
          * Home's page gutter, 10px. Two other places hard-code it to break out
          * of it and reach the screen edge — `HomeHeader`'s own padding and
          * `HomeCarousel.PAGE_GUTTER`. Change this and you change those.
-         * (`CategoryTabs` is coupled to it too, but only inside
-         * `/browse/courses` now that Home no longer renders the chip strip.)
          */
         /*
          * `gap-7` (28px) between blocks, raised in steps from 12px at the
@@ -346,7 +344,7 @@ export default function HomeScreen() {
         */}
         <View style={{ marginBottom: -SEARCH_PULL_UP }}>
           <HomeSearchBar
-            activeFilters={search.selected.length}
+            activeFilters={search.isFiltering ? 1 : 0}
             onPress={() => {
               setSearchFromFilter(false);
               setSearchOpen(true);
@@ -427,7 +425,8 @@ export default function HomeScreen() {
               onSelect={(category) =>
                 router.push({
                   pathname: '/browse/courses',
-                  params: { category: category.name },
+                  // The id, never the name — a renamed category must not break it.
+                  params: { category: String(category.id) },
                 })
               }
             />

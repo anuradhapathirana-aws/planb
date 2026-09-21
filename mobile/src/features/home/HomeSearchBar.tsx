@@ -10,7 +10,7 @@ export interface HomeSearchBarProps {
   onPress: () => void;
   /** Opens it with the category panel already expanded. */
   onFilter: () => void;
-  /** How many categories are currently ticked; 0 hides the count. */
+  /** How many category filters are applied; 0 hides the count. */
   activeFilters?: number;
 }
 

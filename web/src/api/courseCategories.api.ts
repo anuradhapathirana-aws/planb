@@ -31,3 +31,24 @@ export async function deactivateCourseCategory(id: number): Promise<CourseCatego
   const { data } = await apiClient.post<ApiResource<CourseCategory>>(`/admin/course-categories/${id}/deactivate`);
   return data.data;
 }
+
+/** Soft-deletes the category, its sub-categories and their courses. 422 if anyone is enrolled. */
+export async function deleteCourseCategory(id: number): Promise<void> {
+  await apiClient.delete(`/admin/course-categories/${id}`);
+}
+
+/** A sub-category's own icon — PNG, re-encoded to fit 256×256 on the server. */
+export async function uploadCourseCategoryIcon(id: number, file: File): Promise<CourseCategory> {
+  const formData = new FormData();
+  formData.append('icon_image', file);
+  const { data } = await apiClient.post<ApiResource<CourseCategory>>(
+    `/admin/course-categories/${id}/icon-image`,
+    formData,
+  );
+  return data.data;
+}
+
+export async function deleteCourseCategoryIcon(id: number): Promise<CourseCategory> {
+  const { data } = await apiClient.delete<ApiResource<CourseCategory>>(`/admin/course-categories/${id}/icon-image`);
+  return data.data;
+}

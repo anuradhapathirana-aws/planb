@@ -49,6 +49,26 @@ class StudentCourseCategoryTest extends TestCase
             ->assertJsonMissingPath('data.0.sort_order');
     }
 
+    public function test_sub_categories_are_nested_under_their_parent_in_the_students_language(): void
+    {
+        Sanctum::actingAs(Student::factory()->create(['is_blocked' => false]), ['student'], 'student');
+
+        $migration = CourseCategory::factory()->create(['name' => 'Migration', 'name_si' => 'සංක්‍රමණ']);
+        CourseCategory::factory()->childOf($migration)->create(['name' => 'UAE', 'sort_order' => 1]);
+        CourseCategory::factory()->childOf($migration)->create(['name' => 'AUS', 'sort_order' => 2]);
+        CourseCategory::factory()->childOf($migration)->inactive()->create(['name' => 'CHINA']);
+
+        $this->getJson('/api/v1/student/course-categories', ['Accept-Language' => 'si'])
+            ->assertOk()
+            // Children are nested, never listed as top-level rows.
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.name', 'සංක්‍රමණ')
+            ->assertJsonCount(2, 'data.0.children')
+            // No Sinhala name entered: falls back to English.
+            ->assertJsonPath('data.0.children.0.name', 'UAE')
+            ->assertJsonPath('data.0.children.1.name', 'AUS');
+    }
+
     public function test_a_guest_cannot_list_categories(): void
     {
         $this->getJson('/api/v1/student/course-categories')->assertUnauthorized();

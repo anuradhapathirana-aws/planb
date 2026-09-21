@@ -99,10 +99,17 @@ class CourseProgramme extends Model implements HasMedia, Purchasable
         return $this->currency ?? (string) config('payments.currency');
     }
 
-    /** A draft course is not on sale, whatever its price says. */
+    /**
+     * A draft course is not on sale, whatever its price says — and neither is
+     * one whose category (or parent category) an admin has switched off.
+     *
+     * Checked only when an order is created, never when one settles: a student
+     * already paying by bank transfer still gets the course they paid for.
+     */
     public function isPurchasable(): bool
     {
-        return $this->status === CourseStatus::Published;
+        return $this->status === CourseStatus::Published
+            && (bool) $this->category?->isVisibleToStudents();
     }
 
     public function isFree(): bool

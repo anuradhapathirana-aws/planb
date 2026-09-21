@@ -11,7 +11,11 @@ const ICON_VALUES = COURSE_CATEGORY_ICONS.map((icon) => icon.value) as [
 ];
 
 export const courseCategoryFormSchema = z.object({
-  name: z.string().min(1, 'Enter a category name.').max(255),
+  /** Null makes it a main category; an id makes it a sub-category of that one. */
+  parent_id: z.number().int().positive().nullable(),
+  name: z.string().trim().min(1, 'Enter a category name.').max(255),
+  // Optional: blank means "not translated yet" and students see the English name.
+  name_si: z.string().max(255).optional().or(z.literal('')),
   description: z.string().max(500, 'Keep the description under 500 characters.').optional().or(z.literal('')),
   /*
    * Optional: with no icon the app guesses one from the category name, so this is
@@ -22,3 +26,7 @@ export const courseCategoryFormSchema = z.object({
 });
 
 export type CourseCategoryFormSchema = z.infer<typeof courseCategoryFormSchema>;
+
+/** Shown under the upload box and enforced by the server (PNG, 1 MB, cropped to 256×256). */
+export const ICON_IMAGE_HINT = 'PNG, 256×256 px, transparent background, up to 1 MB';
+export const ICON_IMAGE_MAX_BYTES = 1024 * 1024;

@@ -63,6 +63,21 @@ abstract class CourseProgrammeRequest extends FormRequest
     /** @return array<string, mixed> */
     abstract protected function programmeRules(): array;
 
+    /**
+     * A course sits on a parent category or on a sub-category — either is valid,
+     * so this only asks that the category exists and has not been deleted.
+     *
+     * @return list<mixed>
+     */
+    protected function categoryRules(): array
+    {
+        return [
+            'required',
+            'integer',
+            Rule::exists('course_categories', 'id')->whereNull('deleted_at'),
+        ];
+    }
+
     /** @return list<mixed> */
     abstract protected function topicIdRules(): array;
 

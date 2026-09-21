@@ -26,7 +26,12 @@ class StudentCourseSummaryResource extends JsonResource
             // never sees both names and never chooses between them.
             'name' => $this->translated('name'),
             'description' => $this->description,
-            'category_name' => $this->category?->name,
+            // Ids for relations, the name for display only — renaming a category
+            // must never break a filter.
+            'category_id' => $this->course_category_id,
+            // Set when the course sits on a sub-category: the top-level one above it.
+            'parent_category_id' => $this->category?->parent_id,
+            'category_name' => $this->category?->translated('name'),
             'thumbnail_url' => PublicUrl::forRequest($this->thumbnail_url, $request),
             'price_cents' => (int) $this->price_cents,
             'currency' => $this->currency,

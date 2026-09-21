@@ -76,9 +76,11 @@ Route::prefix('v1/admin')->group(function () {
         // Course Module content (FR-ADM-008/008a/008b): Category -> Programme -> Topic -> Video.
         Route::post('/course-categories/{category}/activate', [CourseCategoryController::class, 'activate']);
         Route::post('/course-categories/{category}/deactivate', [CourseCategoryController::class, 'deactivate']);
+        // A sub-category's own uploaded icon (parents use the fixed icon list).
+        Route::post('/course-categories/{category}/icon-image', [CourseCategoryController::class, 'uploadIconImage']);
+        Route::delete('/course-categories/{category}/icon-image', [CourseCategoryController::class, 'deleteIconImage']);
         Route::apiResource('course-categories', CourseCategoryController::class)
-            ->parameters(['course-categories' => 'category'])
-            ->except(['destroy']);
+            ->parameters(['course-categories' => 'category']);
 
         // Topics and videos have no endpoints of their own: the Course form saves
         // the whole tree through the programme, which keeps a partly-saved course

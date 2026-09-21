@@ -184,13 +184,16 @@
 "search.filters","Filter by category","ප්‍රවර්ගය අනුව පෙරන්න",,
 "search.filtersActive","Filters, {{count}} selected","පෙරහන්, {{count}}ක් තෝරා ඇත",,
 "search.categoriesTitle","Categories","ප්‍රවර්ග",,
+"search.subCategoriesTitle","Sub-category","උප ප්‍රවර්ගය",,
+"search.allInCategory","All in {{name}}","{{name}} තුළ සියල්ල",,"{{name}} is a category name, e.g. Migration"
+"search.applyFilters","Apply","යොදන්න",,"Button that applies the category filter"
 "search.clearFilters","Clear","මකන්න",,
 "search.resultCount_one","{{count}} course","පාඨමාලා {{count}}",,
 "search.resultCount_other","{{count}} courses","පාඨමාලා {{count}}",,
 "search.idleTitle","Find a course","පාඨමාලාවක් සොයන්න",,
 "search.idleBody","Type what you want to learn, or filter by category.","ඔබට ඉගෙන ගැනීමට අවශ්‍ය දේ ටයිප් කරන්න, නැතහොත් ප්‍රවර්ගය අනුව පෙරන්න.",,
-"search.filteredOutTitle","Nothing in those categories","එම ප්‍රවර්ගවල කිසිවක් නැත",,
-"search.filteredOutBody","Your search found courses, but none in the categories you picked.","ඔබේ සෙවුමට පාඨමාලා හමු වුවද, ඔබ තෝරාගත් ප්‍රවර්ගවල ඒවා නැත.",,
+"search.filteredOutTitle","Nothing in this category","මෙම ප්‍රවර්ගයේ කිසිවක් නැත",,
+"search.filteredOutBody","Try another category, or clear the filter.","වෙනත් ප්‍රවර්ගයක් තෝරන්න, නැතහොත් පෙරහන ඉවත් කරන්න.",,
 "checklist.title","Checklists","පිරික්සුම් ලැයිස්තු",,
 "checklist.subtitle","Your step-by-step guide to moving to the UAE.","UAE වෙත යාමට ඔබේ පියවරෙන් පියවර මාර්ගෝපදේශය.",,
 "checklist.beforeArrival","Before arrival","පිටත්වීමට පෙර",,

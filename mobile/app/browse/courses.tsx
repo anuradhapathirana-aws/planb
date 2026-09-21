@@ -1,21 +1,23 @@
 import { useCallback, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ChevronLeft, GraduationCap, SearchX, WifiOff } from '@/components/icons';
+import { ChevronLeft, GraduationCap, SearchX, SlidersHorizontal, WifiOff } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { StudentCourseSummary } from '@shared/types/studentCourse';
-import { colors } from '@shared/theme/tokens';
+import { colors, MIN_TOUCH_TARGET } from '@shared/theme/tokens';
 import { CourseGridCard } from '@/components/shared/CourseGridCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { SearchField } from '@/components/ui/SearchField';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Text } from '@/components/ui/Text';
 import { useBrowseCourses } from '@/features/browse/useBrowseCourses';
-import { CategoryTabs } from '@/features/home/CategoryTabs';
+import { AppliedCategoryChip } from '@/features/categories/AppliedCategoryChip';
+import { CategoryFilterPanel } from '@/features/categories/CategoryFilterPanel';
 import { useEnrol } from '@/features/enrolment/useEnrol';
 import { usePaymentsEnabled } from '@/features/enrolment/usePaymentsEnabled';
+import { cn } from '@/lib/cn';
 
 /**
  * All Courses — everything the student has not enrolled in yet.
@@ -39,16 +41,24 @@ export default function BrowseCoursesScreen() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   /*
-   * Set by Home's category strip, absent when the student arrived from a plain
-   * "View all". `expo-router` types a param as `string | string[]` because a URL
-   * may repeat it — this screen takes one category, so a repeat is read as the
-   * first rather than crashing on an array where a string was expected.
+   * A category ID, set by Home's category row and absent when the student
+   * arrived from a plain "View all". `expo-router` types a param as
+   * `string | string[]` because a URL may repeat it — a repeat is read as the
+   * first, and anything that is not a number as "no category".
    */
   const params = useLocalSearchParams<{ category?: string | string[] }>();
-  const initialCategory = Array.isArray(params.category) ? params.category[0] : params.category;
+  const rawCategory = Array.isArray(params.category) ? params.category[0] : params.category;
+  const initialCategoryId = rawCategory && /^\d+$/.test(rawCategory) ? Number(rawCategory) : null;
 
-  const browse = useBrowseCourses({ initialCategory: initialCategory ?? null });
+  const browse = useBrowseCourses({ initialCategoryId });
+  const { filter } = browse;
   const [refreshing, setRefreshing] = useState(false);
+  /*
+   * Opens with the panel down when a category tile brought the student here: the
+   * list is already filtered to it, and its sub-categories are the next choice.
+   */
+  const [showFilters, setShowFilters] = useState(initialCategoryId !== null);
+  const filterCount = filter.appliedId !== null ? 1 : 0;
 
   // A bought course leaves this list, so staying put beats being thrown into
   // the course the moment the payment lands.
@@ -90,19 +100,51 @@ export default function BrowseCoursesScreen() {
           </View>
         </View>
 
-        <SearchField
-          accessibilityLabel={t('search.label')}
-          placeholder={t('search.placeholder')}
-          value={browse.query}
-          onChangeText={browse.setQuery}
-        />
+        <View className="flex-row items-center gap-2">
+          <View className="flex-1">
+            <SearchField
+              accessibilityLabel={t('search.label')}
+              placeholder={t('search.placeholder')}
+              value={browse.query}
+              onChangeText={browse.setQuery}
+            />
+          </View>
 
-        <CategoryTabs
-          categories={browse.categories}
-          value={browse.category}
-          onChange={browse.setCategory}
-          allLabel={t('home.categoryAll')}
-        />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ expanded: showFilters }}
+            accessibilityLabel={
+              filterCount > 0
+                ? t('search.filtersActive', { count: filterCount })
+                : t('search.filters')
+            }
+            onPress={() => {
+              // Reopening shows what is applied, not edits abandoned last time.
+              if (!showFilters) filter.resetDraft();
+              setShowFilters((open) => !open);
+            }}
+            style={{ minHeight: MIN_TOUCH_TARGET, minWidth: MIN_TOUCH_TARGET }}
+            className={cn(
+              'items-center justify-center rounded-full active:opacity-90',
+              showFilters || filterCount > 0 ? 'bg-primary' : 'bg-muted',
+            )}
+          >
+            <SlidersHorizontal
+              size={18}
+              color={
+                showFilters || filterCount > 0 ? colors['primary-foreground'] : colors.foreground
+              }
+            />
+          </Pressable>
+        </View>
+
+        {showFilters ? (
+          <CategoryFilterPanel filter={filter} onDone={() => setShowFilters(false)} />
+        ) : (
+          filter.appliedLabel !== null && (
+            <AppliedCategoryChip label={filter.appliedLabel} onClear={filter.clear} />
+          )
+        )}
       </View>
 
       {browse.isLoading ? (
@@ -155,15 +197,15 @@ export default function BrowseCoursesScreen() {
                 actionLabel={t('common.retry')}
                 onAction={() => void browse.refetch()}
               />
-            ) : browse.hasResultsOutsideCategory ? (
-              // The search found things; the chip is what is hiding them, so the
-              // way out is the chip rather than a shorter word.
+            ) : filter.appliedId !== null ? (
+              // A category is applied, so the way out may be lifting it rather
+              // than a shorter word.
               <EmptyState
                 icon={GraduationCap}
                 title={t('browse.categoryEmptyTitle')}
                 body={t('browse.categoryEmptyBody')}
                 actionLabel={t('home.categoryAll')}
-                onAction={() => browse.setCategory(null)}
+                onAction={filter.clear}
               />
             ) : browse.hasQuery ? (
               <EmptyState

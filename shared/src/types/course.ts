@@ -66,22 +66,37 @@ export const COURSE_CATEGORY_ICONS: ReadonlyArray<{
   { value: 'other', label: 'Other' },
 ];
 
+/**
+ * A category or a sub-category — two levels, never more. `parent_id` null means
+ * top-level. A course may sit on either level, and a parent need not have children.
+ */
 export interface CourseCategory {
   id: number;
+  parent_id: number | null;
   name: string;
+  /** Stored Sinhala name; null until translated. Admin-only — see `CourseVideo`. */
+  name_si: string | null;
   description: string | null;
   /** Null when no admin picked one; the app then guesses a glyph from the name. */
   icon: CourseCategoryIconName | null;
+  /** A sub-category's uploaded icon (PNG). When set it wins over `icon`. */
+  icon_image_url: string | null;
   is_active: boolean;
   sort_order: number;
-  /** Only present on list responses. */
+  /** Courses placed directly on this category. Only present on list responses. */
   programmes_count?: number;
+  /** A top-level category's sub-categories, on list responses. */
+  children?: CourseCategory[];
+  /** Only loaded where a course needs to be labelled "Migration › UAE". */
+  parent?: { id: number; name: string } | null;
   created_at: string;
   updated_at: string;
 }
 
 export interface CourseCategoryFormValues {
+  parent_id: number | null;
   name: string;
+  name_si?: string | null;
   description?: string | null;
   icon?: CourseCategoryIconName | null;
 }

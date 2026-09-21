@@ -6,6 +6,7 @@ namespace App\Services\Course;
 
 use App\Enums\CourseStatus;
 use App\Jobs\DeleteProgrammeVideosFromBunny;
+use App\Models\CourseCategory;
 use App\Models\CourseProgramme;
 use App\Models\CourseTopic;
 use App\Models\CourseVideo;
@@ -24,15 +25,17 @@ class CourseProgrammeService
     public function list(array $filters): LengthAwarePaginator
     {
         $query = CourseProgramme::query()
-            ->with(['category', 'media', 'paper' => fn ($paper) => $paper->withCount('questions')])
+            ->with(['category.parent', 'category.media', 'media', 'paper' => fn ($paper) => $paper->withCount('questions')])
             ->withCount(['topics', 'videos']);
 
         if (! empty($filters['search'])) {
             $query->where('name', 'like', "%{$filters['search']}%");
         }
 
+        // A parent means the whole branch: courses on it and on its sub-categories.
         if (! empty($filters['course_category_id'])) {
-            $query->where('course_category_id', $filters['course_category_id']);
+            $category = CourseCategory::find((int) $filters['course_category_id']);
+            $query->whereIn('course_category_id', $category?->selfAndChildIds() ?? []);
         }
 
         if (in_array($filters['status'] ?? null, CourseStatus::values(), true)) {
@@ -224,7 +227,8 @@ class CourseProgrammeService
     public function loadTree(CourseProgramme $programme): CourseProgramme
     {
         return $programme->load([
-            'category',
+            'category.parent',
+            'category.media',
             'media',
             'topics.videos.media',
             // Count only: the Course form shows "N questions", the builder loads the rest.

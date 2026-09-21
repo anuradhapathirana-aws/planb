@@ -8,7 +8,6 @@ import {
   ChevronsDownUp,
   ChevronsUpDown,
   ClipboardList,
-  FolderTree,
   Image as ImageIcon,
   Languages,
   Layers,
@@ -21,7 +20,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Breadcrumbs } from '@/components/shared/Breadcrumbs';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
@@ -30,6 +28,7 @@ import { FormSection } from '@/components/shared/FormSection';
 import { ImageDropzone } from '@/components/shared/ImageDropzone';
 import { PageLoader } from '@/components/shared/PageLoader';
 import { SegmentedToggle } from '@/components/shared/SegmentedToggle';
+import { CourseCategoryFields } from '@/features/admin/courses/components/CourseCategoryFields';
 import { TopicCard } from '@/features/admin/courses/components/TopicCard';
 import { VideoPreviewDialog } from '@/features/admin/courses/components/VideoPreviewDialog';
 import { VideoUploadDialog, type VideoUploadItem } from '@/features/admin/courses/components/VideoUploadDialog';
@@ -51,6 +50,7 @@ import {
   useUploadCourseThumbnail,
 } from '@/features/admin/courses/hooks/useCourses';
 import { useActiveCourseCategories } from '@/features/admin/courseCategories/hooks/useCourseCategories';
+import { withCurrentCategory } from '@/features/admin/courseCategories/hooks/useCategoryCascade';
 import { uploadCourseProgrammeThumbnail, uploadCourseVideoFile } from '@/api/courses.api';
 import { fromCents, toCents } from '@shared/lib/formatters';
 import { newClientKey } from '@shared/lib/clientKey';
@@ -138,17 +138,11 @@ export function CourseFormPage() {
   const { data: programme, isLoading: programmeLoading } = useCourseProgramme(programmeId);
   const { data: categories, isLoading: categoriesLoading } = useActiveCourseCategories();
 
-  /**
-   * The select offers active categories, plus the one this course already sits
-   * in when that is missing from the list — a category can be deactivated after
-   * courses were filed under it, and dropping its option would show the field as
-   * empty and quietly force a category change on the next save.
-   */
-  const categoryOptions = useMemo(() => {
-    const options = categories ?? [];
-    const current = programme?.category;
-    return current && !options.some((option) => option.id === current.id) ? [...options, current] : options;
-  }, [categories, programme?.category]);
+  // Active categories, plus the one this course already sits in if it was switched off since.
+  const categoryTree = useMemo(
+    () => withCurrentCategory(categories ?? [], programme?.category),
+    [categories, programme?.category],
+  );
 
   const createCourse = useCreateCourseProgramme();
   const updateCourse = useUpdateCourseProgramme(programmeId ?? 0);
@@ -442,7 +436,7 @@ export function CourseFormPage() {
           <div className="min-w-0">
             <h1 className="truncate text-xl font-semibold">{isEditing ? 'Edit course' : 'Add course'}</h1>
             <p className="text-sm text-muted-foreground">
-              Pick a category, name the programme, then add its topics and videos.
+              Pick a category and sub-category, name the programme, then add its topics and videos.
             </p>
           </div>
           <div className="flex shrink-0 gap-2">
@@ -468,42 +462,21 @@ export function CourseFormPage() {
           <div className="lg:col-span-1">
             <div className="lg:sticky lg:top-4">
               <FormSection icon={BookOpen} title="Course details" columns={2}>
-                <div className="sm:col-span-2 space-y-1">
-                  <FieldLabel icon={FolderTree} required>
-                    Course category
-                  </FieldLabel>
-                  <Controller
-                    control={control}
-                    name="course_category_id"
-                    render={({ field }) => (
-                      <Select
-                        // Empty string, never undefined: Radix reads undefined as
-                        // uncontrolled, and a select that switches to controlled once
-                        // the course loads keeps showing the placeholder.
-                        value={field.value ? String(field.value) : ''}
-                        onValueChange={(value) => field.onChange(Number(value))}
-                        disabled={categoriesLoading || busy}
-                      >
-                        <SelectTrigger size="default" className="w-full" aria-invalid={!!errors.course_category_id}>
-                          <SelectValue placeholder={categoriesLoading ? 'Loading…' : 'Select a category'} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {categoryOptions.map((category) => (
-                            <SelectItem key={category.id} value={String(category.id)}>
-                              {category.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  />
-                  <FieldError message={errors.course_category_id?.message} />
-                  {!categoriesLoading && categoryOptions.length === 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      No active categories yet — add one under Courses ▸ Categories first.
-                    </p>
+                <Controller
+                  control={control}
+                  name="course_category_id"
+                  render={({ field }) => (
+                    <CourseCategoryFields
+                      tree={categoryTree}
+                      value={field.value ?? null}
+                      onChange={(value) => field.onChange(value ?? undefined)}
+                      onBlur={field.onBlur}
+                      loading={categoriesLoading}
+                      disabled={busy}
+                      error={errors.course_category_id?.message}
+                    />
                   )}
-                </div>
+                />
 
                 <div className="sm:col-span-2 space-y-1">
                   <FieldLabel htmlFor="course-name" icon={BookOpen} required>

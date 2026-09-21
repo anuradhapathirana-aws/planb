@@ -38,15 +38,20 @@ export interface StudentCourseTopic {
 }
 
 /**
- * A course category as Home's "Top Categories" row draws it
- * (`GET /student/course-categories`): every active category, in admin order,
- * including ones with no published courses yet.
+ * A course category as the app draws it (`GET /student/course-categories`):
+ * every visible top-level category, in admin order, with its active
+ * sub-categories nested under `children`. Includes categories with no
+ * published courses yet. `name` is already in the student's language.
  */
 export interface StudentCourseCategory {
   id: number;
   name: string;
   /** Null when no admin picked one; the app guesses a glyph from the name. */
   icon: CourseCategoryIconName | null;
+  /** A sub-category's uploaded icon. When set, draw it instead of `icon`. */
+  icon_image_url: string | null;
+  /** Present on top-level categories; empty when it has no sub-categories. */
+  children?: StudentCourseCategory[];
 }
 
 /** List-row shape — no topics, so the courses list stays one small response. */
@@ -54,6 +59,11 @@ export interface StudentCourseSummary {
   id: number;
   name: string;
   description: string | null;
+  /** Relations are by id — names can be renamed, ids cannot. */
+  category_id: number;
+  /** The top-level category above it when the course sits on a sub-category. */
+  parent_category_id: number | null;
+  /** Display only. Never filter or compare on it. */
   category_name: string | null;
   /** Course art, 16:9. Null when the admin hasn't uploaded one. */
   thumbnail_url: string | null;
@@ -103,6 +113,11 @@ export interface StudentCourseDetail extends StudentCourseSummary {
 export interface StudentCourseListFilters {
   /** Matched against the course name AND its topic titles, server-side. */
   search?: string;
+  /**
+   * A top-level category returns its own courses plus every sub-category's; a
+   * sub-category returns just its own. Omitted means every category.
+   */
+  category_id?: number;
   per_page?: number;
   page?: number;
 }

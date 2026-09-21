@@ -43,6 +43,7 @@ export { default as Compass } from 'lucide-react-native/icons/compass';
 export { default as CreditCard } from 'lucide-react-native/icons/credit-card';
 export { default as FilePen } from 'lucide-react-native/icons/file-pen';
 export { default as FileText } from 'lucide-react-native/icons/file-text';
+export { default as FolderOpen } from 'lucide-react-native/icons/folder-open';
 export { default as GraduationCap } from 'lucide-react-native/icons/graduation-cap';
 export { default as Handshake } from 'lucide-react-native/icons/handshake';
 export { default as HardHat } from 'lucide-react-native/icons/hard-hat';

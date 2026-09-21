@@ -94,17 +94,23 @@ FR-ADM-012. Every profession belongs to exactly one industry; the Student form's
 
 ## `course_categories`
 
-FR-ADM-008 (Course Module). Top-level grouping the admin picks first on the Course form — e.g. "UAE Migration Program", "English & Communication". Same deactivate-instead-of-delete pattern as `industries`/`professions`.
+FR-ADM-008 (Course Module), extended at the client's request (2026-09-22) with **one level of sub-categories**: "Migration" → "UAE", "AUS", "CHINA". Self-referencing `parent_id`, not a second table, so a course still points at exactly one category through `course_programmes.course_category_id` — orders, enrolments and progress never see the tree. **Two levels only**, enforced in the Form Requests. A course may sit on a main category or on a sub-category, and a main category need not have any children.
 
 | Column | Type | Notes |
 |---|---|---|
 | id | bigIncrements | |
-| name | string, unique | e.g. "UAE Migration Program" |
+| parent_id | unsignedBigInteger, nullable, FK → `course_categories.id`, restrict on delete | Null = main category. Otherwise must be a top-level category, and a category with children cannot be given a parent. |
+| name | string | English, the record. **Unique among its siblings** (same `parent_id`, live rows only), enforced in the Form Request — "UAE" may exist under two parents. No DB unique index: MySQL treats every NULL `parent_id` as distinct, so an index could not stop two top-level duplicates anyway. |
+| name_si | string, nullable | Sinhala, optional, not unique — same rules as `course_programmes.name_si`. The student API sends one `name`, resolved by `Accept-Language`. Descriptions stay English only. |
 | description | string(500), nullable | Short plain-text blurb shown under the category name in the admin list. |
 | icon | string(40), nullable | PHP enum `App\Enums\CourseCategoryIcon` — the glyph on the student app's Home "Top Categories" tile, picked on the admin form. A meaning (`language`, `social_media`), not an icon name. **Null means no choice yet**: the app then guesses a glyph from the name, which is how categories predating the column kept their look. Its own set, not `ServiceIcon` — categories are subjects, services are errands. |
-| is_active | boolean, default true | Inactive categories drop out of the Course form's select and **off the student app's Home category row**, but stay attached to existing courses. No hard delete. |
-| sort_order | unsignedInteger, default 0 | Display order (FR-ADM-008 reorder). |
-| created_at / updated_at | timestamps | |
+| is_active | boolean, default true | Inactive categories drop out of the Course form's pickers and the student app. **Switching a parent off hides its whole branch** — its sub-categories and every course in them — without touching the children's own switches. Hidden courses leave the catalogue and cannot be bought, but a **student already enrolled keeps theirs** (`StudentCourseService::summaryQuery`). |
+| sort_order | unsignedInteger, default 0 | Display order among siblings (FR-ADM-008 reorder). |
+| created_at / updated_at / deleted_at | timestamps + soft delete | Delete soft-deletes the category, its children and their courses via `CourseCategoryService::delete()`, and is **refused while any student is enrolled or has an unsettled order** in those courses. |
+
+Sub-category icon image: **Spatie Media Library**, collection `icon_image`, single-file, public disk, PNG only. Sub-categories only (a top-level category uses the fixed `icon` list and loses its image if promoted). Centre-cropped to 256×256 and re-encoded as PNG with Intervention Image (CLAUDE.md §7.4) so transparency survives. When set, it is drawn instead of `icon`.
+
+`course_programmes.course_category_id` was changed from cascade to **restrict** on delete by the same migration (`2026_09_22_090000`): a hard-deleted category used to hard-delete its courses and, through them, every enrolment and progress row.
 
 ## `course_programmes`
 
@@ -113,7 +119,7 @@ FR-ADM-008. A **Course Programme** is one learning programme inside a category �
 | Column | Type | Notes |
 |---|---|---|
 | id | bigIncrements | |
-| course_category_id | unsignedBigInteger, FK → `course_categories.id`, cascade delete | Required — a programme always sits under a category. |
+| course_category_id | unsignedBigInteger, FK → `course_categories.id`, restrict on delete | Required — a programme always sits under a category: a main category or a sub-category, whichever is most specific. The main category is derived from that row's `parent_id`, never stored twice. |
 | name | string | English. Unique per category (`unique(course_category_id, name, deleted_at)`), not globally. |
 | name_si | string, nullable | Sinhala. Optional and **not** unique — see the bilingual-titles note below. |
 | description | text, nullable | Optional plain-text summary for the student course card. English only for now. |
@@ -125,7 +131,7 @@ Course art: **Spatie Media Library**, collection `thumbnail`, single-file, publi
 
 **`published_at`** (nullable timestamp, indexed with `status`) records when a course FIRST went live. `status` alone is a flag with no history, so it cannot answer "what is new?" — the app's Home search needs that for its Available tab's NEW badge. Stamped by `CourseProgrammeService::publish()` on the first publish only and never refreshed: an admin who unpublishes to fix a lesson and republishes a week later has not created a new course, and it must not jump back to the top of every student's list. Kept out of `$fillable` so no admin form can backdate a course into the badge. Existing rows were backfilled from `created_at` (not `updated_at`, which moves on every typo fix and would have made old courses look new).
 
-**Bilingual titles (`name_si`, `course_topics.title_si`, `course_videos.title_si`).** The three things a student reads their way through a course by are stored twice, once per language. The English column is the **record**: it is what the admin panel lists, searches and sorts by, and what `CourseProgramme::purchasableTitle()` freezes into an order's `title_snapshot`, so receipts and reconciliation never change script with the buyer's phone. The Sinhala column is optional everywhere and carries no unique index — the catalogue is translated course by course, and `App\Models\Concerns\HasTranslatedText` reads a blank one as "not translated yet" and falls back to English, the same way a missing `si.json` key does. Which column a student gets is decided per request from `Accept-Language` (`App\Http\Middleware\SetLocaleFromRequest`, student routes only), and the `Student\*` resources send **one** title, never both. Descriptions and category names are deliberately **not** translated yet; `course_programmes.description_si` and `course_topics.description_si` exist in the development database only, added by hand, with no migration and nothing reading them.
+**Bilingual titles (`name_si`, `course_topics.title_si`, `course_videos.title_si`).** The three things a student reads their way through a course by are stored twice, once per language. The English column is the **record**: it is what the admin panel lists, searches and sorts by, and what `CourseProgramme::purchasableTitle()` freezes into an order's `title_snapshot`, so receipts and reconciliation never change script with the buyer's phone. The Sinhala column is optional everywhere and carries no unique index — the catalogue is translated course by course, and `App\Models\Concerns\HasTranslatedText` reads a blank one as "not translated yet" and falls back to English, the same way a missing `si.json` key does. Which column a student gets is decided per request from `Accept-Language` (`App\Http\Middleware\SetLocaleFromRequest`, student routes only), and the `Student\*` resources send **one** title, never both. Category names are translated since 2026-09-22 (`course_categories.name_si`). Descriptions are deliberately **not** translated yet; `course_programmes.description_si` and `course_topics.description_si` exist in the development database only, added by hand, with no migration and nothing reading them.
 
 ## `course_topics`
 
@@ -543,6 +549,7 @@ The logo is a **Media Library collection** (`logo`, single file, public disk), r
 |---|---|
 | 2026-09-16 | **Student account deletion** (Google Play policy). Added `students.anonymised_at` (nullable) and `student_login_codes.purpose` (string, default `sign_in`, `App\Enums\LoginCodePurpose`) with index `login_codes_student_purpose_live_index`. Existing codes become `sign_in`. Deletion anonymises the row rather than deleting it, so finance records survive. |
 | 2026-09-21 | Added `course_programmes.name_si`, `course_topics.title_si` and `course_videos.title_si` — the Sinhala half of a course's titles. All nullable, no unique index, English is the record and the fallback. The student API picks between the two columns from `Accept-Language`; the admin panel always reads English. See the bilingual-titles note under `course_programmes`. The migration guards each column with `hasColumn` because the development database already had all three, added by hand. |
+| 2026-09-22 | **Course sub-categories** (client request). Added `course_categories.parent_id` (nullable self-FK, restrict), `name_si` and `deleted_at`, plus index `(parent_id, sort_order)`; dropped the global `unique(name)` in favour of per-parent uniqueness in the Form Requests. Media collection `icon_image` for sub-category icons. `course_programmes.course_category_id` changed from cascade to restrict on delete. No data moves: existing categories become main categories with no children. `name_si` is guarded with `hasColumn` because the development database already had it, added by hand. |
 | 2026-09-15 | Added `course_categories.icon` (nullable, `App\Enums\CourseCategoryIcon`), so an admin picks the glyph for a category's tile on the student app's Home screen. No backfill: null means "guess from the name". |
 | 2026-09-14 | Added `course_wishlists` — a student's saved courses, behind the heart on course tiles. Delete-on-remove rather than a nulled timestamp; rows survive unpublishing and soft deletes and are filtered out on read. |
 | 2026-09-02 | Premium Services: `services` (the second `Purchasable`) and `service_purchases` (its fulfilment queue). The order/payment/webhook layer is unchanged — only `PaymentService::settleOrder` gained a branch. |

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { FlatList, Modal, Pressable, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronLeft, SearchX, SlidersHorizontal, WifiOff, X } from '@/components/icons';
+import { ChevronLeft, SearchX, SlidersHorizontal, WifiOff } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 
 import type { StudentCourseSummary } from '@shared/types/studentCourse';
@@ -12,6 +12,8 @@ import { SearchField } from '@/components/ui/SearchField';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Text } from '@/components/ui/Text';
 import { cn } from '@/lib/cn';
+import { AppliedCategoryChip } from '@/features/categories/AppliedCategoryChip';
+import { CategoryFilterPanel } from '@/features/categories/CategoryFilterPanel';
 import type { HomeSearchState } from './useHomeSearch';
 
 export interface CourseSearchSheetProps {
@@ -39,9 +41,10 @@ export interface CourseSearchSheetProps {
  * like the thing it will scroll back to. **Enrolled courses appear here**; the
  * card's lock badge is what separates them, and tapping either opens the course.
  *
- * The filter is a panel inside this sheet rather than a sheet of its own.
- * Stacking a second modal over a modal is its own set of Android bugs, and a
- * student picking categories wants to see the result count move as they tick.
+ * The filter is a panel inside this sheet rather than a sheet of its own —
+ * stacking a second modal over a modal is its own set of Android bugs. It is
+ * staged: nothing reloads until the student taps Apply, and then the panel
+ * folds away to a chip naming what is applied.
  */
 export function CourseSearchSheet({
   visible,
@@ -77,7 +80,8 @@ export function CourseSearchSheet({
     return () => clearTimeout(timer);
   }, [visible, openFiltersOnMount]);
 
-  const { results, selected, categories, isActive, isLoading, isSearching, isError } = search;
+  const { results, filter, isActive, isLoading, isSearching, isError } = search;
+  const filterCount = search.isFiltering ? 1 : 0;
 
   return (
     <Modal
@@ -117,43 +121,46 @@ export function CourseSearchSheet({
               accessibilityRole="button"
               accessibilityState={{ expanded: showFilters }}
               accessibilityLabel={
-                selected.length > 0
-                  ? t('search.filtersActive', { count: selected.length })
+                filterCount > 0
+                  ? t('search.filtersActive', { count: filterCount })
                   : t('search.filters')
               }
-              onPress={() => setShowFilters((open) => !open)}
+              onPress={() => {
+                // Reopening shows what is applied, not edits abandoned last time.
+                if (!showFilters) filter.resetDraft();
+                setShowFilters((open) => !open);
+              }}
               style={{ minHeight: MIN_TOUCH_TARGET, minWidth: MIN_TOUCH_TARGET }}
               className={cn(
                 'items-center justify-center rounded-full active:opacity-90',
-                showFilters || selected.length > 0 ? 'bg-primary' : 'bg-muted',
+                showFilters || filterCount > 0 ? 'bg-primary' : 'bg-muted',
               )}
             >
               <SlidersHorizontal
                 size={18}
                 color={
-                  showFilters || selected.length > 0
+                  showFilters || filterCount > 0
                     ? colors['primary-foreground']
                     : colors.foreground
                 }
               />
 
-              {selected.length > 0 && (
+              {filterCount > 0 && (
                 <View className="absolute -right-0.5 -top-0.5 h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1">
                   <Text className="text-[10px] font-bold leading-4 text-primary">
-                    {selected.length}
+                    {filterCount}
                   </Text>
                 </View>
               )}
             </Pressable>
           </View>
 
-          {showFilters && (
-            <CategoryFilter
-              categories={categories}
-              selected={selected}
-              onToggle={search.toggleCategory}
-              onClear={search.clearCategories}
-            />
+          {showFilters ? (
+            <CategoryFilterPanel filter={filter} onDone={() => setShowFilters(false)} />
+          ) : (
+            filter.appliedLabel !== null && (
+              <AppliedCategoryChip label={filter.appliedLabel} onClear={filter.clear} />
+            )
           )}
 
           {/*
@@ -221,15 +228,15 @@ export function CourseSearchSheet({
                   title={t('search.idleTitle')}
                   body={t('search.idleBody')}
                 />
-              ) : search.hasResultsOutsideFilter ? (
-                // The categories emptied it, not the search term — so the way
-                // out is clearing them, not retyping.
+              ) : search.isFiltering ? (
+                // A category is applied, so the way out may be lifting it rather
+                // than retyping.
                 <EmptyState
                   icon={SearchX}
                   title={t('search.filteredOutTitle')}
                   body={t('search.filteredOutBody')}
                   actionLabel={t('search.clearFilters')}
-                  onAction={search.clearCategories}
+                  onAction={filter.clear}
                 />
               ) : (
                 <EmptyState
@@ -243,84 +250,5 @@ export function CourseSearchSheet({
         )}
       </View>
     </Modal>
-  );
-}
-
-interface CategoryFilterProps {
-  categories: string[];
-  selected: string[];
-  onToggle: (name: string) => void;
-  onClear: () => void;
-}
-
-/**
- * Multi-select category chips.
- *
- * Chips rather than a checkbox list: every option is one tap, the whole set is
- * visible at once, and ticked ones read as ticked from across the room. A list
- * of checkboxes would cost a scroll before the student had seen what is on
- * offer.
- *
- * It wraps rather than scrolling sideways. A horizontal strip hides options past
- * the edge, and a filter whose choices you cannot see is a filter nobody uses.
- */
-function CategoryFilter({ categories, selected, onToggle, onClear }: CategoryFilterProps) {
-  const { t } = useTranslation();
-
-  if (categories.length === 0) return null;
-
-  return (
-    <View className="gap-2 rounded-xl border border-border bg-card p-3">
-      <View className="flex-row items-center justify-between">
-        <Text className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-          {t('search.categoriesTitle')}
-        </Text>
-
-        {selected.length > 0 && (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t('search.clearFilters')}
-            hitSlop={10}
-            onPress={onClear}
-            className="flex-row items-center gap-1 active:opacity-70"
-          >
-            <X size={12} color={colors['muted-foreground']} />
-            <Text className="text-[12px] text-muted-foreground">{t('search.clearFilters')}</Text>
-          </Pressable>
-        )}
-      </View>
-
-      <View className="flex-row flex-wrap gap-2">
-        {categories.map((category) => {
-          const active = selected.includes(category);
-
-          return (
-            <Pressable
-              key={category}
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: active }}
-              accessibilityLabel={category}
-              onPress={() => onToggle(category)}
-              hitSlop={4}
-              className={cn(
-                'min-h-[32px] justify-center rounded-full border px-3',
-                active
-                  ? 'border-primary bg-primary'
-                  : 'border-border bg-background active:bg-muted',
-              )}
-            >
-              <Text
-                className={cn(
-                  'text-[12px] font-medium',
-                  active ? 'text-primary-foreground' : 'text-foreground',
-                )}
-              >
-                {category}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-    </View>
   );
 }

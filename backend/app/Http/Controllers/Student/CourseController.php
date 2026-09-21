@@ -34,6 +34,7 @@ class CourseController extends Controller
     {
         $programmes = $this->courses->list($this->student($request), [
             'search' => $request->string('search')->toString(),
+            'category_id' => $request->integer('category_id'),
             'per_page' => $request->integer('per_page', 20),
         ]);
 
