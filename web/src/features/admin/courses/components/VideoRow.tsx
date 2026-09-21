@@ -19,6 +19,9 @@ interface VideoRowProps {
   position: number;
   titleField: UseFormRegisterReturn;
   titleError?: string;
+  /** Optional Sinhala title. Blank means students in Sinhala see the English one. */
+  sinhalaTitleField: UseFormRegisterReturn;
+  sinhalaTitleError?: string;
   /** Server-side record, once this video has been saved at least once. */
   existing?: CourseVideo;
   staged?: StagedVideoFile;
@@ -36,6 +39,8 @@ export function VideoRow({
   position,
   titleField,
   titleError,
+  sinhalaTitleField,
+  sinhalaTitleError,
   existing,
   staged,
   onStage,
@@ -85,14 +90,30 @@ export function VideoRow({
           {position + 1}
         </span>
 
-        <div className="min-w-0 flex-1 space-y-1">
-          <Input
-            placeholder="e.g. Why Dubai hires Sri Lankan workers"
-            aria-label="Video title"
-            aria-invalid={!!titleError}
-            {...titleField}
-          />
-          <FieldError message={titleError} />
+        {/* Both titles on one line, matching how a topic states them. The
+            inputs are label-less by design — a lesson row repeats per video and
+            a visible label above each would double the height of a long topic —
+            so the language lives in the placeholder and the aria-label. */}
+        <div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-2">
+          <div className="min-w-0 space-y-1">
+            <Input
+              placeholder="English title — e.g. Why Dubai hires Sri Lankan workers"
+              aria-label="Video title in English"
+              aria-invalid={!!titleError}
+              {...titleField}
+            />
+            <FieldError message={titleError} />
+          </div>
+
+          <div className="min-w-0 space-y-1">
+            <Input
+              placeholder="සිංහල නම (අත්‍යවශ්‍ය නොවේ)"
+              aria-label="Video title in Sinhala (optional)"
+              aria-invalid={!!sinhalaTitleError}
+              {...sinhalaTitleField}
+            />
+            <FieldError message={sinhalaTitleError} />
+          </div>
         </div>
 
         <div className="flex shrink-0 items-center gap-0.5">

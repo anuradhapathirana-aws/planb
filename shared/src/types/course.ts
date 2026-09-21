@@ -106,6 +106,13 @@ export interface CourseVideo {
   id: number;
   course_topic_id: number;
   title: string;
+  /**
+   * The Sinhala lesson title, exactly as stored — null when nobody has entered
+   * one. The student API never sends this field; it resolves the two columns
+   * server-side and sends one `title` (see `studentCourse.ts`). It appears here
+   * only because the admin form edits both.
+   */
+  title_si: string | null;
   provider: VideoProvider;
   duration_seconds: number | null;
   sort_order: number;
@@ -123,6 +130,8 @@ export interface CourseTopic {
   id: number;
   course_programme_id: number;
   title: string;
+  /** Stored Sinhala topic name; null until translated. Admin-only — see `CourseVideo`. */
+  title_si: string | null;
   /** Sanitized HTML authored in the rich-text editor. */
   description: string | null;
   sort_order: number;
@@ -135,6 +144,8 @@ export interface CourseProgramme {
   id: number;
   course_category_id: number;
   name: string;
+  /** Stored Sinhala programme name; null until translated. Admin-only — see `CourseVideo`. */
+  name_si: string | null;
   description: string | null;
   status: CourseStatus;
   /** Smallest currency unit, integer. 0 means free (CLAUDE.md §4.11). */
@@ -159,6 +170,8 @@ export interface CourseProgramme {
 export interface CourseProgrammePayload {
   course_category_id: number;
   name: string;
+  /** Optional at every level: a course is translated after it is written, not with it. */
+  name_si?: string | null;
   description?: string | null;
   price_cents: number;
   currency: string;
@@ -166,8 +179,9 @@ export interface CourseProgrammePayload {
   topics: {
     id?: number;
     title: string;
+    title_si?: string | null;
     description?: string | null;
-    videos: { id?: number; title: string; duration_seconds?: number | null }[];
+    videos: { id?: number; title: string; title_si?: string | null; duration_seconds?: number | null }[];
   }[];
 }
 

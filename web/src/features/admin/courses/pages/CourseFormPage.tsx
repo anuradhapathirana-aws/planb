@@ -10,6 +10,7 @@ import {
   ClipboardList,
   FolderTree,
   Image as ImageIcon,
+  Languages,
   Layers,
   Loader2,
   Plus,
@@ -69,6 +70,7 @@ function blankCourse(): CourseFormSchema {
   return {
     course_category_id: undefined as unknown as number,
     name: '',
+    name_si: '',
     description: '',
     price: '',
     currency: DEFAULT_CURRENCY,
@@ -81,11 +83,16 @@ function toFormValues(programme: CourseProgramme): CourseFormSchema {
   const topics = (programme.topics ?? []).map((topic) => ({
     saved_id: topic.id,
     title: topic.title,
+    // The stored Sinhala name, never the English fallback: what the admin sees
+    // in this input is what gets saved back, so an untranslated topic has to
+    // look untranslated.
+    title_si: topic.title_si ?? '',
     description: topic.description ?? '',
     videos: (topic.videos ?? []).map((video) => ({
       client_key: newClientKey(),
       saved_id: video.id,
       title: video.title,
+      title_si: video.title_si ?? '',
       duration_seconds: video.duration_seconds,
     })),
   }));
@@ -93,6 +100,7 @@ function toFormValues(programme: CourseProgramme): CourseFormSchema {
   return {
     course_category_id: programme.course_category_id,
     name: programme.name,
+    name_si: programme.name_si ?? '',
     description: programme.description ?? '',
     price: programme.price_cents > 0 ? fromCents(programme.price_cents) : '',
     currency: programme.currency || DEFAULT_CURRENCY,
@@ -284,6 +292,9 @@ export function CourseFormPage() {
   const buildPayload = (values: CourseFormSchema): CourseProgrammePayload => ({
     course_category_id: values.course_category_id,
     name: values.name,
+    // Blank stays blank all the way to the column — null there is what the
+    // student API reads as "fall back to English".
+    name_si: values.name_si || null,
     description: values.description || null,
     // Empty means free. Converted here, once, from the decimal the admin typed.
     price_cents: toCents(values.price),
@@ -292,10 +303,12 @@ export function CourseFormPage() {
     topics: values.topics.map((topic) => ({
       id: topic.saved_id,
       title: topic.title,
+      title_si: topic.title_si || null,
       description: topic.description || null,
       videos: topic.videos.map((video) => ({
         id: video.saved_id,
         title: video.title,
+        title_si: video.title_si || null,
         duration_seconds: video.duration_seconds ?? null,
       })),
     })),
@@ -494,7 +507,7 @@ export function CourseFormPage() {
 
                 <div className="sm:col-span-2 space-y-1">
                   <FieldLabel htmlFor="course-name" icon={BookOpen} required>
-                    Course programme name
+                    Course programme name (English)
                   </FieldLabel>
                   <Input
                     id="course-name"
@@ -504,6 +517,27 @@ export function CourseFormPage() {
                     {...register('name')}
                   />
                   <FieldError message={errors.name?.message} />
+                </div>
+
+                {/* Optional throughout: students reading in Sinhala see the
+                    English name until this is filled in, which is what lets the
+                    catalogue be translated course by course. */}
+                <div className="sm:col-span-2 space-y-1">
+                  <FieldLabel htmlFor="course-name-si" icon={Languages}>
+                    Course programme name (Sinhala)
+                  </FieldLabel>
+                  <Input
+                    id="course-name-si"
+                    placeholder="උදා. පළමු අදියර — එක්සත් අරාබි එමීර් රාජ්‍යය පිළිබඳ හැඳින්වීම"
+                    aria-invalid={!!errors.name_si}
+                    disabled={busy}
+                    {...register('name_si')}
+                  />
+                  <FieldError message={errors.name_si?.message} />
+                  <p className="text-xs text-muted-foreground">
+                    Optional. Shown to students who use the app in Sinhala — they see the English
+                    name until you add one.
+                  </p>
                 </div>
 
                 <div className="sm:col-span-2 space-y-1">

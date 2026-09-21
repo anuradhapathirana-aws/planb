@@ -25,7 +25,8 @@ class StudentCourseVideoResource extends JsonResource
 
         return [
             'id' => $this->id,
-            'title' => $this->title,
+            // Sinhala where the admin entered one, English otherwise.
+            'title' => $this->translated('title'),
             'duration_seconds' => $this->duration_seconds,
             'thumbnail_url' => PublicUrl::forRequest($this->thumbnail_url, $request),
             // Locked until the previous lesson is watched. The app greys the row

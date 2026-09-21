@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Contracts\Purchasable;
 use App\Enums\CourseStatus;
+use App\Models\Concerns\HasTranslatedText;
 use App\Services\Course\CourseProgrammeService;
 use Database\Factories\CourseProgrammeFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -21,13 +22,14 @@ use Spatie\MediaLibrary\InteractsWithMedia;
 class CourseProgramme extends Model implements HasMedia, Purchasable
 {
     /** @use HasFactory<CourseProgrammeFactory> */
-    use HasFactory, InteractsWithMedia, SoftDeletes;
+    use HasFactory, HasTranslatedText, InteractsWithMedia, SoftDeletes;
 
     public const THUMBNAIL_COLLECTION = 'thumbnail';
 
     protected $fillable = [
         'course_category_id',
         'name',
+        'name_si',
         'description',
         'price_cents',
         'currency',
@@ -74,6 +76,14 @@ class CourseProgramme extends Model implements HasMedia, Purchasable
      | what a course is. A premium service will implement the same interface.
      */
 
+    /**
+     * Always the English name, never the Sinhala one.
+     *
+     * This is what `OrderService` freezes into `title_snapshot`, so it ends up
+     * on receipts, in the admin order list and in bank-transfer reconciliation.
+     * Those are records, and a records table that mixes two scripts depending on
+     * which language the buyer's phone was in is one nobody can search.
+     */
     public function purchasableTitle(): string
     {
         return $this->name;

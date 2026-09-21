@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Enums\VideoProcessingStatus;
 use App\Enums\VideoProvider;
+use App\Models\Concerns\HasTranslatedText;
 use Database\Factories\CourseVideoFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -17,7 +18,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 class CourseVideo extends Model implements HasMedia
 {
     /** @use HasFactory<CourseVideoFactory> */
-    use HasFactory, InteractsWithMedia;
+    use HasFactory, HasTranslatedText, InteractsWithMedia;
 
     /** Private disk holding uploaded lesson files — never publicly reachable. */
     public const VIDEO_DISK = 'course_videos';
@@ -29,6 +30,7 @@ class CourseVideo extends Model implements HasMedia
     protected $fillable = [
         'course_topic_id',
         'title',
+        'title_si',
         'provider',
         'external_url',
         'external_id',

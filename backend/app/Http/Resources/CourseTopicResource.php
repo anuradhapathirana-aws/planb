@@ -17,6 +17,8 @@ class CourseTopicResource extends JsonResource
             'id' => $this->id,
             'course_programme_id' => $this->course_programme_id,
             'title' => $this->title,
+            // Raw for the admin form — see CourseProgrammeResource's note.
+            'title_si' => $this->title_si,
             'description' => $this->description,
             'sort_order' => $this->sort_order,
             'videos' => CourseVideoResource::collection($this->whenLoaded('videos')),

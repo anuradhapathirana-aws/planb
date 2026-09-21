@@ -21,7 +21,10 @@ class StudentCourseSummaryResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'name' => $this->name,
+            // The student's language, falling back to English where no Sinhala
+            // name has been entered. The app renders whatever arrives here — it
+            // never sees both names and never chooses between them.
+            'name' => $this->translated('name'),
             'description' => $this->description,
             'category_name' => $this->category?->name,
             'thumbnail_url' => PublicUrl::forRequest($this->thumbnail_url, $request),

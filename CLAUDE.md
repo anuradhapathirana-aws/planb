@@ -311,6 +311,19 @@ Established on course pricing and enrolment. Read before touching anything that 
 - **Sinhala is drafted by the dev team and reviewed by the client**, not supplied by them — the app
   shipped 4% translated while waiting for it. `docs/translations/si-review.csv` is the review sheet;
   corrections come back into `shared/src/i18n/si.json`. A key missing there falls back to English.
+- **Admin-authored content is translated in the database, not in `si.json`.** A course programme
+  name, a topic name and a lesson title each have a sibling `*_si` column. The rules, established on
+  the Course form and non-negotiable for any field that follows:
+  - **English is the record.** It is required, it is what the admin panel lists, searches and sorts
+    by, and it is what `purchasableTitle()` snapshots onto an order. Sinhala is optional, carries no
+    unique index, and blank means "not translated yet".
+  - **The server picks the column, the client never does.** `SetLocaleFromRequest` reads
+    `Accept-Language` on the student routes only; `HasTranslatedText::translated()` resolves the pair
+    and falls back to English. A student Resource sends **one** title — sending both ships text the
+    student cannot read and leaves every screen free to forget the rule.
+  - **An admin Resource sends both columns raw**, never the fallback: the form edits them, and a
+    fallback shown in the Sinhala input gets saved back over the empty column on the next edit.
+  - **A client that can switch language must refetch** anything cached under the old header.
 - Dates follow the chosen language (`setDateLocale` in `shared/src/lib/formatters.ts`). Money does
   not: prices stay Western digits with an LKR/AED prefix in both languages.
 - On `mobile/`, the student picks a language on first launch and in Profile; see `mobile/CLAUDE.md`.

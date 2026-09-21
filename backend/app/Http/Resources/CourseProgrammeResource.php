@@ -18,6 +18,13 @@ class CourseProgrammeResource extends JsonResource
             'id' => $this->id,
             'course_category_id' => $this->course_category_id,
             'name' => $this->name,
+            /*
+             * Raw, never the English fallback: this feeds the admin form's
+             * Sinhala input, and showing the fallback there would save it back
+             * into the column on the next edit — turning "not translated yet"
+             * into a permanent English entry nobody can tell apart.
+             */
+            'name_si' => $this->name_si,
             'description' => $this->description,
             'status' => $this->status->value,
             'price_cents' => (int) $this->price_cents,

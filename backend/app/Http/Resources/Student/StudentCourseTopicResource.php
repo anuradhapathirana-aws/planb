@@ -15,7 +15,8 @@ class StudentCourseTopicResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'title' => $this->title,
+            // Sinhala where the admin entered one, English otherwise.
+            'title' => $this->translated('title'),
             // Sanitized on write by App\Support\HtmlSanitizer. Still needs
             // DOMPurify wherever it is rendered as markup (CLAUDE.md §7.6).
             'description' => $this->description,

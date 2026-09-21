@@ -20,6 +20,8 @@ class CourseVideoResource extends JsonResource
             'id' => $this->id,
             'course_topic_id' => $this->course_topic_id,
             'title' => $this->title,
+            // Raw for the admin form — see CourseProgrammeResource's note.
+            'title_si' => $this->title_si,
             'provider' => $this->provider->value,
             'duration_seconds' => $this->duration_seconds,
             'sort_order' => $this->sort_order,

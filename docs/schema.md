@@ -114,8 +114,9 @@ FR-ADM-008. A **Course Programme** is one learning programme inside a category �
 |---|---|---|
 | id | bigIncrements | |
 | course_category_id | unsignedBigInteger, FK → `course_categories.id`, cascade delete | Required — a programme always sits under a category. |
-| name | string | Unique per category (`unique(course_category_id, name)`), not globally. |
-| description | text, nullable | Optional plain-text summary for the student course card. |
+| name | string | English. Unique per category (`unique(course_category_id, name, deleted_at)`), not globally. |
+| name_si | string, nullable | Sinhala. Optional and **not** unique — see the bilingual-titles note below. |
+| description | text, nullable | Optional plain-text summary for the student course card. English only for now. |
 | status | enum: `draft`, `published`, default `draft` | PHP enum `App\Enums\CourseStatus`. Draft programmes are invisible to students; nothing publishes by accident while an admin is still adding topics. |
 | sort_order | unsignedInteger, default 0 | Order within the category (FR-ADM-008 reorder). |
 | created_at / updated_at / deleted_at | timestamps + soft delete | FR-ADM-008 delete is recoverable, matching `students`. |
@@ -123,6 +124,8 @@ FR-ADM-008. A **Course Programme** is one learning programme inside a category �
 Course art: **Spatie Media Library**, collection `thumbnail`, single-file, public disk. Optional — a programme without one is normal, and `thumbnail_url` is null. Re-encoded with Intervention Image (1280×720 cover crop, JPEG) before storage per CLAUDE.md §7.4, so it always matches the lesson-thumbnail ratio. No column: the URL is derived from the media record.
 
 **`published_at`** (nullable timestamp, indexed with `status`) records when a course FIRST went live. `status` alone is a flag with no history, so it cannot answer "what is new?" — the app's Home search needs that for its Available tab's NEW badge. Stamped by `CourseProgrammeService::publish()` on the first publish only and never refreshed: an admin who unpublishes to fix a lesson and republishes a week later has not created a new course, and it must not jump back to the top of every student's list. Kept out of `$fillable` so no admin form can backdate a course into the badge. Existing rows were backfilled from `created_at` (not `updated_at`, which moves on every typo fix and would have made old courses look new).
+
+**Bilingual titles (`name_si`, `course_topics.title_si`, `course_videos.title_si`).** The three things a student reads their way through a course by are stored twice, once per language. The English column is the **record**: it is what the admin panel lists, searches and sorts by, and what `CourseProgramme::purchasableTitle()` freezes into an order's `title_snapshot`, so receipts and reconciliation never change script with the buyer's phone. The Sinhala column is optional everywhere and carries no unique index — the catalogue is translated course by course, and `App\Models\Concerns\HasTranslatedText` reads a blank one as "not translated yet" and falls back to English, the same way a missing `si.json` key does. Which column a student gets is decided per request from `Accept-Language` (`App\Http\Middleware\SetLocaleFromRequest`, student routes only), and the `Student\*` resources send **one** title, never both. Descriptions and category names are deliberately **not** translated yet; `course_programmes.description_si` and `course_topics.description_si` exist in the development database only, added by hand, with no migration and nothing reading them.
 
 ## `course_topics`
 
@@ -132,7 +135,8 @@ FR-ADM-008a. A learning unit inside a programme, holding one or more videos (and
 |---|---|---|
 | id | bigIncrements | |
 | course_programme_id | unsignedBigInteger, FK → `course_programmes.id`, cascade delete | |
-| title | string | |
+| title | string | English. |
+| title_si | string, nullable | Sinhala. Optional — falls back to `title`. See the bilingual-titles note under `course_programmes`. |
 | description | text, nullable | **Sanitized HTML** authored in the admin's rich-text editor (TipTap), so a topic description can carry hyperlinks and basic formatting. Never stored as received: `App\Support\HtmlSanitizer` strips everything outside a tag/attribute allowlist on write (CLAUDE.md §7.6), and only `http`/`https`/`mailto` links survive. |
 | sort_order | unsignedInteger, default 0 | Order within the programme (FR-ADM-008a reorder). Also drives FR-MOB-028 sequential unlocking later. |
 | created_at / updated_at | timestamps | |
@@ -145,7 +149,8 @@ FR-ADM-008b. One video lesson inside a topic. The file itself is **not** a colum
 |---|---|---|
 | id | bigIncrements | |
 | course_topic_id | unsignedBigInteger, FK → `course_topics.id`, cascade delete | |
-| title | string | FR-ADM-008b. |
+| title | string | FR-ADM-008b. English. |
+| title_si | string, nullable | Sinhala. Optional — falls back to `title`. See the bilingual-titles note under `course_programmes`. |
 | provider | enum: `upload`, `external`, default `upload` | PHP enum `App\Enums\VideoProvider`. `upload` = admin-uploaded file (the only flow built now). `external` exists so a Bunny Stream / hosted URL can be added later without a migration — see the note below. |
 | external_url | string, nullable | Only for `provider = external`. Null for uploads. |
 | duration_seconds | unsignedInteger, nullable | FR-ADM-008b. Read from the file's metadata in the browser at upload time, so the admin doesn't type it by hand. |
@@ -537,6 +542,7 @@ The logo is a **Media Library collection** (`logo`, single file, public disk), r
 | Date | Change |
 |---|---|
 | 2026-09-16 | **Student account deletion** (Google Play policy). Added `students.anonymised_at` (nullable) and `student_login_codes.purpose` (string, default `sign_in`, `App\Enums\LoginCodePurpose`) with index `login_codes_student_purpose_live_index`. Existing codes become `sign_in`. Deletion anonymises the row rather than deleting it, so finance records survive. |
+| 2026-09-21 | Added `course_programmes.name_si`, `course_topics.title_si` and `course_videos.title_si` — the Sinhala half of a course's titles. All nullable, no unique index, English is the record and the fallback. The student API picks between the two columns from `Accept-Language`; the admin panel always reads English. See the bilingual-titles note under `course_programmes`. The migration guards each column with `hasColumn` because the development database already had all three, added by hand. |
 | 2026-09-15 | Added `course_categories.icon` (nullable, `App\Enums\CourseCategoryIcon`), so an admin picks the glyph for a category's tile on the student app's Home screen. No backfill: null means "guess from the name". |
 | 2026-09-14 | Added `course_wishlists` — a student's saved courses, behind the heart on course tiles. Delete-on-remove rather than a nulled timestamp; rows survive unpublishing and soft deletes and are filtered out on read. |
 | 2026-09-02 | Premium Services: `services` (the second `Purchasable`) and `service_purchases` (its fulfilment queue). The order/payment/webhook layer is unchanged — only `PaymentService::settleOrder` gained a branch. |

@@ -88,10 +88,12 @@ Categories follow the same activate/deactivate-instead-of-delete pattern as indu
 
 On `update`, a topic/video carrying an `id` is updated in place, one without an `id` is created, and anything missing from the payload is deleted (a deleted video's uploaded file goes with it). An `id` belonging to a different programme is rejected with a 422 rather than silently duplicated.
 
+**Bilingual titles.** A programme, a topic and a lesson each take a Sinhala title alongside the English one — `name` / `name_si`, `title` / `title_si`. The Sinhala one is optional at every level and has no uniqueness rule; blank or null means "not translated yet" and the student API serves the English one instead. These admin endpoints always return **both**, raw and untranslated, because the form edits both — sending a fallback here would save it into the Sinhala column on the next edit. Only the `/student/*` payloads resolve the pair down to one title.
+
 | Method | Path | Auth / role | Notes |
 |---|---|---|---|
 | GET | `/admin/course-programmes` | any admin role | Query: `search, course_category_id, status(draft\|published), sort(name\|sort_order\|created_at), direction, per_page, page`. Rows carry `topics_count` / `videos_count`. |
-| POST | `/admin/course-programmes` | Super Admin, Content Manager | `{ course_category_id, name, description?, status?, topics: [{ title, description?, videos: [{ title, duration_seconds? }] }] }`. At least one topic is required (FR-MOB-017). Topic `description` is rich-text HTML, sanitized server-side against a tag/attribute allowlist before storage. |
+| POST | `/admin/course-programmes` | Super Admin, Content Manager | `{ course_category_id, name, name_si?, description?, status?, topics: [{ title, title_si?, description?, videos: [{ title, title_si?, duration_seconds? }] }] }`. At least one topic is required (FR-MOB-017). Topic `description` is rich-text HTML, sanitized server-side against a tag/attribute allowlist before storage. |
 | GET | `/admin/course-programmes/{programme}` | any admin role | Returns the full tree (`topics[].videos[]`). |
 | PUT | `/admin/course-programmes/{programme}` | Super Admin, Content Manager | Same body, plus optional `topics[].id` / `topics[].videos[].id`. |
 | DELETE | `/admin/course-programmes/{programme}` | Super Admin | Soft delete; topics, videos and uploaded files are kept. |
@@ -171,6 +173,8 @@ Writes are gated by `ChecklistItemPolicy::manage` — a class-level ability rath
 
 Everything under `/api/v1/student/`. Consumed by `mobile/` now, and by the web student area later without change.
 
+**Send `Accept-Language: en` or `si` on every request.** Admin-authored titles — a course's `name`, a topic's `title`, a lesson's `title` — are stored in both languages, and the server picks the column (`App\Http\Middleware\SetLocaleFromRequest`, student routes only; `si-LK` and q-values are understood, anything else is English). The response carries **one** title, already correct, never both — so no screen chooses, and an untranslated row falls back to English on its own. Responses echo `Vary: Accept-Language`. A client that lets the user switch language must refetch anything it cached under the old header. The admin API ignores this header entirely and always answers in English.
+
 ## Student Auth
 
 Students never register. An admin creates or CSV-imports the record first, and the student **claims** it by proving they control the email address on it. First successful sign-in sets `registered_at`.
@@ -233,7 +237,7 @@ Notes:
 | Method | Path | Notes |
 |---|---|---|
 | GET | `/student/course-categories` | Home's "Top Categories" row: **every active category**, in admin `sort_order` then name, **including categories with no published courses**. `{ data: [{ id, name, icon }] }` via `StudentCourseCategoryResource`, none of the admin fields. `icon` is null when no admin picked one — the app guesses from the name. |
-| GET | `/student/courses` | Published programmes only, with a progress summary. Query: `search`, `per_page` (max 50), `page`. Paginated. |
+| GET | `/student/courses` | Published programmes only, with a progress summary. Query: `search`, `per_page` (max 50), `page`. Paginated. `search` matches the course name and its topic titles **in both languages regardless of `Accept-Language`** — most phones here are set to English, so a student reading in Sinhala routinely types the English word, and the course they are looking at has to come back. |
 | GET | `/student/courses/{course}` | Full tree: `topics[].videos[]`, each with the student's own `progress` and `is_locked`, plus `paper` (or null). |
 | GET | `/student/wishlist` | The student's saved courses, **newest save first**, as the same rows `GET /student/courses` returns. Published only; not paginated. `{ data: [...] }`, empty array when nothing is saved. |
 | POST | `/student/courses/{course}/wishlist` | Save a course. Idempotent. `{ data: { course_id, is_wishlisted: true } }`. 404 for an unpublished course (published-only binding). Throttled 60/min. |
@@ -246,6 +250,8 @@ Every course row on the student API — list, detail and wishlist — carries **
 **Note the parameter names `{course}` and `{lesson}`, not `{programme}` and `{video}`.** `Route::bind()` registers a binder *globally* on the router, not per route file — reusing the admin names would apply this published-only filter to `/api/v1/admin/*` too and hide every draft course from the people writing them.
 
 **Authorization is the route binding.** A draft or soft-deleted programme (and any lesson inside one) 404s before the controller runs. "Published" is not a per-student rule, so no policy is involved and the existing `User`-typed policies are untouched.
+
+**Titles are already in the student's language.** `name` on a course row, `title` on a topic and on a lesson, and `matched_topic` on a search hit all come back in whichever language `Accept-Language` asked for, falling back to English where no Sinhala title was entered. There is no `name_si` / `title_si` on any student payload.
 
 **`is_locked`** is true until the previous lesson in the programme is watched — ordering runs across topics, so finishing topic 1 opens topic 2's first lesson. The app greys the row out rather than hiding it.
 

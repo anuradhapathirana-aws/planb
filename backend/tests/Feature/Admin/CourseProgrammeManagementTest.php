@@ -99,6 +99,74 @@ class CourseProgrammeManagementTest extends TestCase
         $this->assertDatabaseCount('course_videos', 3);
     }
 
+    /**
+     * The Sinhala titles the student app reads. Stored alongside the English
+     * ones rather than replacing them, and sent back raw so the form round-trips
+     * — see `CourseProgrammeResource`.
+     */
+    public function test_sinhala_titles_are_saved_at_every_level(): void
+    {
+        $payload = $this->payload([
+            'name_si' => 'පළමු අදියර',
+            'topics' => [
+                [
+                    'title' => 'Why UAE / Dubai?',
+                    'title_si' => 'ඇයි එක්සත් අරාබි එමීර් රාජ්‍යය?',
+                    'description' => null,
+                    'videos' => [
+                        [
+                            'title' => 'Introduction',
+                            'title_si' => 'හැඳින්වීම',
+                            'duration_seconds' => 420,
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+        $this->actingAs($this->contentManager)
+            ->postJson('/api/v1/admin/course-programmes', $payload)
+            ->assertCreated()
+            ->assertJsonPath('data.name', 'Phase 1 — UAE Awareness & Reality Check')
+            ->assertJsonPath('data.name_si', 'පළමු අදියර')
+            ->assertJsonPath('data.topics.0.title_si', 'ඇයි එක්සත් අරාබි එමීර් රාජ්‍යය?')
+            ->assertJsonPath('data.topics.0.videos.0.title_si', 'හැඳින්වීම');
+    }
+
+    /**
+     * A course is written in English and translated later, so every Sinhala
+     * field has to be skippable — the student API falls back to English.
+     */
+    public function test_sinhala_titles_are_optional(): void
+    {
+        $this->actingAs($this->contentManager)
+            ->postJson('/api/v1/admin/course-programmes', $this->payload())
+            ->assertCreated()
+            ->assertJsonPath('data.name_si', null)
+            ->assertJsonPath('data.topics.0.title_si', null)
+            ->assertJsonPath('data.topics.0.videos.0.title_si', null);
+    }
+
+    /**
+     * The admin panel is English-only. Its list, search and exports all read the
+     * English column, so an admin whose browser happens to prefer Sinhala must
+     * not get back a catalogue they cannot search.
+     */
+    public function test_the_admin_api_ignores_the_language_header(): void
+    {
+        $programme = CourseProgramme::factory()->create([
+            'name' => 'Workplace Safety',
+            'name_si' => 'වැඩබිම් ආරක්ෂාව',
+        ]);
+
+        $this->actingAs($this->superAdmin)
+            ->withHeader('Accept-Language', 'si')
+            ->getJson("/api/v1/admin/course-programmes/{$programme->id}")
+            ->assertOk()
+            ->assertJsonPath('data.name', 'Workplace Safety')
+            ->assertJsonPath('data.name_si', 'වැඩබිම් ආරක්ෂාව');
+    }
+
     public function test_topics_and_videos_are_saved_in_the_submitted_order(): void
     {
         $response = $this->actingAs($this->superAdmin)

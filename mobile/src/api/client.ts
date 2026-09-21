@@ -1,6 +1,7 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
 
 import { API_BASE_URL } from '@/lib/env';
+import { currentLanguage } from '@/lib/i18n';
 import { loadSession, saveSession } from '@/lib/secureStore';
 
 /**
@@ -41,6 +42,17 @@ apiClient.interceptors.request.use((config) => {
   if (accessToken) {
     config.headers.Authorization = `Bearer ${accessToken}`;
   }
+
+  /*
+   * Admin-authored content — course, topic and lesson titles — is stored in both
+   * English and Sinhala, and the server picks between them from this header. Set
+   * per request rather than once at boot, because the student can switch
+   * language at any time from Profile.
+   *
+   * Interface strings are NOT affected: those come from `si.json` on the device.
+   * This header only decides which stored column a title comes back in.
+   */
+  config.headers['Accept-Language'] = currentLanguage();
 
   return config;
 });

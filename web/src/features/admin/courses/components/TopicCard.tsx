@@ -6,7 +6,7 @@ import {
   type FieldErrors,
   type UseFormRegister,
 } from 'react-hook-form';
-import { ArrowDown, ArrowUp, ChevronDown, FileText, Plus, Trash2, Video } from 'lucide-react';
+import { ArrowDown, ArrowUp, ChevronDown, FileText, Languages, Plus, Trash2, Video } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FieldError, FieldLabel } from '@/components/shared/FormField';
@@ -133,17 +133,35 @@ export function TopicCard({
 
       {open && (
         <div className="space-y-3 border-t px-2.5 py-3">
-          <div className="space-y-1">
-            <FieldLabel htmlFor={`topic-title-${index}`} icon={FileText} required>
-              Topic name
-            </FieldLabel>
-            <Input
-              id={`topic-title-${index}`}
-              placeholder="e.g. Why UAE / Dubai?"
-              aria-invalid={!!topicErrors?.title}
-              {...register(`topics.${index}.title`)}
-            />
-            <FieldError message={topicErrors?.title?.message} />
+          {/* English is the record and is required; Sinhala is optional and
+              falls back to it, so the two sit side by side rather than the
+              Sinhala one hiding behind a toggle nobody would open. */}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <FieldLabel htmlFor={`topic-title-${index}`} icon={FileText} required>
+                Topic name (English)
+              </FieldLabel>
+              <Input
+                id={`topic-title-${index}`}
+                placeholder="e.g. Why UAE / Dubai?"
+                aria-invalid={!!topicErrors?.title}
+                {...register(`topics.${index}.title`)}
+              />
+              <FieldError message={topicErrors?.title?.message} />
+            </div>
+
+            <div className="space-y-1">
+              <FieldLabel htmlFor={`topic-title-si-${index}`} icon={Languages}>
+                Topic name (Sinhala)
+              </FieldLabel>
+              <Input
+                id={`topic-title-si-${index}`}
+                placeholder="උදා. ඇයි එක්සත් අරාබි එමීර් රාජ්‍යය?"
+                aria-invalid={!!topicErrors?.title_si}
+                {...register(`topics.${index}.title_si`)}
+              />
+              <FieldError message={topicErrors?.title_si?.message} />
+            </div>
           </div>
 
           <div className="space-y-1">
@@ -193,6 +211,8 @@ export function TopicCard({
                       position={videoIndex}
                       titleField={register(`topics.${index}.videos.${videoIndex}.title`)}
                       titleError={topicErrors?.videos?.[videoIndex]?.title?.message}
+                      sinhalaTitleField={register(`topics.${index}.videos.${videoIndex}.title_si`)}
+                      sinhalaTitleError={topicErrors?.videos?.[videoIndex]?.title_si?.message}
                       existing={saved}
                       staged={stagedFiles[field.client_key]}
                       onStage={(staged) => onStageFile(field.client_key, staged)}

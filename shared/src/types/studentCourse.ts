@@ -6,6 +6,12 @@ import type { CourseCategoryIconName } from './course';
  * The course tree as a student sees it. Separate from the admin `course.ts`
  * types on purpose: these carry per-student progress and lock state, and carry
  * none of the authoring fields (`sort_order` churn, `status`, counts).
+ *
+ * **Every title here arrives already in the student's language.** The server
+ * reads `Accept-Language` and picks between the English and Sinhala columns
+ * itself, so there is no `name_si`/`title_si` on these types and no screen has
+ * to choose. A client that switches language must therefore refetch anything it
+ * cached under the old header — `mobile/src/lib/i18n.ts` does that.
  */
 
 export interface StudentCourseVideo {

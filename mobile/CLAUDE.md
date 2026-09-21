@@ -53,6 +53,12 @@ If a pattern is used by more than one feature it belongs in `components/shared/`
   `initLanguage()` inside the root layout's startup gate, and picked on `app/language.tsx` — which the
   launch gate shows once, **before the intro**, because the intro greeting is itself translated. Dates
   follow the language automatically (`setDateLocale`); money stays Western digits in both.
+- **Content typed by an admin is translated by the server, not by `t()`.** Course, topic and lesson
+  titles are stored in both languages, `api/client.ts` sends the current one as `Accept-Language` on
+  every request, and the response carries a single already-correct `name`/`title`. So a screen just
+  renders what it was given — never look for a `*_si` field, and never pick a language in a
+  component. Switching language invalidates the whole Query cache (`lib/i18n.ts`), which is the only
+  reason those titles change on screen; a new API call needs nothing added for this to work.
 - **Server state is TanStack Query. Client state is Zustand.** No `useEffect + fetch`.
 - **Forms are React Hook Form + Zod**, schema imported from `@shared/schemas`.
 - **Every failed mutation surfaces a toast** (`sonner-native`). Never fail silently.

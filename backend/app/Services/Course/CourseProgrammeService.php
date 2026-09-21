@@ -64,6 +64,7 @@ class CourseProgrammeService
             $programme = CourseProgramme::create([
                 'course_category_id' => $data['course_category_id'],
                 'name' => $data['name'],
+                'name_si' => $data['name_si'] ?? null,
                 'description' => $data['description'] ?? null,
                 'price_cents' => $data['price_cents'] ?? 0,
                 'currency' => $data['currency'] ?? config('payments.currency'),
@@ -83,6 +84,7 @@ class CourseProgrammeService
             $programme->update([
                 'course_category_id' => $data['course_category_id'],
                 'name' => $data['name'],
+                'name_si' => $data['name_si'] ?? null,
                 'description' => $data['description'] ?? null,
                 'price_cents' => $data['price_cents'] ?? 0,
                 'currency' => $data['currency'] ?? config('payments.currency'),
@@ -245,6 +247,7 @@ class CourseProgrammeService
         foreach ($topics as $position => $topic) {
             $attributes = [
                 'title' => $topic['title'],
+                'title_si' => $topic['title_si'] ?? null,
                 'description' => HtmlSanitizer::clean($topic['description'] ?? null),
                 'sort_order' => $position,
             ];
@@ -279,6 +282,7 @@ class CourseProgrammeService
         foreach ($videos as $position => $video) {
             $attributes = [
                 'title' => $video['title'],
+                'title_si' => $video['title_si'] ?? null,
                 'duration_seconds' => $video['duration_seconds'] ?? null,
                 'sort_order' => $position,
             ];

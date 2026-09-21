@@ -132,6 +132,12 @@ class StudentCourseService
      * rows, not thousands, and a MySQL FULLTEXT index would not match a partial
      * word ("vis" finding "visa") — which is exactly what type-ahead needs.
      *
+     * Both scripts are searched whatever language the app is in, rather than
+     * only the columns the student is currently reading. Sinhala keyboards are
+     * fiddly and most phones in Sri Lanka are set to English, so a student
+     * reading the catalogue in Sinhala very often types the English word — and
+     * a course they are looking straight at must not fail to come back.
+     *
      * @param  Builder<CourseProgramme>  $query
      */
     private function applySearch(Builder $query, string $search): Builder
@@ -142,7 +148,10 @@ class StudentCourseService
 
         return $query->where(function (Builder $inner) use ($term): void {
             $inner->where('name', 'like', $term)
-                ->orWhereHas('topics', fn (Builder $topics) => $topics->where('title', 'like', $term));
+                ->orWhere('name_si', 'like', $term)
+                ->orWhereHas('topics', fn (Builder $topics) => $topics
+                    ->where('title', 'like', $term)
+                    ->orWhere('title_si', 'like', $term));
         });
     }
 
@@ -162,8 +171,17 @@ class StudentCourseService
     {
         $needle = mb_strtolower($search);
 
+        /*
+         * "Did the name the student is looking at explain this hit?" — so it is
+         * the displayed name that is checked, not the English column. A Sinhala
+         * student who searched the English word gets the topic hint even though
+         * the English name matched, because the name on their screen did not.
+         */
         $unexplained = $programmes->filter(
-            fn (CourseProgramme $programme) => ! str_contains(mb_strtolower($programme->name), $needle),
+            fn (CourseProgramme $programme) => ! str_contains(
+                mb_strtolower((string) $programme->translated('name')),
+                $needle,
+            ),
         );
 
         if ($unexplained->isEmpty()) {
@@ -176,16 +194,20 @@ class StudentCourseService
         // the student would meet, not an arbitrary row.
         $titles = CourseTopic::query()
             ->whereIn('course_programme_id', $unexplained->pluck('id'))
-            ->where('title', 'like', $term)
+            ->where(fn (Builder $inner) => $inner
+                ->where('title', 'like', $term)
+                ->orWhere('title_si', 'like', $term))
             ->orderBy('sort_order')
             ->orderBy('id')
-            ->get(['course_programme_id', 'title'])
+            ->get(['course_programme_id', 'title', 'title_si'])
             ->groupBy('course_programme_id');
 
         foreach ($unexplained as $programme) {
             $programme->setAttribute(
                 'matched_topic',
-                $titles->get($programme->id)?->first()?->title,
+                // Shown to the student, so it follows their language like every
+                // other title — even when it was the English column that matched.
+                $titles->get($programme->id)?->first()?->translated('title'),
             );
         }
     }

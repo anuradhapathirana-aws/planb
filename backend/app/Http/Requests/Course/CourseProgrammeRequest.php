@@ -21,6 +21,15 @@ abstract class CourseProgrammeRequest extends FormRequest
     public function rules(): array
     {
         return array_merge($this->programmeRules(), [
+            /*
+             * Sinhala titles are optional everywhere and carry no uniqueness
+             * rule. Optional because the catalogue is translated course by
+             * course, and a blank one falls back to English at read time; not
+             * unique because uniqueness is enforced on the English name, which
+             * is the record — a second rule here would block saving an
+             * untranslated course alongside an untranslated one.
+             */
+            'name_si' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:2000'],
 
             /*
@@ -36,6 +45,7 @@ abstract class CourseProgrammeRequest extends FormRequest
             'topics' => ['required', 'array', 'min:1'],
             'topics.*.id' => $this->topicIdRules(),
             'topics.*.title' => ['required', 'string', 'max:255'],
+            'topics.*.title_si' => ['nullable', 'string', 'max:255'],
             // Sanitized server-side before storage; the cap is generous because
             // the value is rich-text HTML, not the plain text the admin typed.
             'topics.*.description' => ['nullable', 'string', 'max:20000'],
@@ -43,6 +53,7 @@ abstract class CourseProgrammeRequest extends FormRequest
             'topics.*.videos' => ['nullable', 'array'],
             'topics.*.videos.*.id' => $this->videoIdRules(),
             'topics.*.videos.*.title' => ['required', 'string', 'max:255'],
+            'topics.*.videos.*.title_si' => ['nullable', 'string', 'max:255'],
             'topics.*.videos.*.duration_seconds' => [
                 'nullable', 'integer', 'min:0', 'max:'.config('courses.max_video_duration_seconds'),
             ],
@@ -78,9 +89,12 @@ abstract class CourseProgrammeRequest extends FormRequest
         return [
             'course_category_id' => 'course category',
             'price_cents' => 'price',
+            'name_si' => 'Sinhala course programme name',
             'topics.*.title' => 'topic name',
+            'topics.*.title_si' => 'Sinhala topic name',
             'topics.*.description' => 'topic description',
             'topics.*.videos.*.title' => 'video title',
+            'topics.*.videos.*.title_si' => 'Sinhala video title',
             'topics.*.videos.*.duration_seconds' => 'video duration',
         ];
     }

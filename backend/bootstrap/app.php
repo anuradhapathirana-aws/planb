@@ -4,6 +4,7 @@ use App\Http\Middleware\EnsureAdminActor;
 use App\Http\Middleware\EnsureStudentActor;
 use App\Http\Middleware\EnsureStudentIsActive;
 use App\Http\Middleware\SecurityHeaders;
+use App\Http\Middleware\SetLocaleFromRequest;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -26,7 +27,12 @@ return Application::configure(basePath: dirname(__DIR__))
          * route to the admin group by accident.
          */
         then: function () {
-            Route::middleware('api')
+            /*
+             * `SetLocaleFromRequest` sits on this group and only this group: the
+             * student app picks a language, the admin panel does not (see the
+             * middleware's own note).
+             */
+            Route::middleware(['api', SetLocaleFromRequest::class])
                 ->prefix('api/v1/student')
                 ->name('student.')
                 ->group(base_path('routes/api_student.php'));

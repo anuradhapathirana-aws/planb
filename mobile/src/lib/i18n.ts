@@ -7,6 +7,8 @@ import { setDateLocale } from '@shared/lib/formatters';
 import en from '@shared/i18n/en.json';
 import si from '@shared/i18n/si.json';
 
+import { queryClient } from '@/lib/queryClient';
+
 /**
  * English and Sinhala, from the shared string files so the web student area
  * reuses exactly the same keys (root CLAUDE.md §8).
@@ -73,6 +75,22 @@ void i18n.use(initReactI18next).init({
  */
 i18n.on('languageChanged', (language) => {
   setDateLocale(LANGUAGE_LOCALES[isLanguage(language) ? language : 'en']);
+});
+
+/*
+ * Course, topic and lesson titles are admin-authored and stored in both
+ * languages; the server picks between them from the `Accept-Language` header
+ * `api/client.ts` sends. Anything already cached was fetched under the OLD
+ * header, so it has to be refetched — otherwise a student who switches to
+ * Sinhala keeps reading English course names until the cache happens to expire.
+ *
+ * `invalidateQueries` rather than `clear`: it refetches what is on screen in the
+ * background and leaves the current data visible meanwhile, so switching
+ * language re-labels the screen instead of blanking it. Offline, the refetch
+ * fails and the old-language titles simply stay — the right fallback.
+ */
+i18n.on('languageChanged', () => {
+  void queryClient.invalidateQueries();
 });
 
 setDateLocale(LANGUAGE_LOCALES[deviceLanguage()]);
