@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { GraduationCap, Home, ListChecks, Sparkles, User } from '@/components/icons';
+import { GraduationCap, Home, Plane, Sparkles, User } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 import { Platform } from 'react-native';
 
@@ -60,7 +60,7 @@ export default function TabsLayout() {
         name="checklist"
         options={{
           title: t('checklist.title'),
-          tabBarIcon: ({ color, size }) => <ListChecks size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => <Plane size={size} color={color} />,
         }}
       />
       <Tabs.Screen

@@ -74,5 +74,20 @@ export interface StudentAppConfig {
    * payment endpoints 403 on their own while it is false.
    */
   payments_enabled: boolean;
+  /**
+   * Where each platform's installed app stands. Below `min_version` the app
+   * blocks with "Update required"; below `latest_version` it offers a banner.
+   * Any field null means "no prompt" — never block on missing data.
+   */
+  app_version: {
+    android: AppPlatformVersion;
+    ios: AppPlatformVersion;
+  };
   updated_at: string | null;
+}
+
+export interface AppPlatformVersion {
+  min_version: string | null;
+  latest_version: string | null;
+  store_url: string | null;
 }

@@ -42,6 +42,34 @@ class StudentAppConfigTest extends TestCase
             ->assertJsonPath('data.legal.support_email', 'support@planb.test');
     }
 
+    /** Read before sign-in, so an outdated app can be stopped at the launch gate. */
+    public function test_the_config_carries_the_app_versions_for_both_platforms(): void
+    {
+        config([
+            'mobile_app.android.min_version' => '1.1.0',
+            'mobile_app.android.latest_version' => '1.3.0',
+            'mobile_app.android.store_url' => 'https://play.google.com/store/apps/details?id=test',
+            'mobile_app.ios.store_url' => null,
+        ]);
+
+        $this->getJson('/api/v1/student/app-config')
+            ->assertOk()
+            ->assertJsonPath('data.app_version.android.min_version', '1.1.0')
+            ->assertJsonPath('data.app_version.android.latest_version', '1.3.0')
+            ->assertJsonPath('data.app_version.android.store_url', 'https://play.google.com/store/apps/details?id=test')
+            ->assertJsonPath('data.app_version.ios.store_url', null);
+    }
+
+    /** A blank .env line must read as "not set", not as an empty version string. */
+    public function test_a_blank_app_version_is_sent_as_null(): void
+    {
+        config(['mobile_app.android.min_version' => '  ']);
+
+        $this->getJson('/api/v1/student/app-config')
+            ->assertOk()
+            ->assertJsonPath('data.app_version.android.min_version', null);
+    }
+
     public function test_the_public_config_never_carries_bank_details(): void
     {
         CompanySetting::query()->update(['bank_account_number' => '123456789']);

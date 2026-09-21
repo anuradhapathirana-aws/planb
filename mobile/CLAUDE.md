@@ -122,6 +122,13 @@ so patterns transfer between the two codebases.
 - **Nothing secret goes in `extra`** — it ships inside the bundle and is trivially extractable.
 - Build profiles: `development` (dev client), `preview` (**APK**, internal testing / direct install),
   `production` (**AAB**, required by Google Play). iOS compiles on EAS macOS workers; no Mac needed.
+- **Bump `version` in `app.config.ts` for every store build.** The update prompt
+  (`src/features/update/useAppUpdate.ts`) compares it with `MOBILE_*_MIN_VERSION` /
+  `MOBILE_*_LATEST_VERSION` from `/student/app-config`; a build that keeps the old number looks
+  out of date forever. (`versionCode` is auto-incremented by EAS and is not what is compared.)
+  Every doubt resolves to "no prompt": the check is a nudge, never access control. If OTA is ever
+  added, read the version from `expo-application` instead, since the embedded config would then
+  describe the OTA bundle, not the installed binary.
 - OTA (`expo-updates`) ships JS-only fixes. Anything touching a native module needs a store build,
   and **never OTA a change to the auth token format** — half the users would be on the old client.
 - Google Sign-In needs a separate OAuth client per platform, and Android needs the **SHA-1 of every

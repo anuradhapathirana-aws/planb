@@ -422,6 +422,8 @@ export default function RootLayout() {
             <Stack screenOptions={{ headerShown: false, animation: 'fade' }}>
               <Stack.Screen name="index" />
               <Stack.Screen name="language" />
+              {/* No swipe-back: the store is the only way out of this one. */}
+              <Stack.Screen name="update-required" options={{ gestureEnabled: false }} />
               <Stack.Screen name="sign-in" />
               <Stack.Screen name="verify" />
               <Stack.Screen name="(tabs)" />

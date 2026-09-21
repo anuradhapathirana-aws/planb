@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { fetchMe } from '@/api/auth.api';
 import { INTRO_DURATION_MS, IntroSplash } from '@/features/intro/IntroSplash';
 import { useAppConfig } from '@/features/intro/useAppConfig';
+import { resolveAppUpdate } from '@/features/update/useAppUpdate';
 import { hasChosenLanguage } from '@/lib/i18n';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -41,9 +42,22 @@ export default function LaunchScreen() {
 
   const config = useAppConfig();
   const intro = config.data?.intro;
-  // A failed config request is not worth an error — the app just skips the intro.
-  const showIntro = config.isSuccess && intro?.enabled === true;
   const configSettled = config.isSuccess || config.isError;
+
+  /*
+   * Checked on the same config response as the intro, so it costs no request.
+   * It wins over everything else here — the language picker, the intro and the
+   * session check — because nothing past this point should run on a build the
+   * server has declared too old. A failed config resolves to "current".
+   */
+  const updateRequired = configSettled && resolveAppUpdate(config.data).status === 'required';
+
+  useEffect(() => {
+    if (updateRequired) router.replace('/update-required');
+  }, [updateRequired]);
+
+  // A failed config request is not worth an error — the app just skips the intro.
+  const showIntro = config.isSuccess && intro?.enabled === true && !updateRequired;
 
   const [introDone, setIntroDone] = useState(false);
 
@@ -74,7 +88,7 @@ export default function LaunchScreen() {
   }, [languageChosen]);
 
   useEffect(() => {
-    if (!introDone || !languageChosen) return;
+    if (!introDone || !languageChosen || updateRequired) return;
 
     if (!hasSession || isError) {
       router.replace('/sign-in');
@@ -82,7 +96,7 @@ export default function LaunchScreen() {
       setStudent(data);
       router.replace('/(tabs)');
     }
-  }, [introDone, languageChosen, hasSession, isSuccess, isError, data, setStudent]);
+  }, [introDone, languageChosen, updateRequired, hasSession, isSuccess, isError, data, setStudent]);
 
   // Navy while the redirect lands, so the intro does not flash for one frame.
   if (!languageChosen) return <View className="flex-1 bg-primary" />;

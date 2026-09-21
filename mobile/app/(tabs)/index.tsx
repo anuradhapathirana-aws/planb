@@ -26,6 +26,8 @@ import { HomeSearchBar } from '@/features/home/HomeSearchBar';
 import { useHomeSearch } from '@/features/home/useHomeSearch';
 import { ProfileCompletionCard } from '@/features/home/ProfileCompletionCard';
 import { useProfileCompletion } from '@/features/home/useProfileCompletion';
+import { UpdateAvailableBanner } from '@/features/update/UpdateAvailableBanner';
+import { useAppUpdate } from '@/features/update/useAppUpdate';
 import { useWishlistToggle } from '@/features/wishlist/useWishlist';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -193,6 +195,16 @@ export default function HomeScreen() {
   const wishlist = useWishlistToggle();
 
   /*
+   * Home is a tab and stays mounted, so this state is effectively "dismissed for
+   * this app session" — the banner returns on the next cold start until the
+   * student updates. A build below the minimum never gets here: the launch gate
+   * stopped it.
+   */
+  const update = useAppUpdate();
+  const [updateDismissed, setUpdateDismissed] = useState(false);
+  const showUpdateBanner = update.status === 'available' && !updateDismissed;
+
+  /*
    * Home is the ONE screen a student may screenshot, at the client's request.
    *
    * The app blocks capture app-wide from `app/_layout.tsx` — course video is the
@@ -345,6 +357,16 @@ export default function HomeScreen() {
             }}
           />
         </View>
+
+        {/* Same spacing as the profile nudge: both are strips in the top group. */}
+        {showUpdateBanner && update.storeUrl !== null && (
+          <View style={{ marginBottom: -PROFILE_NUDGE_PULL_UP }}>
+            <UpdateAvailableBanner
+              storeUrl={update.storeUrl}
+              onDismiss={() => setUpdateDismissed(true)}
+            />
+          </View>
+        )}
 
         {/*
           Removed once the profile is finished rather than switched to a

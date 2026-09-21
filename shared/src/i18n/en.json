@@ -29,6 +29,16 @@
   "intro": {
     "skipHint": "Tap to continue"
   },
+  "appUpdate": {
+    "requiredTitle": "Please update the app",
+    "requiredBody": "This version of Plan B Academy is no longer supported. Update to the latest version to keep learning. It only takes a minute.",
+    "updateNow": "Update now",
+    "availableTitle": "A new version is available",
+    "availableBody": "Update to get the latest features and fixes.",
+    "update": "Update",
+    "dismiss": "Dismiss update message",
+    "storeFailed": "Could not open the store. Please update Plan B Academy from Google Play."
+  },
   "auth": {
     "brandWelcome": "Welcome to PlanB",
     "signInTitle": "Sign in",

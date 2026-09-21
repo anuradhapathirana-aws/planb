@@ -47,8 +47,32 @@ class StudentAppConfigResource extends JsonResource
              * (PaymentAvailability). Here so turning payments on needs no app release.
              */
             'payments_enabled' => (bool) config('payments.enabled'),
+            /*
+             * Both platforms, and the app picks its own: the API never asks which
+             * client called it (root CLAUDE.md §16.2). Presentation only — an old
+             * app is nudged to update, never refused by any endpoint.
+             */
+            'app_version' => [
+                'android' => $this->platformVersion('android'),
+                'ios' => $this->platformVersion('ios'),
+            ],
             // Lets the app tell a cached logo is out of date.
             'updated_at' => $this->updated_at?->toIso8601String(),
+        ];
+    }
+
+    /**
+     * @return array{min_version: string|null, latest_version: string|null, store_url: string|null}
+     */
+    private function platformVersion(string $platform): array
+    {
+        // A blank env value arrives as '', which the app would treat as a version.
+        $value = static fn (mixed $v): ?string => is_string($v) && trim($v) !== '' ? trim($v) : null;
+
+        return [
+            'min_version' => $value(config("mobile_app.{$platform}.min_version")),
+            'latest_version' => $value(config("mobile_app.{$platform}.latest_version")),
+            'store_url' => $value(config("mobile_app.{$platform}.store_url")),
         ];
     }
 }
