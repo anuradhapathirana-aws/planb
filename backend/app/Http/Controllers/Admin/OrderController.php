@@ -65,7 +65,7 @@ class OrderController extends Controller
         $this->authorize('view', $order);
 
         return response()->json([
-            'data' => new OrderResource($order->load(['student', 'payments.reviewer', 'payments.media'])),
+            'data' => new OrderResource($order->load(['student', 'payments.reviewer', 'payments.media', 'items'])),
         ]);
     }
 

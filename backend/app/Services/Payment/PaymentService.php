@@ -8,12 +8,14 @@ use App\Enums\EnrolmentSource;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentMethod;
 use App\Enums\PaymentStatus;
+use App\Models\CourseCategory;
 use App\Models\CourseProgramme;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\PaymentWebhookEvent;
 use App\Models\Service;
 use App\Models\User;
+use App\Services\Course\CourseBundleService;
 use App\Services\Enrolment\EnrolmentService;
 use App\Services\Service\ServicePurchaseService;
 use App\Services\Settings\CompanySettingsService;
@@ -44,6 +46,7 @@ class PaymentService
         private readonly PaymentGatewayManager $gateways,
         private readonly EnrolmentService $enrolments,
         private readonly ServicePurchaseService $servicePurchases,
+        private readonly CourseBundleService $bundles,
         private readonly CompanySettingsService $companySettings,
         private readonly PaymentAvailability $availability,
         private readonly PaymentReceiptService $receipts,
@@ -366,6 +369,13 @@ class PaymentService
 
         if ($purchasable instanceof Service) {
             $this->servicePurchases->fulfil($locked->student, $purchasable, $locked);
+
+            return;
+        }
+
+        // A course bundle: one ordinary enrolment per course frozen on the order.
+        if ($purchasable instanceof CourseCategory) {
+            $this->bundles->fulfil($locked->student, $locked);
 
             return;
         }

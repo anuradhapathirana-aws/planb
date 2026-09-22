@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import type { StudentCourseSummary } from '@shared/types/studentCourse';
 import { colors } from '@shared/theme/tokens';
 import { formatMoney } from '@shared/lib/formatters';
+import { CourseOrderBadge } from '@/components/shared/CourseOrderBadge';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { PressableCard } from '@/components/ui/Card';
@@ -58,14 +59,16 @@ export function CourseCard({
   const showThumbnail = Boolean(course.thumbnail_url) && !thumbnailFailed;
 
   const price = course.is_free ? t('courses.free') : formatMoney(course.price_cents, course.currency);
+  const order =
+    course.position !== null ? `${t('courses.orderBadge', { number: course.position })}. ` : '';
 
   return (
     <PressableCard
       onPress={onPress}
       accessibilityLabel={
         locked
-          ? `${course.name}. ${t('courses.lockedBadge')}. ${price}`
-          : `${course.name}. ${t('courses.progress', {
+          ? `${order}${course.name}. ${t('courses.lockedBadge')}. ${price}`
+          : `${order}${course.name}. ${t('courses.progress', {
               watched: progress.videos_watched,
               total: progress.videos_total,
             })}`
@@ -102,6 +105,8 @@ export function CourseCard({
         {/* The badge sits on the art, not under it, so the state reads at a
             glance while scrolling. Decorative — the card's own accessibility
             label already carries it. */}
+        <CourseOrderBadge position={course.position} />
+
         {locked && (
           <View className="absolute right-2.5 top-2.5">
             <Badge label={t('courses.lockedBadge')} tone="locked" icon={Lock} className="bg-card" />

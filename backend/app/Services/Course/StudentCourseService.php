@@ -32,6 +32,8 @@ class StudentCourseService
         private readonly CourseProgressService $progress,
         private readonly EnrolmentService $enrolments,
         private readonly CourseWishlistService $wishlist,
+        private readonly CourseBundleService $bundles,
+        private readonly CourseOrderService $order,
     ) {}
 
     /**
@@ -48,22 +50,36 @@ class StudentCourseService
     {
         $perPage = min(max((int) ($filters['per_page'] ?? 20), 1), 50);
 
-        $programmes = $this->summaryQuery($student)
+        $categoryIds = empty($filters['category_id'])
+            ? null
+            : CourseCategory::find((int) $filters['category_id'])?->selfAndChildIds() ?? [];
+
+        $query = $this->summaryQuery($student)
             ->when(
                 filled($filters['search'] ?? null),
                 fn ($query) => $this->applySearch($query, (string) $filters['search']),
             )
-            ->when(
-                ! empty($filters['category_id']),
-                fn ($query) => $query->whereIn(
-                    'course_category_id',
-                    CourseCategory::find((int) $filters['category_id'])?->selfAndChildIds() ?? [],
-                ),
-            )
-            ->orderBy('sort_order')
-            ->orderBy('name')
-            ->paginate($perPage);
+            ->when($categoryIds !== null, fn ($query) => $query->whereIn('course_category_id', $categoryIds));
 
+        /*
+         * A main category's page lists its own courses first, then each
+         * sub-category's in the sub-categories' order. Numbering restarts per
+         * category, so interleaving them by `sort_order` alone would read
+         * "Course 1, Course 1, Course 2, Course 2".
+         */
+        if ($categoryIds !== null && count($categoryIds) > 1) {
+            $cases = implode(' ', array_fill(0, count($categoryIds), 'WHEN ? THEN ?'));
+            $bindings = [];
+            foreach ($categoryIds as $index => $id) {
+                array_push($bindings, $id, $index);
+            }
+
+            $query->orderByRaw("CASE course_category_id {$cases} END", $bindings);
+        }
+
+        $programmes = $this->order->ordered($query)->paginate($perPage);
+
+        $this->order->attachPositions($programmes->getCollection(), publishedOnly: true);
         $this->attachProgressSummaries($student, $programmes->getCollection());
         $this->attachAccess($student, $programmes->getCollection());
         $this->attachWishlist($student, $programmes->getCollection());
@@ -103,6 +119,7 @@ class StudentCourseService
             ->sortBy(fn (CourseProgramme $programme): int => $order[$programme->id])
             ->values();
 
+        $this->order->attachPositions($programmes, publishedOnly: true);
         $this->attachProgressSummaries($student, $programmes);
         $this->attachAccess($student, $programmes);
 
@@ -142,7 +159,7 @@ class StudentCourseService
              */
             ->withSum('videos as total_duration_seconds', 'duration_seconds')
             // `media` avoids an N+1 when each row renders its thumbnail URL.
-            ->with(['category', 'media', 'paper:id,course_programme_id']);
+            ->with(['category.parent', 'media', 'paper:id,course_programme_id']);
     }
 
     /**
@@ -242,7 +259,7 @@ class StudentCourseService
     public function detail(Student $student, CourseProgramme $programme): CourseProgramme
     {
         $programme->load([
-            'category',
+            'category.parent',
             'media',
             'topics.videos',
             'paper.questions:id,course_paper_id',
@@ -281,9 +298,20 @@ class StudentCourseService
                 && $watchedInTopic === $topic->videos->count());
         }
 
+        $this->order->attachPositions(collect([$programme]), publishedOnly: true);
         $this->attachProgressSummaries($student, collect([$programme]));
         $this->attachAccess($student, collect([$programme]));
         $this->attachWishlist($student, collect([$programme]));
+
+        /*
+         * For a course sold in a bundle: what this student would still pay for
+         * that bundle, for the course page's "Buy all 5 · LKR 18,500". Detail only
+         * — worked out for one course, never per row of a list.
+         */
+        $bundle = $programme->category?->bundleOwner();
+        if ($bundle !== null) {
+            $programme->setAttribute('bundle_quote', $this->bundles->quote($student, $bundle));
+        }
 
         /*
          * A student browsing a course they have not bought still sees the syllabus

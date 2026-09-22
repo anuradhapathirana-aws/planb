@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, View } from 'react-native';
 import { Image } from 'expo-image';
+import { router } from 'expo-router';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { BookOpen, Heart, Lock, ShoppingCart, Star } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
@@ -8,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import type { StudentCourseSummary } from '@shared/types/studentCourse';
 import { colors } from '@shared/theme/tokens';
 import { formatMoney } from '@shared/lib/formatters';
+import { CourseOrderBadge } from '@/components/shared/CourseOrderBadge';
 import { PressableCard } from '@/components/ui/Card';
 import { Text } from '@/components/ui/Text';
 import { courseSocialProof } from '@/features/courses/courseSocialProof';
@@ -103,9 +105,22 @@ export function CourseGridCard({
   // image icon would read as a broken app.
   const showThumbnail = Boolean(course.thumbnail_url) && !thumbnailFailed;
 
+  /*
+   * A course sold only in its category's bundle shows "Bundle" instead of a
+   * price it cannot be bought at, and its buy button opens the Category page
+   * rather than starting a purchase the server would refuse.
+   */
+  const bundle = course.sold_individually ? null : course.bundle;
+
   const price = course.is_free
     ? t('courses.free')
-    : formatMoney(course.price_cents, course.currency);
+    : bundle
+      ? t('bundle.tileLabel')
+      : formatMoney(course.price_cents, course.currency);
+
+  const onBuy = bundle
+    ? () => router.push({ pathname: '/category/[id]', params: { id: bundle.category_id } })
+    : onEnrol;
 
   /* SAMPLE DATA until the backend carries ratings — see courseSocialProof.ts. */
   const proof = courseSocialProof(course.id);
@@ -139,6 +154,7 @@ export function CourseGridCard({
       accessibilityLabel={
         // The price is announced only when it is also drawn — see `showFooter`.
         [
+          ...(course.position !== null ? [t('courses.orderBadge', { number: course.position })] : []),
           course.name,
           locked ? t('courses.lockedBadge') : t('courses.tabEnrolled'),
           ...(showFooter ? [price] : []),
@@ -226,6 +242,9 @@ export function CourseGridCard({
           Decorative — the card's own accessibility label still says "Locked",
           so a screen reader is not relying on the icon.
         */}
+        {/* Top-left, opposite the lock: the course's place in its category's order. */}
+        <CourseOrderBadge position={course.position} />
+
         {locked && (
           <View className="absolute right-2 top-2 h-6 w-6 items-center justify-center rounded-full bg-card">
             <Lock size={12} color={colors['muted-foreground']} />
@@ -349,7 +368,7 @@ export function CourseGridCard({
                 </Pressable>
               )}
 
-              {showPurchase && onEnrol !== undefined && (
+              {showPurchase && onBuy !== undefined && (
                 /*
                  * Nested inside the card's own Pressable: React Native gives the
                  * press to the innermost responder, so this does not also open the
@@ -362,7 +381,7 @@ export function CourseGridCard({
                   accessibilityLabel={`${t('enrol.action')}. ${course.name}. ${price}`}
                   accessibilityState={{ disabled: enrolling, busy: enrolling }}
                   disabled={enrolling}
-                  onPress={onEnrol}
+                  onPress={onBuy}
                   hitSlop={8}
                   className="h-[34px] w-[34px] shrink-0 items-center justify-center rounded-lg bg-primary active:opacity-80"
                 >

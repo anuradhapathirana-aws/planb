@@ -65,6 +65,7 @@ export { default as Luggage } from 'lucide-react-native/icons/luggage';
 export { default as Mail } from 'lucide-react-native/icons/mail';
 export { default as MapPin } from 'lucide-react-native/icons/map-pin';
 export { default as Mic } from 'lucide-react-native/icons/mic';
+export { default as Package } from 'lucide-react-native/icons/package';
 export { default as Palette } from 'lucide-react-native/icons/palette';
 export { default as PartyPopper } from 'lucide-react-native/icons/party-popper';
 export { default as Pause } from 'lucide-react-native/icons/pause';

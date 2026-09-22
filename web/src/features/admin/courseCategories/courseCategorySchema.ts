@@ -23,6 +23,8 @@ export const courseCategoryFormSchema = z.object({
    * chosen icon actually clears it on the server.
    */
   icon: z.enum(ICON_VALUES).nullable(),
+  /** How this category's paid courses are sold. `inherit` (follow the main category) is for sub-categories. */
+  selling_mode: z.enum(['single', 'bundle', 'inherit']),
 });
 
 export type CourseCategoryFormSchema = z.infer<typeof courseCategoryFormSchema>;

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Controller, useFieldArray, useForm, type Resolver } from 'react-hook-form';
+import { Controller, useFieldArray, useForm, useWatch, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import {
@@ -201,6 +201,33 @@ export function CourseFormPage() {
   });
 
   const { fields: topicFields, append, remove, move } = useFieldArray({ control, name: 'topics' });
+
+  /*
+   * When the chosen category's courses are sold in a bundle — its own, or its
+   * main category's when it follows that one — this course's price is its share
+   * of the bundle total, not something anyone pays on its own. Say so.
+   */
+  const categoryId = useWatch({ control, name: 'course_category_id' });
+  const bundleNote = useMemo(() => {
+    for (const main of categoryTree) {
+      const sub = main.children?.find((child) => child.id === categoryId);
+      if (main.id !== categoryId && !sub) continue;
+
+      const owner =
+        sub && sub.selling_mode !== 'inherit'
+          ? sub.selling_mode === 'bundle'
+            ? sub
+            : null
+          : main.selling_mode === 'bundle'
+            ? main
+            : null;
+
+      return owner
+        ? `Sold in the ${owner.name} bundle — this price is added to the bundle total and isn't sold on its own. Free courses stay free.`
+        : null;
+    }
+    return null;
+  }, [categoryTree, categoryId]);
 
   // Hydrated once per course, not on every refetch: saving invalidates this
   // query, and re-running the reset would wipe the staged files still uploading
@@ -599,7 +626,7 @@ export function CourseFormPage() {
                   </div>
                   <FieldError message={errors.price?.message} />
                   <p className="text-xs text-muted-foreground">
-                    Leave blank for a free course — students get access as soon as they open it.
+                    {bundleNote ?? 'Leave blank for a free course — students get access as soon as they open it.'}
                   </p>
                 </div>
 

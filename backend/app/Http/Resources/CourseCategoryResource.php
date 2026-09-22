@@ -24,6 +24,9 @@ class CourseCategoryResource extends JsonResource
             'icon' => $this->icon?->value,
             // A sub-category's uploaded icon. When set it wins over `icon`.
             'icon_image_url' => PublicUrl::forRequest($this->icon_image_url, $request),
+            // `single` or `bundle`; a sub-category may also be `inherit` (follow
+            // its main category).
+            'selling_mode' => $this->selling_mode->value,
             'is_active' => $this->is_active,
             'sort_order' => $this->sort_order,
             // Courses placed directly on this category.

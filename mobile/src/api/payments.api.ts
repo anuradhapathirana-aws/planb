@@ -32,6 +32,20 @@ export async function enrolInCourse(courseId: number): Promise<EnrolResult> {
   return data.data;
 }
 
+/**
+ * Buy the rest of a course bundle — the one for this category's MAIN category.
+ * Same answer shape as enrolling: `payment_required` with the order to pay
+ * against (only the courses the student does not own, priced on the server), or
+ * `enrolled` when nothing was left to pay for.
+ */
+export async function purchaseBundle(categoryId: number): Promise<EnrolResult> {
+  const { data } = await apiClient.post<ApiResource<EnrolResult>>(
+    `/student/course-categories/${categoryId}/purchase`,
+  );
+
+  return data.data;
+}
+
 export async function fetchOrders(page = 1): Promise<PaginatedResponse<StudentOrder>> {
   const { data } = await apiClient.get<PaginatedResponse<StudentOrder>>('/student/orders', {
     params: { page, per_page: 20 },

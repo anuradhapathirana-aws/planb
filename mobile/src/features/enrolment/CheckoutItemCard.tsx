@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useWindowDimensions, View } from 'react-native';
 import { Image } from 'expo-image';
 import { useQuery } from '@tanstack/react-query';
-import { BookOpen, Clock, Sparkles } from '@/components/icons';
+import { BookOpen, Clock, Package, Sparkles } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 
 import type { StudentOrder } from '@shared/types/studentOrder';
@@ -51,6 +51,8 @@ export function CheckoutItemCard({ order }: CheckoutItemCardProps) {
 
   const isService = order.item.type === 'service';
   const isCourse = order.item.type === 'course';
+  // A course bundle has no artwork of its own; it draws the bundle glyph instead.
+  const isCategory = order.item.type === 'category';
 
   // Disabled hooks never fire a request, so only the matching product is read.
   const service = useService(isService ? order.item.id : Number.NaN);
@@ -67,7 +69,7 @@ export function CheckoutItemCard({ order }: CheckoutItemCardProps) {
     (isService ? service.data?.thumbnail_url : isCourse ? course.data?.thumbnail_url : null);
   const deliveryTime = isService ? service.data?.delivery_time : null;
   const showThumbnail = Boolean(thumbnailUrl) && thumbnailUrl !== failedUrl;
-  const FallbackIcon = isCourse ? BookOpen : Sparkles;
+  const FallbackIcon = isCourse ? BookOpen : isCategory ? Package : Sparkles;
 
   /*
    * A failed card attempt still leaves the order waiting for money, so both
@@ -104,6 +106,12 @@ export function CheckoutItemCard({ order }: CheckoutItemCardProps) {
             {order.title}
           </Text>
 
+          {isCategory && (
+            <Text variant="caption" numberOfLines={2}>
+              {t('bundle.checkoutCaption', { count: order.items?.length ?? 0 })}
+            </Text>
+          )}
+
           {deliveryTime ? (
             <View className="flex-row items-center gap-1">
               <Clock size={12} color={colors['muted-foreground']} />
@@ -114,6 +122,22 @@ export function CheckoutItemCard({ order }: CheckoutItemCardProps) {
           ) : null}
         </View>
       </View>
+
+      {/* A bundle: exactly the courses this order pays for — what paying unlocks. */}
+      {isCategory && (order.items?.length ?? 0) > 0 && (
+        <View className="gap-1 border-t border-border px-3 py-2.5">
+          {order.items?.map((item) => (
+            <View key={item.course_id} className="flex-row items-center justify-between gap-3">
+              <Text variant="caption" className="flex-1 text-foreground" numberOfLines={1}>
+                {item.title}
+              </Text>
+              <Text variant="caption">
+                {item.price_cents > 0 ? formatMoney(item.price_cents, order.currency) : t('courses.free')}
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
 
       {/* The two figures a student checks against their bank app. */}
       <View className="gap-1.5 border-t border-border bg-muted/40 px-3 py-2.5">

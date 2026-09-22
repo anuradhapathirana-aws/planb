@@ -89,6 +89,27 @@ export function OrderDetailSheet({ order, onOpenChange, canReview }: OrderDetail
               {detail.paid_at && <Row label="Paid">{formatDateTime(detail.paid_at)}</Row>}
             </div>
 
+            {/* A course bundle: exactly the courses this order pays for and will
+                enrol, frozen when it was opened — courses the student already
+                owned were left out. */}
+            {(detail.items?.length ?? 0) > 0 && (
+              <div className="space-y-2">
+                <p className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
+                  Courses in this bundle ({detail.items?.length})
+                </p>
+                <div className="divide-y rounded-lg border">
+                  {detail.items?.map((item) => (
+                    <div key={item.course_id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                      <span className="min-w-0 truncate">{item.title}</span>
+                      <span className="shrink-0 tabular-nums text-muted-foreground">
+                        {item.price_cents > 0 ? formatMoney(item.price_cents, detail.currency) : 'Free'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Payment attempts — newest first. A rejected transfer stays visible
                 so the history of what was tried is not lost. */}
             <div className="space-y-2">
@@ -122,7 +143,7 @@ export function OrderDetailSheet({ order, onOpenChange, canReview }: OrderDetail
                   <>
                     <p className="text-xs text-muted-foreground">
                       Check the reference against your bank statement before approving. Approving gives the student
-                      immediate access to the course.
+                      immediate access to {(detail.items?.length ?? 0) > 0 ? 'every course listed above' : 'the course'}.
                     </p>
 
                     <div className="space-y-1.5">

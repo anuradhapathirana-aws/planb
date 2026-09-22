@@ -94,6 +94,10 @@ export function useCheckout(orderId: number) {
     void queryClient.invalidateQueries({ queryKey: ['services'] });
     void queryClient.invalidateQueries({ queryKey: ['service'] });
     void queryClient.invalidateQueries({ queryKey: ['service-purchases'] });
+    // A bundle unlocks several courses at once: every cached course page and
+    // category page changes with it.
+    void queryClient.invalidateQueries({ queryKey: ['course'] });
+    void queryClient.invalidateQueries({ queryKey: ['category'] });
   }, [isPaid, clearTimer]);
 
   /*

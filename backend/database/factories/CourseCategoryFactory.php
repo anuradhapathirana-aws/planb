@@ -31,6 +31,7 @@ class CourseCategoryFactory extends Factory
 
     public function childOf(CourseCategory $parent): static
     {
-        return $this->state(fn () => ['parent_id' => $parent->id]);
+        // A sub-category follows its main category unless told otherwise, as the admin form creates it.
+        return $this->state(fn () => ['parent_id' => $parent->id, 'selling_mode' => 'inherit']);
     }
 }

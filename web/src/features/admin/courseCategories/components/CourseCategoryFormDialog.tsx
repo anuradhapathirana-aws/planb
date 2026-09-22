@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Controller, useForm, useWatch, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from '@tanstack/react-query';
-import { FileText, FolderTree, ImageIcon, Languages, Loader2, Shapes, Type } from 'lucide-react';
+import { FileText, FolderTree, ImageIcon, Languages, Loader2, Shapes, Type, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -18,6 +18,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FieldError, FieldLabel } from '@/components/shared/FormField';
 import { IconPicker } from '@/components/shared/IconPicker';
+import { SegmentedToggle } from '@/components/shared/SegmentedToggle';
 import { ImageDropzone } from '@/components/shared/ImageDropzone';
 import { uploadCourseCategoryIcon } from '@/api/courseCategories.api';
 import { COURSE_CATEGORY_ICON_GLYPHS } from '@/features/admin/courseCategories/courseCategoryIcons';
@@ -52,6 +53,17 @@ const CATEGORY_FIELD_NAMES = Object.keys(courseCategoryFormSchema.shape);
 // Radix Select reserves '' for its placeholder, so "no parent" needs a sentinel.
 const NO_PARENT = '__none';
 
+const MAIN_SELLING_OPTIONS = [
+  { value: 'single', label: 'One by one' },
+  { value: 'bundle', label: 'As a bundle' },
+] as const;
+
+const SUB_SELLING_OPTIONS = [
+  { value: 'inherit', label: 'Follow main' },
+  { value: 'single', label: 'One by one' },
+  { value: 'bundle', label: 'Own bundle' },
+] as const;
+
 export function CourseCategoryFormDialog({
   open,
   onOpenChange,
@@ -83,6 +95,7 @@ export function CourseCategoryFormDialog({
     control,
     reset,
     setError,
+    setValue,
     formState: { errors },
   } = useForm<CourseCategoryFormSchema>({
     resolver: zodResolver(courseCategoryFormSchema) as Resolver<CourseCategoryFormSchema>,
@@ -91,6 +104,7 @@ export function CourseCategoryFormDialog({
   });
 
   const parentId = useWatch({ control, name: 'parent_id' });
+  const sellingMode = useWatch({ control, name: 'selling_mode' });
   const isSubCategory = parentId !== null && parentId !== undefined;
   // A parent that already has children cannot become a child — that would be a third level.
   const hasChildren = (category?.children?.length ?? 0) > 0;
@@ -104,11 +118,19 @@ export function CourseCategoryFormDialog({
       name_si: category?.name_si ?? '',
       description: category?.description ?? '',
       icon: category?.icon ?? null,
+      // A new sub-category follows its main category; a new main category sells one by one.
+      selling_mode: category?.selling_mode ?? (defaultParentId ? 'inherit' : 'single'),
     });
     setIconUrl(category?.icon_image_url ?? null);
     setStagedIcon(null);
     setStagedPreview(null);
   }, [open, category, defaultParentId, reset]);
+
+  // "Follow main" means nothing once this becomes a main category, and the toggle
+  // would show no choice at all — fall back to one by one.
+  useEffect(() => {
+    if (!isSubCategory && sellingMode === 'inherit') setValue('selling_mode', 'single');
+  }, [isSubCategory, sellingMode, setValue]);
 
   // Object URLs are revoked on replace/unmount so repeated picks don't leak them.
   useEffect(() => {
@@ -160,6 +182,8 @@ export function CourseCategoryFormDialog({
         name_si: values.name_si || null,
         description: values.description || null,
         icon: values.icon,
+        // "Follow" means nothing on a main category; the server stores `single` then.
+        selling_mode: values.parent_id === null && values.selling_mode === 'inherit' ? 'single' : values.selling_mode,
       },
       {
         onSuccess: async (saved) => {
@@ -177,6 +201,21 @@ export function CourseCategoryFormDialog({
   const busy = mutation.isPending || isFinishing;
   const iconBusy = uploadIcon.isPending || removeIcon.isPending;
   const parentOptions = parents.filter((parent) => parent.id !== category?.id);
+  const parent = parents.find((candidate) => candidate.id === parentId);
+  // Says what the chosen mode actually does, including what "follow" resolves to right now.
+  const sellingHint = (() => {
+    if (sellingMode === 'inherit') {
+      return parent?.selling_mode === 'bundle'
+        ? `Its courses are part of the ${parent.name} bundle.`
+        : `Its courses are sold one by one, like ${parent?.name ?? 'the main category'}.`;
+    }
+    if (sellingMode === 'bundle') {
+      return isSubCategory
+        ? 'Students buy every paid course in this sub-category together, as its own bundle — separate from the main category. Courses they already own are left out of the price. Free courses stay free.'
+        : 'Students buy every paid course in this category — and in sub-categories set to "Follow main" — together. The price is the total of the course prices; courses a student already owns are left out. Free courses stay free.';
+    }
+    return 'Students buy each course on its own.';
+  })();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -314,6 +353,24 @@ export function CourseCategoryFormDialog({
             )}
           </div>
           {isSubCategory && <p className="-mt-2 text-[11px] text-muted-foreground">Image: {ICON_IMAGE_HINT}.</p>}
+
+          {/* Selling: each course is sold one way only — see the hint for what each choice means. */}
+          <div className="space-y-1.5 rounded-lg border p-3">
+            <FieldLabel icon={Wallet}>How courses are sold</FieldLabel>
+            <Controller
+              control={control}
+              name="selling_mode"
+              render={({ field }) => (
+                <SegmentedToggle
+                  label="How courses are sold"
+                  options={isSubCategory ? SUB_SELLING_OPTIONS : MAIN_SELLING_OPTIONS}
+                  value={field.value}
+                  onChange={field.onChange}
+                />
+              )}
+            />
+            <p className="text-xs text-muted-foreground">{sellingHint}</p>
+          </div>
 
           <div className="space-y-1">
             <FieldLabel htmlFor="category-description" icon={FileText}>

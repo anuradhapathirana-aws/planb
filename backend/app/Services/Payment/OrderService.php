@@ -6,10 +6,14 @@ namespace App\Services\Payment;
 
 use App\Contracts\Purchasable;
 use App\Enums\OrderStatus;
+use App\Enums\PaymentStatus;
+use App\Models\CourseProgramme;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Student;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -66,6 +70,93 @@ class OrderService
                 'currency' => $purchasable->purchasableCurrency(),
                 'status' => OrderStatus::Pending,
             ]);
+        });
+    }
+
+    /**
+     * Opens an order for a course bundle, with the exact courses and prices it
+     * covers frozen into `order_items`. Settlement enrols those rows and nothing
+     * else, so what the student receives cannot drift from what they paid for.
+     *
+     * The caller works out WHICH courses (those the student does not own yet);
+     * this only prices and records them — from the courses, never from the
+     * request.
+     *
+     * An unsettled order for the same bundle is reused while it still covers the
+     * same courses at the same prices. If the student's bundle has changed since
+     * (they bought a course, an admin added one or changed a price) and no
+     * payment was started against it, it is cancelled and a fresh one opened —
+     * otherwise they would pay for a course they already own. Once a payment was
+     * started (a card checkout, a bank slip under review) it is left alone: its
+     * frozen items and amount still match each other.
+     *
+     * @param  Collection<int, CourseProgramme>  $courses
+     */
+    public function createForItems(Student $student, Purchasable&Model $purchasable, Collection $courses): Order
+    {
+        $this->availability->assertEnabled();
+
+        $amount = (int) $courses->sum(fn (CourseProgramme $course) => $course->purchasablePriceCents());
+
+        if ($courses->isEmpty() || $amount <= 0) {
+            throw ValidationException::withMessages([
+                'purchasable' => 'There is nothing in this bundle left to pay for.',
+            ]);
+        }
+
+        return DB::transaction(function () use ($student, $purchasable, $courses, $amount): Order {
+            $existing = Order::where('student_id', $student->id)
+                ->where('purchasable_type', $purchasable->getMorphClass())
+                ->where('purchasable_id', $purchasable->getKey())
+                ->whereIn('status', [OrderStatus::Pending, OrderStatus::AwaitingVerification])
+                ->with('items')
+                ->lockForUpdate()
+                ->first();
+
+            if ($existing !== null) {
+                $sameContents = $existing->items
+                    ->mapWithKeys(fn (OrderItem $item) => [$item->course_programme_id => $item->price_cents])
+                    ->sortKeys()
+                    ->all() === $courses
+                    ->mapWithKeys(fn (CourseProgramme $course) => [$course->id => $course->purchasablePriceCents()])
+                    ->sortKeys()
+                    ->all();
+
+                // A payment under way (a card checkout open, a slip under review)
+                // pins the order: its items and amount still match each other.
+                $paymentUnderWay = $existing->status === OrderStatus::AwaitingVerification
+                    || $existing->payments()
+                        ->whereIn('status', [PaymentStatus::Pending, PaymentStatus::Processing])
+                        ->exists();
+
+                if ($sameContents || $paymentUnderWay) {
+                    return $existing;
+                }
+
+                $existing->update(['status' => OrderStatus::Cancelled, 'cancelled_at' => now()]);
+            }
+
+            $order = Order::create([
+                'order_number' => $this->nextOrderNumber(),
+                'student_id' => $student->id,
+                'purchasable_type' => $purchasable->getMorphClass(),
+                'purchasable_id' => $purchasable->getKey(),
+                'title_snapshot' => $purchasable->purchasableTitle(),
+                'amount_cents' => $amount,
+                'currency' => $purchasable->purchasableCurrency(),
+                'status' => OrderStatus::Pending,
+            ]);
+
+            foreach ($courses as $course) {
+                $order->items()->create([
+                    'course_programme_id' => $course->id,
+                    'price_cents' => $course->purchasablePriceCents(),
+                    // English, like every order title — it is a record.
+                    'title_snapshot' => $course->purchasableTitle(),
+                ]);
+            }
+
+            return $order->load('items');
         });
     }
 

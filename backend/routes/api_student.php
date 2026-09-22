@@ -130,6 +130,17 @@ Route::middleware(['auth:student', 'student.actor', 'student.active'])->group(fu
      */
     Route::get('course-categories', [CourseCategoryController::class, 'index']);
 
+    /*
+     * One category's page and buying its course bundle. A raw numeric id, not a bound
+     * model, for the reason given above `services/{service}` below: a global
+     * visibility binder named `category` would also filter the admin routes.
+     */
+    Route::get('course-categories/{category}', [CourseCategoryController::class, 'show'])
+        ->whereNumber('category');
+    Route::post('course-categories/{category}/purchase', [CourseCategoryController::class, 'purchase'])
+        ->whereNumber('category')
+        ->middleware('throttle:20,1');
+
     // Courses
     Route::get('courses', [CourseController::class, 'index']);
     Route::get('courses/{course}', [CourseController::class, 'show']);

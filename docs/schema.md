@@ -108,9 +108,26 @@ FR-ADM-008 (Course Module), extended at the client's request (2026-09-22) with *
 | sort_order | unsignedInteger, default 0 | Display order among siblings (FR-ADM-008 reorder). |
 | created_at / updated_at / deleted_at | timestamps + soft delete | Delete soft-deletes the category, its children and their courses via `CourseCategoryService::delete()`, and is **refused while any student is enrolled or has an unsettled order** in those courses. |
 
+**Selling (course bundles, 2026-09-23).** `selling_mode` (string, `App\Enums\SellingMode`). A **main** category is `single` (default) or `bundle`. A **sub-category** is `inherit` (default — follow the main category), `single`, or `bundle` (a bundle of its own). **Every course is sold exactly one way**, resolved in one place, `CourseCategory::bundleOwner()`: a main category's bundle holds its own courses plus those of every sub-category set to `inherit`; a sub-category with its own mode is never part of it. In a bundle, paid courses can only be bought together — `CourseProgramme::isPurchasable()` refuses them singly (free courses stay free). There is no bundle price: a student pays the sum of the bundle's published courses they do **not** own yet (`CourseBundleService::quote()`). Existing sub-categories were backfilled to `inherit`.
+
 Sub-category icon image: **Spatie Media Library**, collection `icon_image`, single-file, public disk, PNG only. Sub-categories only (a top-level category uses the fixed `icon` list and loses its image if promoted). Centre-cropped to 256×256 and re-encoded as PNG with Intervention Image (CLAUDE.md §7.4) so transparency survives. When set, it is drawn instead of `icon`.
 
 `course_programmes.course_category_id` was changed from cascade to **restrict** on delete by the same migration (`2026_09_22_090000`): a hard-deleted category used to hard-delete its courses and, through them, every enrolment and progress row.
+
+## `order_items`
+
+What a **course bundle** order is for, frozen when it was opened. A bundle's contents and price depend on the student and on the catalogue at that moment, and a bank transfer can wait days for approval — without this, an admin adding a course or changing a price in between would change what the student receives from what they paid for. Settlement enrols exactly these rows (`CourseBundleService::fulfil()`), each as an ordinary `enrolments` row with `source = bundle` and the order's id, so an admin can see every course a student got through a bundle. Empty for every other order.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | bigIncrements | |
+| order_id | FK → `orders.id`, cascade delete | |
+| course_programme_id | FK → `course_programmes.id`, **restrict** | Courses are soft-deleted, so a paid-for row always resolves. |
+| price_cents | unsignedInteger | The course's price when the order was opened. `orders.amount_cents` is their sum. |
+| title_snapshot | string | English, like every order title. |
+| created_at / updated_at | timestamps | |
+
+`unique(order_id, course_programme_id)`. An unsettled bundle order is reused while its items still match; if the student's bundle changed and no payment is under way, it is cancelled and a fresh one opened.
 
 ## `course_programmes`
 
@@ -124,7 +141,7 @@ FR-ADM-008. A **Course Programme** is one learning programme inside a category �
 | name_si | string, nullable | Sinhala. Optional and **not** unique — see the bilingual-titles note below. |
 | description | text, nullable | Optional plain-text summary for the student course card. English only for now. |
 | status | enum: `draft`, `published`, default `draft` | PHP enum `App\Enums\CourseStatus`. Draft programmes are invisible to students; nothing publishes by accident while an admin is still adding topics. |
-| sort_order | unsignedInteger, default 0 | Order within the category (FR-ADM-008 reorder). |
+| sort_order | unsignedInteger, default 0 | Order within the category (FR-ADM-008 reorder) — the "Course 1, Course 2…" path students see. Set from the admin's arranged list as 1..N; a new course, or one moved to another category, goes last. Ties (older rows all at 0) break on name then id. The displayed number is computed, never stored. |
 | created_at / updated_at / deleted_at | timestamps + soft delete | FR-ADM-008 delete is recoverable, matching `students`. |
 
 Course art: **Spatie Media Library**, collection `thumbnail`, single-file, public disk. Optional — a programme without one is normal, and `thumbnail_url` is null. Re-encoded with Intervention Image (1280×720 cover crop, JPEG) before storage per CLAUDE.md §7.4, so it always matches the lesson-thumbnail ratio. No column: the URL is derived from the media record.
@@ -549,6 +566,7 @@ The logo is a **Media Library collection** (`logo`, single file, public disk), r
 |---|---|
 | 2026-09-16 | **Student account deletion** (Google Play policy). Added `students.anonymised_at` (nullable) and `student_login_codes.purpose` (string, default `sign_in`, `App\Enums\LoginCodePurpose`) with index `login_codes_student_purpose_live_index`. Existing codes become `sign_in`. Deletion anonymises the row rather than deleting it, so finance records survive. |
 | 2026-09-21 | Added `course_programmes.name_si`, `course_topics.title_si` and `course_videos.title_si` — the Sinhala half of a course's titles. All nullable, no unique index, English is the record and the fallback. The student API picks between the two columns from `Accept-Language`; the admin panel always reads English. See the bilingual-titles note under `course_programmes`. The migration guards each column with `hasColumn` because the development database already had all three, added by hand. |
+| 2026-09-23 | **Course bundles** (client request). Added `course_categories.selling_mode` (`single` | `bundle`, default `single`) and the new table `order_items`. `EnrolmentSource` gains `bundle`. `CourseCategory` implements `Purchasable` for the bundle order. |
 | 2026-09-22 | **Course sub-categories** (client request). Added `course_categories.parent_id` (nullable self-FK, restrict), `name_si` and `deleted_at`, plus index `(parent_id, sort_order)`; dropped the global `unique(name)` in favour of per-parent uniqueness in the Form Requests. Media collection `icon_image` for sub-category icons. `course_programmes.course_category_id` changed from cascade to restrict on delete. No data moves: existing categories become main categories with no children. `name_si` is guarded with `hasColumn` because the development database already had it, added by hand. |
 | 2026-09-15 | Added `course_categories.icon` (nullable, `App\Enums\CourseCategoryIcon`), so an admin picks the glyph for a category's tile on the student app's Home screen. No backfill: null means "guess from the name". |
 | 2026-09-14 | Added `course_wishlists` — a student's saved courses, behind the heart on course tiles. Delete-on-remove rather than a nulled timestamp; rows survive unpublishing and soft deletes and are filtered out on read. |

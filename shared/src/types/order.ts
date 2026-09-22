@@ -30,6 +30,13 @@ export interface Payment {
   created_at: string;
 }
 
+/** One course inside a bundle order, at the price it had when the order was opened. */
+export interface OrderItem {
+  course_id: number;
+  title: string;
+  price_cents: number;
+}
+
 export interface Order {
   id: number;
   order_number: string;
@@ -44,6 +51,8 @@ export interface Order {
   title: string;
   purchasable_type: string;
   purchasable_id: number;
+  /** A course bundle's courses, frozen when the order was opened. Only on the detail response. */
+  items?: OrderItem[];
   amount_cents: number;
   currency: string;
   status: OrderStatus;

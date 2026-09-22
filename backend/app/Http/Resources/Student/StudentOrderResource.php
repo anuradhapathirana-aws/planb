@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Student;
 
+use App\Models\CourseCategory;
 use App\Models\CourseProgramme;
 use App\Models\Order;
 use App\Models\Service;
@@ -31,6 +32,7 @@ class StudentOrderResource extends JsonResource
     private const ITEM_TYPES = [
         CourseProgramme::class => 'course',
         Service::class => 'service',
+        CourseCategory::class => 'category',
     ];
 
     public function toArray(Request $request): array
@@ -53,6 +55,16 @@ class StudentOrderResource extends JsonResource
                     fn (): ?string => PublicUrl::forRequest($this->purchasable?->thumbnail_url, $request),
                 ),
             ],
+            /*
+             * A bundle order's courses, frozen when it was opened — what this
+             * order pays for and what paying it will enrol. Empty for any other
+             * order. Only when the caller loaded them.
+             */
+            'items' => $this->whenLoaded('items', fn () => $this->items->map(fn ($item) => [
+                'course_id' => $item->course_programme_id,
+                'title' => $item->title_snapshot,
+                'price_cents' => $item->price_cents,
+            ])->values()),
             'amount_cents' => (int) $this->amount_cents,
             'currency' => $this->currency,
             'status' => $this->status->value,

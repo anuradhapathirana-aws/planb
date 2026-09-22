@@ -1,4 +1,4 @@
-import type { OrderStatus, PaymentMethod, PaymentStatus } from './order';
+import type { OrderItem, OrderStatus, PaymentMethod, PaymentStatus } from './order';
 
 /**
  * Orders and payments as a *student* sees them.
@@ -42,7 +42,7 @@ export interface StudentOrder {
    * offer no shortcut", never as an error.
    */
   item: {
-    type: 'course' | 'service' | null;
+    type: 'course' | 'service' | 'category' | null;
     id: number;
     /**
      * The product's artwork. Sent only by `GET /student/orders/{id}` (the
@@ -50,6 +50,12 @@ export interface StudentOrder {
      */
     thumbnail_url?: string | null;
   };
+  /**
+   * A course bundle's courses — exactly what this order pays for and enrols,
+   * frozen when it was opened. Present on bundle orders from the checkout
+   * endpoints; empty for anything else.
+   */
+  items?: OrderItem[];
   amount_cents: number;
   currency: string;
   status: OrderStatus;

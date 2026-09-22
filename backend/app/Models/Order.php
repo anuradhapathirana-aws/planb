@@ -6,6 +6,7 @@ namespace App\Models;
 
 use App\Contracts\Purchasable;
 use App\Enums\OrderStatus;
+use App\Services\Course\CourseBundleService;
 use Database\Factories\OrderFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -16,9 +17,9 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 /**
  * One purchase of one purchasable.
  *
- * Deliberately single-item: a student enrols in one course at a time, and a
- * premium service is bought on its own. If bundles ever arrive, the extension
- * point is an `order_items` table — not widening this row.
+ * One purchasable per order. A course bundle is still one purchasable (its main
+ * category), and the courses it covers are frozen in `order_items` — see
+ * {@see CourseBundleService}.
  */
 class Order extends Model
 {
@@ -71,6 +72,12 @@ class Order extends Model
     public function enrolment(): HasMany
     {
         return $this->hasMany(Enrolment::class);
+    }
+
+    /** The courses a bundle order is for, frozen when it was opened. Empty for any other order. */
+    public function items(): HasMany
+    {
+        return $this->hasMany(OrderItem::class);
     }
 
     public function isPaid(): bool

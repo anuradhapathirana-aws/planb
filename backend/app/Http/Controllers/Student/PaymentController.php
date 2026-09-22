@@ -44,7 +44,7 @@ class PaymentController extends Controller
         $this->assertOwned($request, $order);
 
         return response()->json([
-            'data' => new StudentOrderResource($order->load(['payments.media', 'purchasable.media'])),
+            'data' => new StudentOrderResource($order->load(['payments.media', 'purchasable.media', 'items'])),
         ]);
     }
 

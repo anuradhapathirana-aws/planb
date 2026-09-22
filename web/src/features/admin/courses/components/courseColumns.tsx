@@ -21,6 +21,20 @@ export function getCourseColumns({
 }: CourseColumnActions): ColumnDef<CourseProgramme>[] {
   return [
     {
+      // Its place in its own category's order — what students see as "Course N".
+      id: 'sort_order',
+      header: 'Order',
+      meta: { sortId: 'sort_order' },
+      cell: ({ row }) =>
+        row.original.position === null ? (
+          <span className="text-sm text-muted-foreground">—</span>
+        ) : (
+          <Badge variant="outline" className="whitespace-nowrap tabular-nums">
+            Course {row.original.position}
+          </Badge>
+        ),
+    },
+    {
       id: 'name',
       header: 'Course programme',
       meta: { sortId: 'name' },

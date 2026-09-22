@@ -8,6 +8,7 @@ import {
   BookOpen,
   ChevronLeft,
   Clock,
+  Package,
   Play,
   Share2,
   ShieldCheck,
@@ -31,6 +32,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 import { Tabs, type TabItem } from '@/components/ui/Tabs';
 import { Text } from '@/components/ui/Text';
 import { useToast } from '@/components/ui/Toast';
+import { CourseOrderHint } from '@/features/categories/CourseOrderHint';
 import { CourseAssessmentCard } from '@/features/courses/CourseAssessmentCard';
 import { CourseHero } from '@/features/courses/CourseHero';
 import { CourseTopicCard } from '@/features/courses/CourseTopicCard';
@@ -88,6 +90,12 @@ export default function CourseDetailScreen() {
   }, [refetch]);
 
   const isEnrolled = data?.is_enrolled ?? false;
+  /*
+   * Sold only in its category's bundle: the pinned bar sends the student to the
+   * Category page to buy the bundle instead of this course. The enrol endpoint
+   * refuses a single purchase either way — this only decides what is drawn.
+   */
+  const bundle = data && !data.sold_individually ? data.bundle : null;
 
   /* SAMPLE DATA until the backend carries ratings — see courseSocialProof.ts. */
   const proof = useMemo(() => courseSocialProof(courseId), [courseId]);
@@ -226,13 +234,33 @@ export default function CourseDetailScreen() {
             </Text>
 
             {data.category_name && (
-              <Text
-                variant="none"
-                numberOfLines={1}
-                className="mt-0.5 text-[12px] leading-5 text-muted-foreground"
-              >
-                {data.category_name}
-              </Text>
+              <View className="mt-1 flex-row items-center gap-2">
+                {data.position !== null && (
+                  <View className="rounded-md bg-primary px-2 py-0.5">
+                    <Text
+                      variant="none"
+                      className="text-[10px] font-semibold leading-4 text-primary-foreground"
+                    >
+                      {t('courses.orderBadge', { number: data.position })}
+                    </Text>
+                  </View>
+                )}
+                <Text
+                  variant="none"
+                  numberOfLines={1}
+                  className="shrink text-[12px] leading-5 text-muted-foreground"
+                >
+                  {data.category_name}
+                </Text>
+              </View>
+            )}
+
+            {/* The path this course is one step of. Advice, not a lock. */}
+            {data.position !== null && data.category_name && (
+              <CourseOrderHint
+                className="mt-2.5"
+                text={t('courses.orderHintCourse', { category: data.category_name })}
+              />
             )}
 
             <View className="mt-2 flex-row flex-wrap items-center gap-x-5 gap-y-1.5">
@@ -381,6 +409,24 @@ export default function CourseDetailScreen() {
                     }
                   />
                 ) : null}
+              </>
+            ) : bundle ? (
+              /* Only sold as part of the category bundle — bought on the
+                 Category page, where the student sees every course it holds. */
+              <>
+                <Text variant="caption" className="mb-2 text-center">
+                  {t('bundle.courseCaption', { name: bundle.name })}
+                </Text>
+
+                <Button
+                  label={t('bundle.viewBundle')}
+                  icon={Package}
+                  size="lg"
+                  fullWidth
+                  onPress={() =>
+                    router.push({ pathname: '/category/[id]', params: { id: bundle.category_id } })
+                  }
+                />
               </>
             ) : !data.is_free && !paymentsEnabled ? (
               /* Payments are off at launch: the price is still shown, but

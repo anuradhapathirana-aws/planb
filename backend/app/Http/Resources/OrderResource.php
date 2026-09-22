@@ -27,6 +27,16 @@ class OrderResource extends JsonResource
             'title' => $this->title_snapshot,
             'purchasable_type' => class_basename($this->purchasable_type),
             'purchasable_id' => $this->purchasable_id,
+            /*
+             * A bundle order's courses, frozen when it was opened — what this
+             * order pays for and what paying it will enrol. Empty for any other
+             * order. Only when the caller loaded them.
+             */
+            'items' => $this->whenLoaded('items', fn () => $this->items->map(fn ($item) => [
+                'course_id' => $item->course_programme_id,
+                'title' => $item->title_snapshot,
+                'price_cents' => $item->price_cents,
+            ])->values()),
             'amount_cents' => (int) $this->amount_cents,
             'currency' => $this->currency,
             'status' => $this->status->value,

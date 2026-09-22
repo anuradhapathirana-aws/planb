@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\ChecklistItemController;
 use App\Http\Controllers\Admin\CompanySettingController;
 use App\Http\Controllers\Admin\CourseCategoryController;
+use App\Http\Controllers\Admin\CourseOrderController;
 use App\Http\Controllers\Admin\CoursePaperController;
 use App\Http\Controllers\Admin\CourseProgrammeController;
 use App\Http\Controllers\Admin\CourseVideoController;
@@ -79,6 +80,9 @@ Route::prefix('v1/admin')->group(function () {
         // A sub-category's own uploaded icon (parents use the fixed icon list).
         Route::post('/course-categories/{category}/icon-image', [CourseCategoryController::class, 'uploadIconImage']);
         Route::delete('/course-categories/{category}/icon-image', [CourseCategoryController::class, 'deleteIconImage']);
+        // The order a category's own courses are taken in ("Course 1, Course 2…").
+        Route::get('/course-categories/{category}/course-order', [CourseOrderController::class, 'show']);
+        Route::put('/course-categories/{category}/course-order', [CourseOrderController::class, 'update']);
         Route::apiResource('course-categories', CourseCategoryController::class)
             ->parameters(['course-categories' => 'category']);
 

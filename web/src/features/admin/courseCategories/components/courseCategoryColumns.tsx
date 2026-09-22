@@ -1,5 +1,5 @@
 import type { ColumnDef } from '@tanstack/react-table';
-import { ChevronRight, FolderPlus, Pencil, Power, PowerOff, Trash2 } from 'lucide-react';
+import { ChevronRight, FolderPlus, Package, Pencil, Power, PowerOff, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { RowActions } from '@/components/shared/RowActions';
 import { CourseCategoryIconTile } from '@/features/admin/courseCategories/components/CourseCategoryIconTile';
@@ -101,6 +101,30 @@ export function getCourseCategoryColumns({
           >
             {total}
           </span>
+        );
+      },
+    },
+    {
+      id: 'selling',
+      header: 'Selling',
+      cell: ({ row }) => {
+        const category = row.original;
+        const parent = row.getParentRow()?.original;
+        // A sub-category set to follow sells however its main category does.
+        const follows = parent !== undefined && category.selling_mode === 'inherit';
+        const mode = follows ? parent.selling_mode : category.selling_mode;
+
+        return (
+          <div className="flex items-center gap-1.5">
+            {mode === 'bundle' ? (
+              <Badge variant="secondary" title="Paid courses are sold together as one bundle">
+                <Package className="size-3" /> {follows ? `${parent.name} bundle` : 'Bundle'}
+              </Badge>
+            ) : (
+              <span className="text-sm text-muted-foreground">One by one</span>
+            )}
+            {follows && <span className="text-xs text-muted-foreground">(follows)</span>}
+          </div>
         );
       },
     },

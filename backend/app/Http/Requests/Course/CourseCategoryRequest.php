@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Course;
 
 use App\Enums\CourseCategoryIcon;
+use App\Enums\SellingMode;
 use App\Models\CourseCategory;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Foundation\Http\FormRequest;
@@ -61,6 +62,16 @@ abstract class CourseCategoryRequest extends FormRequest
              * sub-category may also upload an image, which wins over this.
              */
             'icon' => ['nullable', Rule::in(CourseCategoryIcon::values())],
+
+            /*
+             * How this category's courses are sold. A main category: one by one
+             * or as a bundle. A sub-category may also follow its main category
+             * (`inherit`) — the only value that makes no sense on a main one.
+             */
+            'selling_mode' => [
+                'sometimes',
+                Rule::in($parentId === null ? SellingMode::forMainCategory() : SellingMode::values()),
+            ],
         ];
     }
 
@@ -95,6 +106,7 @@ abstract class CourseCategoryRequest extends FormRequest
             'parent_id.exists' => 'Pick a main category as the parent.',
             'parent_id.not_in' => 'A category cannot be its own parent.',
             'icon.in' => 'Pick an icon from the list.',
+            'selling_mode.in' => 'Pick how this category\'s courses are sold.',
         ];
     }
 

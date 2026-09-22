@@ -80,18 +80,22 @@ export function useBrowseCourses({
   const active = needsServer ? filtered : browse;
 
   /*
-   * Newest first. A student browsing what they could buy wants this month's
-   * intake at the top; a course with no `published_at` sorts last rather than
-   * being dropped, since an unpublished course reaching a student is a bug
+   * With a category applied, the server's order stands: it is the order the
+   * admin wants that category taken in ("Course 1, Course 2…"), grouped by
+   * sub-category, and re-sorting it here would scramble the numbers on the tiles.
+   *
+   * Otherwise newest first. A student browsing what they could buy wants this
+   * month's intake at the top; a course with no `published_at` sorts last rather
+   * than being dropped, since an unpublished course reaching a student is a bug
    * worth seeing rather than hiding.
    */
-  const results = useMemo(
-    () =>
-      (active.data?.data ?? [])
-        .filter((course) => !course.is_enrolled)
-        .sort((a, b) => (b.published_at ?? '').localeCompare(a.published_at ?? '')),
-    [active.data],
-  );
+  const results = useMemo(() => {
+    const available = (active.data?.data ?? []).filter((course) => !course.is_enrolled);
+
+    return categoryId !== null
+      ? available
+      : available.sort((a, b) => (b.published_at ?? '').localeCompare(a.published_at ?? ''));
+  }, [active.data, categoryId]);
 
   return {
     query,

@@ -8,6 +8,7 @@ use App\Models\CourseProgramme;
 use App\Support\PublicUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Collection;
 
 /**
  * A programme as a list row: no topics, so the courses list stays one small
@@ -32,10 +33,23 @@ class StudentCourseSummaryResource extends JsonResource
             // Set when the course sits on a sub-category: the top-level one above it.
             'parent_category_id' => $this->category?->parent_id,
             'category_name' => $this->category?->translated('name'),
+            /*
+             * "Course N" of its own category — the order the admin wants the
+             * category taken in. Counts published courses only, so there is no
+             * gap where a draft sits. A suggestion, never a lock.
+             */
+            'position' => $this->getAttribute('position'),
             'thumbnail_url' => PublicUrl::forRequest($this->thumbnail_url, $request),
             'price_cents' => (int) $this->price_cents,
             'currency' => $this->currency,
             'is_free' => $this->isFree(),
+            /*
+             * False when this paid course is sold only in its category's bundle —
+             * the app then points at the bundle instead of a price. The enrol
+             * endpoint enforces the same rule; this only decides what is drawn.
+             */
+            'sold_individually' => $this->isSoldIndividually(),
+            'bundle' => $this->bundleSummary(),
             // Whether this student may open the content, not whether it exists.
             'is_enrolled' => (bool) $this->getAttribute('is_enrolled'),
             // Whether THIS student has saved it to their wishlist.
@@ -56,6 +70,33 @@ class StudentCourseSummaryResource extends JsonResource
              */
             'matched_topic' => $this->whenNotNull($this->getAttribute('matched_topic')),
             'progress' => $this->progress_summary,
+        ];
+    }
+
+    /**
+     * The bundle this course is sold in — its category's own, or its main
+     * category's when it follows that one; null when sold one by one. The remaining count and price are this student's and are
+     * only worked out on the detail response (null on a list row).
+     *
+     * @return array{category_id: int, name: ?string, remaining_count: ?int, remaining_price_cents: ?int, currency: string}|null
+     */
+    private function bundleSummary(): ?array
+    {
+        $bundle = $this->category?->bundleOwner();
+
+        if ($bundle === null) {
+            return null;
+        }
+
+        /** @var array{remaining: Collection, remaining_price_cents: int}|null $quote */
+        $quote = $this->getAttribute('bundle_quote');
+
+        return [
+            'category_id' => $bundle->id,
+            'name' => $bundle->translated('name'),
+            'remaining_count' => $quote === null ? null : $quote['remaining']->count(),
+            'remaining_price_cents' => $quote === null ? null : $quote['remaining_price_cents'],
+            'currency' => $bundle->purchasableCurrency(),
         ];
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Course;
 
 use App\Enums\OrderStatus;
+use App\Enums\SellingMode;
 use App\Models\CourseCategory;
 use App\Models\CourseProgramme;
 use App\Models\Enrolment;
@@ -123,7 +124,7 @@ class CourseCategoryService
         $data['parent_id'] = isset($data['parent_id']) ? (int) $data['parent_id'] : null;
         $data['sort_order'] ??= $this->nextSortOrder($data['parent_id']);
 
-        return $this->loadForAdmin(CourseCategory::create($data));
+        return $this->loadForAdmin(CourseCategory::create($this->withSellingMode($data, null)));
     }
 
     /** @param  array<string, mixed>  $data */
@@ -140,7 +141,7 @@ class CourseCategoryService
             $data['sort_order'] = $this->nextSortOrder($newParentId);
         }
 
-        $category->update($data);
+        $category->update($this->withSellingMode($data, $category));
 
         // Uploaded icons are a sub-category feature; a category promoted to the
         // top level drops its image and falls back to the fixed icon list.
@@ -188,7 +189,7 @@ class CourseCategoryService
             ->whereIn('course_category_id', $categoryIds)
             ->get();
 
-        $this->assertSafeToDelete($programmes->modelKeys());
+        $this->assertSafeToDelete($categoryIds, $programmes->modelKeys());
 
         DB::transaction(function () use ($category, $categoryIds, $programmes): void {
             foreach ($programmes as $programme) {
@@ -236,14 +237,46 @@ class CourseCategoryService
         return $this->loadForAdmin($category->fresh());
     }
 
-    /** @param  list<int>  $programmeIds */
-    private function assertSafeToDelete(array $programmeIds): void
+    /**
+     * Fills in the selling mode when the form did not send one, so a category
+     * always holds a value that makes sense at its level: a new sub-category
+     * follows its main category, a main category moved under a parent starts
+     * following it, and a sub-category promoted to the top level stops
+     * following (there is nothing above it) and sells one by one.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function withSellingMode(array $data, ?CourseCategory $existing): array
     {
-        if ($programmeIds === []) {
-            return;
+        $isSub = ($data['parent_id'] ?? null) !== null;
+        $mode = $data['selling_mode'] ?? null;
+
+        if ($mode === null) {
+            $wasSub = $existing?->parent_id !== null;
+            $mode = match (true) {
+                $existing !== null && $isSub === $wasSub => $existing->selling_mode->value,
+                $isSub => SellingMode::Inherit->value,
+                default => SellingMode::Single->value,
+            };
         }
 
-        $enrolled = Enrolment::query()
+        if (! $isSub && $mode === SellingMode::Inherit->value) {
+            $mode = SellingMode::Single->value;
+        }
+
+        $data['selling_mode'] = $mode;
+
+        return $data;
+    }
+
+    /**
+     * @param  list<int>  $categoryIds
+     * @param  list<int>  $programmeIds
+     */
+    private function assertSafeToDelete(array $categoryIds, array $programmeIds): void
+    {
+        $enrolled = $programmeIds === [] ? 0 : Enrolment::query()
             ->whereIn('course_programme_id', $programmeIds)
             ->distinct()
             ->count('student_id');
@@ -260,17 +293,23 @@ class CourseCategoryService
 
         /*
          * An unpaid order can still settle — a card webhook or an approved bank
-         * transfer — and would then enrol a student into a deleted course.
+         * transfer — and would then grant access to something deleted. That
+         * covers orders for its courses AND for its course bundle.
          */
         $inFlight = Order::query()
-            ->where('purchasable_type', (new CourseProgramme)->getMorphClass())
-            ->whereIn('purchasable_id', $programmeIds)
             ->whereIn('status', [OrderStatus::Pending, OrderStatus::AwaitingVerification])
+            ->where(fn ($orders) => $orders
+                ->where(fn ($courses) => $courses
+                    ->where('purchasable_type', (new CourseProgramme)->getMorphClass())
+                    ->whereIn('purchasable_id', $programmeIds))
+                ->orWhere(fn ($bundles) => $bundles
+                    ->where('purchasable_type', (new CourseCategory)->getMorphClass())
+                    ->whereIn('purchasable_id', $categoryIds)))
             ->exists();
 
         if ($inFlight) {
             throw ValidationException::withMessages([
-                'category' => 'A student is paying for a course in this category right now. '
+                'category' => 'A student is paying for this category or a course in it right now. '
                     .'Deactivate it instead, or try again once the payment is settled.',
             ]);
         }

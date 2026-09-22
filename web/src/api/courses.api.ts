@@ -52,6 +52,26 @@ export async function unpublishCourseProgramme(id: number): Promise<CourseProgra
 }
 
 /**
+ * The courses sitting directly in one category (not its sub-categories), in
+ * their "Course 1, Course 2…" order, drafts included.
+ */
+export async function fetchCategoryCourseOrder(categoryId: number): Promise<CourseProgramme[]> {
+  const { data } = await apiClient.get<ApiResource<CourseProgramme[]>>(
+    `/admin/course-categories/${categoryId}/course-order`,
+  );
+  return data.data;
+}
+
+/** Saves a category's course order. Must list every course in it, each once. */
+export async function saveCategoryCourseOrder(categoryId: number, programmeIds: number[]): Promise<CourseProgramme[]> {
+  const { data } = await apiClient.put<ApiResource<CourseProgramme[]>>(
+    `/admin/course-categories/${categoryId}/course-order`,
+    { programme_ids: programmeIds },
+  );
+  return data.data;
+}
+
+/**
  * Uploads one lesson file. Kept separate from the course save because a course
  * can hold hundreds of megabytes of video, which no single form post survives.
  * `onProgress` drives the per-video progress bar.

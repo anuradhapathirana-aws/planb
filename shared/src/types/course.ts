@@ -67,6 +67,13 @@ export const COURSE_CATEGORY_ICONS: ReadonlyArray<{
 ];
 
 /**
+ * How a category sells its paid courses. A main category is `single` or
+ * `bundle`; a sub-category may also be `inherit` — follow its main category.
+ * Every course is sold exactly one way (backend `SellingMode`).
+ */
+export type CourseSellingMode = 'single' | 'bundle' | 'inherit';
+
+/**
  * A category or a sub-category — two levels, never more. `parent_id` null means
  * top-level. A course may sit on either level, and a parent need not have children.
  */
@@ -81,6 +88,8 @@ export interface CourseCategory {
   icon: CourseCategoryIconName | null;
   /** A sub-category's uploaded icon (PNG). When set it wins over `icon`. */
   icon_image_url: string | null;
+  /** How this category's paid courses are sold. `inherit` only on a sub-category. */
+  selling_mode: CourseSellingMode;
   is_active: boolean;
   sort_order: number;
   /** Courses placed directly on this category. Only present on list responses. */
@@ -99,6 +108,8 @@ export interface CourseCategoryFormValues {
   name_si?: string | null;
   description?: string | null;
   icon?: CourseCategoryIconName | null;
+  /** `inherit` only for a sub-category. */
+  selling_mode?: CourseSellingMode;
 }
 
 export interface CourseCategoryListFilters {
@@ -171,6 +182,11 @@ export interface CourseProgramme {
   /** Course art, 16:9. Null when none has been uploaded — a normal state. */
   thumbnail_url: string | null;
   sort_order: number;
+  /**
+   * "Course N" within its own category, drafts counted. Set by the list and the
+   * course-order endpoints; null on the single-course responses.
+   */
+  position: number | null;
   category?: CourseCategory;
   topics?: CourseTopic[];
   /** Summary of the optional Q&A paper; null when the programme has none. */

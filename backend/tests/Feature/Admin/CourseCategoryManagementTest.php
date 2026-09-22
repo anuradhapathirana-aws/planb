@@ -251,6 +251,44 @@ class CourseCategoryManagementTest extends TestCase
         $this->assertNotSoftDeleted($programme);
     }
 
+    public function test_a_main_category_can_switch_to_bundle_selling(): void
+    {
+        $this->actingAs($this->contentManager)
+            ->postJson('/api/v1/admin/course-categories', [
+                'name' => 'Migration',
+                'selling_mode' => 'bundle',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.selling_mode', 'bundle');
+    }
+
+    public function test_a_sub_category_follows_its_main_category_unless_set(): void
+    {
+        $parent = CourseCategory::factory()->create();
+
+        $this->actingAs($this->contentManager)
+            ->postJson('/api/v1/admin/course-categories', ['parent_id' => $parent->id, 'name' => 'UAE'])
+            ->assertCreated()
+            ->assertJsonPath('data.selling_mode', 'inherit');
+
+        $this->actingAs($this->contentManager)
+            ->postJson('/api/v1/admin/course-categories', [
+                'parent_id' => $parent->id,
+                'name' => 'AUS',
+                'selling_mode' => 'bundle',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.selling_mode', 'bundle');
+    }
+
+    public function test_a_main_category_cannot_follow_anything(): void
+    {
+        $this->actingAs($this->contentManager)
+            ->postJson('/api/v1/admin/course-categories', ['name' => 'Migration', 'selling_mode' => 'inherit'])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('selling_mode');
+    }
+
     public function test_only_a_super_admin_can_delete_a_category(): void
     {
         $category = CourseCategory::factory()->create();

@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import type { StudentCourseSummary } from '@shared/types/studentCourse';
 import { colors } from '@shared/theme/tokens';
 import { formatCourseLength } from '@shared/lib/formatters';
+import { CourseOrderBadge } from '@/components/shared/CourseOrderBadge';
 import { PressableCard } from '@/components/ui/Card';
 import { ProgressRing } from '@/components/ui/ProgressRing';
 import { Text } from '@/components/ui/Text';
@@ -47,7 +48,9 @@ export function CourseListRow({ course, onPress }: CourseListRowProps) {
   return (
     <PressableCard
       onPress={onPress}
-      accessibilityLabel={`${course.name}. ${t('courses.progress', {
+      accessibilityLabel={`${
+        course.position !== null ? `${t('courses.orderBadge', { number: course.position })}. ` : ''
+      }${course.name}. ${t('courses.progress', {
         watched: progress.videos_watched,
         total: progress.videos_total,
       })}`}
@@ -70,6 +73,8 @@ export function CourseListRow({ course, onPress }: CourseListRowProps) {
         ) : (
           <BookOpen size={24} color={colors['muted-foreground']} />
         )}
+
+        <CourseOrderBadge position={course.position} size="sm" />
       </View>
 
       <View className="flex-1 gap-1.5">

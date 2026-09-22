@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Contracts\Purchasable;
 use App\Enums\CourseCategoryIcon;
+use App\Enums\CourseStatus;
+use App\Enums\SellingMode;
 use App\Models\Concerns\HasTranslatedText;
+use App\Services\Course\CourseBundleService;
 use Database\Factories\CourseCategoryFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -20,8 +24,13 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  * A course category, or a sub-category of one — two levels, never more.
  *
  * A course may sit on either level. A parent does not have to have children.
+ *
+ * A category is also what a course bundle is sold as ({@see Purchasable}): in
+ * `bundle` selling mode its paid courses are bought together, never one by one
+ * — see {@see bundleOwner()} for which bundle sells which course. What a given student pays is worked out
+ * per student by {@see CourseBundleService}.
  */
-class CourseCategory extends Model implements HasMedia
+class CourseCategory extends Model implements HasMedia, Purchasable
 {
     /** @use HasFactory<CourseCategoryFactory> */
     use HasFactory, HasTranslatedText, InteractsWithMedia, SoftDeletes;
@@ -35,6 +44,7 @@ class CourseCategory extends Model implements HasMedia
         'name_si',
         'description',
         'icon',
+        'selling_mode',
         'is_active',
         'sort_order',
     ];
@@ -46,6 +56,7 @@ class CourseCategory extends Model implements HasMedia
     protected $attributes = [
         'is_active' => true,
         'sort_order' => 0,
+        'selling_mode' => 'single',
     ];
 
     protected function casts(): array
@@ -53,6 +64,7 @@ class CourseCategory extends Model implements HasMedia
         return [
             'is_active' => 'boolean',
             'parent_id' => 'integer',
+            'selling_mode' => SellingMode::class,
             // Nullable, so `?CourseCategoryIcon` — an unset icon stays unset
             // rather than becoming `Other`, which is what lets the app tell "no
             // choice yet" (guess from the name) from "neutral on purpose".
@@ -73,6 +85,105 @@ class CourseCategory extends Model implements HasMedia
     public function programmes(): HasMany
     {
         return $this->hasMany(CourseProgramme::class);
+    }
+
+    /*
+     |--------------------------------------------------------------------------
+     | Selling — single courses or one bundle
+     |--------------------------------------------------------------------------
+     */
+
+    /** The main category: itself, or its parent. */
+    public function root(): self
+    {
+        return $this->parent ?? $this;
+    }
+
+    /**
+     * The category whose bundle sells the courses sitting directly in this one,
+     * or null when they are sold one by one. The single place the selling rule
+     * is resolved:
+     *
+     * - a sub-category that is its own bundle → itself;
+     * - a sub-category that follows its main category → the main category, if
+     *   that sells as a bundle;
+     * - a main category → itself, if it sells as a bundle.
+     */
+    public function bundleOwner(): ?self
+    {
+        if ($this->parent_id !== null && $this->selling_mode !== SellingMode::Inherit) {
+            return $this->selling_mode === SellingMode::Bundle ? $this : null;
+        }
+
+        $main = $this->root();
+
+        return $main->selling_mode === SellingMode::Bundle ? $main : null;
+    }
+
+    /** Whether the courses sitting directly in this category are sold only as a bundle. */
+    public function sellsAsBundle(): bool
+    {
+        return $this->bundleOwner() !== null;
+    }
+
+    /**
+     * The categories whose courses make up THIS category's bundle: itself, and —
+     * for a main category — every sub-category that follows it. A sub-category
+     * with a selling mode of its own is never part of its main category's bundle,
+     * so no course is ever in two bundles.
+     *
+     * @return list<int>
+     */
+    public function bundleCategoryIds(): array
+    {
+        if ($this->parent_id !== null) {
+            return [$this->id];
+        }
+
+        return [
+            $this->id,
+            ...$this->children()
+                ->where('selling_mode', SellingMode::Inherit)
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->all(),
+        ];
+    }
+
+    /**
+     * English, naming the main category for a sub-category's bundle — "UAE" on
+     * its own is ambiguous on a receipt once two main categories have one. How
+     * many courses it covered lives in `order_items`.
+     */
+    public function purchasableTitle(): string
+    {
+        $name = $this->parent ? $this->parent->name.' › '.$this->name : $this->name;
+
+        return $name.' — course bundle';
+    }
+
+    /**
+     * The bundle's list price: every published course in it. What a particular
+     * student pays leaves out what they already own — that figure comes from
+     * `CourseBundleService::quote()`, never from here.
+     */
+    public function purchasablePriceCents(): int
+    {
+        return (int) CourseProgramme::query()
+            ->whereIn('course_category_id', $this->bundleCategoryIds())
+            ->where('status', CourseStatus::Published)
+            ->sum('price_cents');
+    }
+
+    public function purchasableCurrency(): string
+    {
+        return (string) config('payments.currency');
+    }
+
+    /** On sale when this category IS a bundle (not just part of one) and students can see it. */
+    public function isPurchasable(): bool
+    {
+        return $this->bundleOwner()?->is($this) === true && $this->isVisibleToStudents();
     }
 
     public function isSubCategory(): bool

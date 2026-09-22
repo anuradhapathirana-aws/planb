@@ -3,6 +3,7 @@ import type { LearnerAvatar } from '@shared/types/learner';
 import type { VideoPlayback } from '@shared/types/course';
 import type { VideoProgress, VideoProgressPayload } from '@shared/types/progress';
 import type {
+  StudentCategoryDetail,
   StudentCourseCategory,
   StudentCourseDetail,
   StudentCourseListFilters,
@@ -41,6 +42,18 @@ export async function fetchCourses(
 export async function fetchCourseCategories(): Promise<StudentCourseCategory[]> {
   const { data } = await apiClient.get<ApiResource<StudentCourseCategory[]>>(
     '/student/course-categories',
+  );
+
+  return data.data;
+}
+
+/**
+ * One category's page: its courses and, for a bundle, what this student still
+ * has to pay. 404 for a category that is switched off — unless they own a course in it.
+ */
+export async function fetchCategory(categoryId: number): Promise<StudentCategoryDetail> {
+  const { data } = await apiClient.get<ApiResource<StudentCategoryDetail>>(
+    `/student/course-categories/${categoryId}`,
   );
 
   return data.data;

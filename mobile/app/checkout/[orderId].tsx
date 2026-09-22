@@ -49,10 +49,11 @@ const CARD_PAYMENTS_ENABLED = false;
 export default function CheckoutScreen() {
   const { t } = useTranslation();
   const toast = useToast();
-  const { orderId, courseId, serviceId } = useLocalSearchParams<{
+  const { orderId, courseId, serviceId, categoryId } = useLocalSearchParams<{
     orderId: string;
     courseId?: string;
     serviceId?: string;
+    categoryId?: string;
   }>();
 
   const {
@@ -111,6 +112,9 @@ export default function CheckoutScreen() {
 
   const purchasedServiceId =
     order?.item.type === 'service' ? order.item.id : serviceId ? Number(serviceId) : null;
+
+  const purchasedCategoryId =
+    order?.item.type === 'category' ? order.item.id : categoryId ? Number(categoryId) : null;
 
   /*
    * A course unlocks the moment it is paid; a service is work that has not
@@ -192,7 +196,11 @@ export default function CheckoutScreen() {
                 {t('payment.paidTitle')}
               </Text>
               <Text className="mt-1 text-center text-[12px] leading-5 text-muted-foreground">
-                {isService ? t('payment.paidBodyService') : t('payment.paidBody')}
+                {isService
+                  ? t('payment.paidBodyService')
+                  : purchasedCategoryId !== null
+                    ? t('bundle.paidBody')
+                    : t('payment.paidBody')}
               </Text>
 
               {isService
@@ -210,7 +218,23 @@ export default function CheckoutScreen() {
                       }
                     />
                   )
-                : purchasedCourseId !== null && (
+                : purchasedCategoryId !== null
+                  ? (
+                      // A bundle lands on its Category page, now showing it owned.
+                      <Button
+                        label={t('payment.startLearning')}
+                        size="sm"
+                        fullWidth
+                        className="mt-4"
+                        onPress={() =>
+                          router.replace({
+                            pathname: '/category/[id]',
+                            params: { id: purchasedCategoryId },
+                          })
+                        }
+                      />
+                    )
+                  : purchasedCourseId !== null && (
                     <Button
                       label={t('payment.startLearning')}
                       size="sm"

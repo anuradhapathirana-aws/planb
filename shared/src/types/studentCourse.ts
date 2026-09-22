@@ -54,6 +54,60 @@ export interface StudentCourseCategory {
   children?: StudentCourseCategory[];
 }
 
+/** The bundle a course is sold in — its category's own, or its main category's. */
+export interface StudentCourseBundleRef {
+  category_id: number;
+  /** Already in the student's language. */
+  name: string;
+  /** What this student still has to buy in it. Only on the course detail response. */
+  remaining_count: number | null;
+  remaining_price_cents: number | null;
+  currency: string;
+}
+
+/** A sub-category row on a Category page. */
+export interface StudentCategoryChild extends StudentCourseCategory {
+  /** Sold as a bundle of its own — not part of this page's bundle; bought on its own page. */
+  own_bundle: boolean;
+}
+
+/**
+ * One category's page (`GET /student/course-categories/{id}`). Every figure is
+ * the server's — the app never adds prices up itself.
+ */
+export interface StudentCategoryDetail {
+  id: number;
+  name: string;
+  icon: CourseCategoryIconName | null;
+  icon_image_url: string | null;
+  /** The main category, when this is a sub-category. */
+  parent: { id: number; name: string; icon: CourseCategoryIconName | null } | null;
+  /** Active sub-categories — empty for a sub-category or a main one without any. */
+  children: StudentCategoryChild[];
+  courses: StudentCourseSummary[];
+  courses_count: number;
+  total_duration_seconds: number;
+  owned_count: number;
+  /** How the courses sitting directly in this category are sold. */
+  selling_mode: 'single' | 'bundle';
+  /**
+   * The bundle this page sells, as this student would buy it — this category's
+   * own, or its main category's when it follows that one. Null when sold one by one.
+   */
+  bundle: {
+    category_id: number;
+    name: string;
+    courses_count: number;
+    owned_count: number;
+    /** What is left to buy — courses already owned are never charged again. */
+    remaining_count: number;
+    remaining_price_cents: number;
+    currency: string;
+    /** The server's say-so to show the buy button. */
+    is_available: boolean;
+  } | null;
+}
+
 /** List-row shape — no topics, so the courses list stays one small response. */
 export interface StudentCourseSummary {
   id: number;
@@ -65,12 +119,25 @@ export interface StudentCourseSummary {
   parent_category_id: number | null;
   /** Display only. Never filter or compare on it. */
   category_name: string | null;
+  /**
+   * "Course N" — its place in the order the admin wants its own category taken
+   * in. Numbering restarts per category (a sub-category counts from 1 too) and
+   * counts published courses only. A suggested path, never a lock.
+   */
+  position: number | null;
   /** Course art, 16:9. Null when the admin hasn't uploaded one. */
   thumbnail_url: string | null;
   /** Integer smallest units (root CLAUDE.md §4.11). 0 when the course is free. */
   price_cents: number;
   currency: string;
   is_free: boolean;
+  /**
+   * False when this paid course is sold only in its category's bundle — point
+   * at the bundle instead of a price. The enrol endpoint enforces it anyway.
+   */
+  sold_individually: boolean;
+  /** The bundle this course is sold in, when its main category sells as one. */
+  bundle: StudentCourseBundleRef | null;
   /**
    * Whether this student may open the content — NOT whether it exists. The
    * catalogue is browsable to everyone; `false` means every lesson is locked and

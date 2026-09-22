@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft, GraduationCap, SearchX, SlidersHorizontal, WifiOff } from '@/components/icons';
@@ -15,6 +15,8 @@ import { Text } from '@/components/ui/Text';
 import { useBrowseCourses } from '@/features/browse/useBrowseCourses';
 import { AppliedCategoryChip } from '@/features/categories/AppliedCategoryChip';
 import { CategoryFilterPanel } from '@/features/categories/CategoryFilterPanel';
+import { BundleBanner } from '@/features/categories/BundleBanner';
+import { CourseOrderHint } from '@/features/categories/CourseOrderHint';
 import { useEnrol } from '@/features/enrolment/useEnrol';
 import { usePaymentsEnabled } from '@/features/enrolment/usePaymentsEnabled';
 import { cn } from '@/lib/cn';
@@ -59,6 +61,19 @@ export default function BrowseCoursesScreen() {
    */
   const [showFilters, setShowFilters] = useState(initialCategoryId !== null);
   const filterCount = filter.appliedId !== null ? 1 : 0;
+
+  /*
+   * With a category applied that sells as a bundle, the bundle heads the list.
+   * Read off the rows already in hand — each carries the bundle it is sold in —
+   * so the banner costs no request.
+   */
+  const bundle = useMemo(
+    () =>
+      filter.appliedId === null
+        ? null
+        : (browse.results.find((course) => course.bundle !== null)?.bundle ?? null),
+    [browse.results, filter.appliedId],
+  );
 
   // A bought course leaves this list, so staying put beats being thrown into
   // the course the moment the payment lands.
@@ -176,6 +191,15 @@ export default function BrowseCoursesScreen() {
               />
             </View>
           )}
+          ListHeaderComponent={
+            // A category's tiles carry "Course 1, Course 2…", so say what the numbers mean.
+            filter.appliedId !== null && browse.results.length > 0 ? (
+              <View className="gap-2.5">
+                {bundle && <BundleBanner categoryId={bundle.category_id} name={bundle.name} />}
+                <CourseOrderHint text={t('courses.orderHint')} />
+              </View>
+            ) : null
+          }
           contentContainerClassName="px-4 gap-2.5"
           contentContainerStyle={{ paddingBottom: insets.bottom + 16, flexGrow: 1 }}
           showsVerticalScrollIndicator={false}

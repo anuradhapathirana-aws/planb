@@ -19,6 +19,8 @@ use Intervention\Image\ImageManager;
 
 class CourseProgrammeService
 {
+    public function __construct(private readonly CourseOrderService $order) {}
+
     /**
      * @param  array{search?: string, course_category_id?: int, status?: string, sort?: string, direction?: string, per_page?: int}  $filters
      */
@@ -46,10 +48,14 @@ class CourseProgrammeService
         $sort = in_array($filters['sort'] ?? null, $sortable, true) ? $filters['sort'] : 'sort_order';
         $direction = ($filters['direction'] ?? null) === 'desc' ? 'desc' : 'asc';
 
-        return $query->orderBy($sort, $direction)
+        $paginated = $query->orderBy($sort, $direction)
             ->orderBy('name')
             ->paginate($filters['per_page'] ?? 15)
             ->withQueryString();
+
+        $this->order->attachPositions($paginated->getCollection(), publishedOnly: false);
+
+        return $paginated;
     }
 
     /**
@@ -84,6 +90,15 @@ class CourseProgrammeService
     public function update(CourseProgramme $programme, array $data): CourseProgramme
     {
         return DB::transaction(function () use ($programme, $data): CourseProgramme {
+            /*
+             * A course moved to another category joins the end of that
+             * category's order. Keeping its old number would drop it into the
+             * middle of a sequence the admin arranged there, silently.
+             */
+            if ((int) $data['course_category_id'] !== (int) $programme->course_category_id) {
+                $programme->sort_order = $this->nextSortOrder((int) $data['course_category_id']);
+            }
+
             $programme->update([
                 'course_category_id' => $data['course_category_id'],
                 'name' => $data['name'],

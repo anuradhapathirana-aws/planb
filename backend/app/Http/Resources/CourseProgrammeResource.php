@@ -33,6 +33,9 @@ class CourseProgrammeResource extends JsonResource
             'enrolments_count' => $this->whenCounted('enrolments'),
             'thumbnail_url' => PublicUrl::forRequest($this->thumbnail_url, $request),
             'sort_order' => $this->sort_order,
+            // "Course N" within its own category, counting drafts. Only set by
+            // the list and course-order endpoints; null elsewhere.
+            'position' => $this->getAttribute('position'),
             'category' => $this->whenLoaded('category', fn () => new CourseCategoryResource($this->category)),
             'topics' => CourseTopicResource::collection($this->whenLoaded('topics')),
             // Summary only (no questions) — the builder page fetches the full paper.

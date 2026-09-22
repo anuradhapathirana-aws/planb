@@ -1,14 +1,11 @@
 import { Pressable, View } from 'react-native';
-import { Image } from 'expo-image';
 import { useTranslation } from 'react-i18next';
 
-import type { StudentCourseCategory } from '@shared/types/studentCourse';
 import { colors } from '@shared/theme/tokens';
 import { X } from '@/components/icons';
 import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
-import { categoryIcon } from '@/features/home/categoryIcons';
-import { cn } from '@/lib/cn';
+import { CategoryChip } from './CategoryChip';
 import type { CategoryFilterState } from './useCategoryFilter';
 
 export interface CategoryFilterPanelProps {
@@ -58,13 +55,13 @@ export function CategoryFilterPanel({ filter, onDone }: CategoryFilterPanelProps
         </View>
 
         <View className="flex-row flex-wrap gap-2">
-          <Chip
+          <CategoryChip
             label={t('home.categoryAll')}
             selected={draft.parentId === null}
             onPress={() => filter.selectParent(null)}
           />
           {tree.map((category) => (
-            <Chip
+            <CategoryChip
               key={category.id}
               label={category.name}
               category={category}
@@ -81,13 +78,13 @@ export function CategoryFilterPanel({ filter, onDone }: CategoryFilterPanelProps
           <SectionLabel>{t('search.subCategoriesTitle')}</SectionLabel>
 
           <View className="flex-row flex-wrap gap-2">
-            <Chip
+            <CategoryChip
               label={t('search.allInCategory', { name: draftParent.name })}
               selected={draft.subId === null}
               onPress={() => filter.selectSub(null)}
             />
             {children.map((child) => (
-              <Chip
+              <CategoryChip
                 key={child.id}
                 label={child.name}
                 // A sub-category with no icon of its own borrows its parent's glyph.
@@ -119,56 +116,5 @@ function SectionLabel({ children }: { children: string }) {
     <Text className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
       {children}
     </Text>
-  );
-}
-
-function Chip({
-  label,
-  category,
-  selected,
-  onPress,
-}: {
-  label: string;
-  /** Draws the category's image or glyph before the label; omitted for "All". */
-  category?: StudentCourseCategory;
-  selected: boolean;
-  onPress: () => void;
-}) {
-  const Glyph = category && !category.icon_image_url ? categoryIcon(category.name, category.icon) : null;
-
-  return (
-    <Pressable
-      accessibilityRole="radio"
-      accessibilityState={{ selected }}
-      accessibilityLabel={label}
-      onPress={onPress}
-      // Shorter than 44px so the panel stays light; the slop restores the target.
-      hitSlop={{ top: 6, bottom: 6, left: 2, right: 2 }}
-      className={cn(
-        'min-h-[34px] flex-row items-center gap-1.5 rounded-full border px-3',
-        selected ? 'border-primary bg-primary' : 'border-border bg-background active:bg-muted',
-      )}
-    >
-      {category?.icon_image_url ? (
-        <Image
-          source={{ uri: category.icon_image_url }}
-          style={{ width: 16, height: 16, borderRadius: 3 }}
-          contentFit="contain"
-          accessibilityIgnoresInvertColors
-        />
-      ) : Glyph ? (
-        <Glyph size={14} color={selected ? colors['primary-foreground'] : colors.primary} />
-      ) : null}
-
-      <Text
-        className={cn(
-          'text-[12px] font-medium',
-          selected ? 'text-primary-foreground' : 'text-foreground',
-        )}
-        numberOfLines={1}
-      >
-        {label}
-      </Text>
-    </Pressable>
   );
 }

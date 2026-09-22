@@ -33,6 +33,22 @@ export function useFontFamily(weight: FontWeight = 400): string {
   return fonts[useLanguage() === 'si' ? 'sinhala' : 'poppins'][weight];
 }
 
+/**
+ * How much smaller Sinhala is drawn than the size a component asks for.
+ *
+ * Noto Sans Sinhala fills far more of its em box than Poppins does, so at the
+ * same point size a Sinhala screen reads a size larger than its English twin.
+ * Components keep writing one size for both languages; this is the single knob.
+ * Line heights are deliberately NOT scaled — the 1.6x floor exists so Sinhala
+ * does not clip, and a smaller glyph in the same line box only adds headroom.
+ */
+export const SINHALA_FONT_SCALE = 0.9;
+
+/** The multiplier to apply to a font size in the current language. */
+export function useFontScale(): number {
+  return useLanguage() === 'si' ? SINHALA_FONT_SCALE : 1;
+}
+
 /** The Intl locale for dates and numbers — pass it to `@shared/lib/formatters`. */
 export function useLocale(): string {
   return LANGUAGE_LOCALES[useLanguage()];

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Plus } from 'lucide-react';
+import { BookOpen, ListOrdered, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -10,6 +10,7 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { FilterCard, FilterField } from '@/components/shared/FilterCard';
 import { getCourseColumns } from '@/features/admin/courses/components/courseColumns';
+import { CourseOrderSheet } from '@/features/admin/courses/components/CourseOrderSheet';
 import {
   useCourseProgrammes,
   useDeleteCourseProgramme,
@@ -43,6 +44,7 @@ export function CoursesListPage() {
 
   const [publishTarget, setPublishTarget] = useState<CourseProgramme | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<CourseProgramme | null>(null);
+  const [orderOpen, setOrderOpen] = useState(false);
 
   const activeFilterCount = [
     appliedSearch.trim() !== '',
@@ -123,9 +125,14 @@ export function CoursesListPage() {
             Build each course programme from topics, videos and descriptions.
           </p>
         </div>
-        <Button size="sm" onClick={() => navigate(paths.admin.courseNew)}>
-          <Plus className="size-3.5" /> Add course
-        </Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={() => setOrderOpen(true)}>
+            <ListOrdered className="size-3.5" /> Reorder
+          </Button>
+          <Button size="sm" onClick={() => navigate(paths.admin.courseNew)}>
+            <Plus className="size-3.5" /> Add course
+          </Button>
+        </div>
       </div>
 
       <FilterCard activeCount={activeFilterCount} onApply={applyFilters} onClear={clearFilters}>
@@ -224,6 +231,13 @@ export function CoursesListPage() {
           onPageChange={setPage}
         />
       )}
+
+      <CourseOrderSheet
+        open={orderOpen}
+        onOpenChange={setOrderOpen}
+        categoryTree={categoryTree ?? []}
+        initialCategoryId={appliedCategory === 'all' ? null : appliedCategory}
+      />
 
       <ConfirmDialog
         open={!!publishTarget}

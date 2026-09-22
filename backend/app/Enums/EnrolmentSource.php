@@ -9,6 +9,8 @@ enum EnrolmentSource: string
     case Purchase = 'purchase';
     case Free = 'free';
     case AdminGrant = 'admin_grant';
+    /** Part of a category bundle purchase — the order's items say which courses. */
+    case Bundle = 'bundle';
 
     /**
      * @return list<string>

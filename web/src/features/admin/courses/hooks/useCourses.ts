@@ -6,11 +6,13 @@ import {
   deleteCourseProgramme,
   deleteCourseProgrammeThumbnail,
   deleteCourseVideoFile,
+  fetchCategoryCourseOrder,
   fetchCourseProgramme,
   fetchCourseProgrammes,
   fetchCourseVideoProcessingStatus,
   fetchVideoPlayback,
   publishCourseProgramme,
+  saveCategoryCourseOrder,
   unpublishCourseProgramme,
   updateCourseProgramme,
   uploadCourseProgrammeThumbnail,
@@ -31,6 +33,34 @@ export function useCourseProgramme(id: number | undefined) {
     queryKey: ['course-programmes', 'detail', id],
     queryFn: () => fetchCourseProgramme(id!),
     enabled: !!id,
+  });
+}
+
+/** One category's own courses in their "Course 1, Course 2…" order. */
+export function useCategoryCourseOrder(categoryId: number | null) {
+  return useQuery({
+    queryKey: ['course-programmes', 'order', categoryId],
+    queryFn: () => fetchCategoryCourseOrder(categoryId!),
+    enabled: categoryId !== null,
+  });
+}
+
+export function useSaveCourseOrder() {
+  const invalidate = useInvalidateCourses();
+
+  return useMutation({
+    mutationFn: ({ categoryId, programmeIds }: { categoryId: number; programmeIds: number[] }) =>
+      saveCategoryCourseOrder(categoryId, programmeIds),
+    onSuccess: () => {
+      invalidate();
+      toast.success('Course order saved.');
+    },
+    onError: (error) => {
+      // A 422 here means the list went stale (a course added or moved meanwhile).
+      const validation = getValidationErrors(error);
+      const message = validation ? Object.values(validation)[0]?.[0] : undefined;
+      toast.error(message ?? 'Could not save the course order.');
+    },
   });
 }
 

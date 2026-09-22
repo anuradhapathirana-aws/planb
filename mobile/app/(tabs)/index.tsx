@@ -416,18 +416,12 @@ export default function HomeScreen() {
             <CategoryStrip
               categories={categories.data ?? []}
               /*
-               * Pushes the catalogue with the chip already selected, rather
-               * than filtering in place here. That screen owns the full list,
-               * its search box and its own "nothing in this category" way out —
-               * a filtered list on Home would be a worse second copy of it, and
-               * the strip is a signpost, not a filter.
+               * Opens the category's own page: its courses grouped by
+               * sub-category, and — when it is sold as a pass — the one button
+               * that unlocks all of them. The strip is a signpost, not a filter.
                */
               onSelect={(category) =>
-                router.push({
-                  pathname: '/browse/courses',
-                  // The id, never the name — a renamed category must not break it.
-                  params: { category: String(category.id) },
-                })
+                router.push({ pathname: '/category/[id]', params: { id: category.id } })
               }
             />
           </Section>

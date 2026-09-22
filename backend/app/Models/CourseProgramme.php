@@ -109,7 +109,19 @@ class CourseProgramme extends Model implements HasMedia, Purchasable
     public function isPurchasable(): bool
     {
         return $this->status === CourseStatus::Published
-            && (bool) $this->category?->isVisibleToStudents();
+            && (bool) $this->category?->isVisibleToStudents()
+            && $this->isSoldIndividually();
+    }
+
+    /**
+     * Whether this course can be had on its own. A free course always can — free
+     * stays free. A paid one can unless its main category sells as a bundle;
+     * then the bundle is the only way in, and this is the rule the enrol
+     * endpoint enforces, whatever an app shows.
+     */
+    public function isSoldIndividually(): bool
+    {
+        return $this->isFree() || ! $this->category?->sellsAsBundle();
     }
 
     public function isFree(): bool
