@@ -104,6 +104,10 @@ so patterns transfer between the two codebases.
   picks, at one weight — headings stop reading as headings. A raw `TextInput` must call
   `useFontFamily()` itself. The only exception is text whose script is fixed regardless of the app's
   language, such as the language names in the picker.
+- **Sinhala is drawn at 90% of the requested size** (`SINHALA_FONT_SCALE` in `lib/useLanguage.ts`) —
+  Noto Sans Sinhala reads a size larger than Poppins. `Text` applies it to any `text-[Npx]` class or
+  inline `fontSize`, so write one size for both languages. Named sizes (`text-sm`) are not read —
+  use `text-[Npx]`. A raw `TextInput` sets `fontSize: n * useFontScale()` in its style, not a class.
 - **Never set `height` on anything containing text — use `minHeight` + `paddingVertical`.** Sinhala
   glyphs carry loops above and below the baseline and clip inside a fixed-height box. Keep
   `lineHeight` ≥ 1.6× the font size, and never set `allowFontScaling={false}`.

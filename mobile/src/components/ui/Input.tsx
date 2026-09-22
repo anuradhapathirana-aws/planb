@@ -5,7 +5,7 @@ import type { LucideIcon } from '@/components/icons';
 
 import { colors } from '@shared/theme/tokens';
 import { cn } from '@/lib/cn';
-import { useFontFamily } from '@/lib/useLanguage';
+import { useFontFamily, useFontScale } from '@/lib/useLanguage';
 import { Text } from './Text';
 
 export interface InputProps extends Omit<TextInputProps, 'className' | 'style'> {
@@ -45,6 +45,7 @@ export function Input({
   const fontFamily = useFontFamily(400);
   const hasError = Boolean(error);
   const isSmall = size === 'sm';
+  const fontSize = (isSmall ? 13 : 15) * useFontScale();
 
   return (
     <View className="w-full">
@@ -102,13 +103,13 @@ export function Input({
           // Android centres multiline text vertically without this; iOS ignores it.
           textAlignVertical={multiline ? 'top' : undefined}
           // A `TextInput` renders its own text, outside `Text`, so it does not get
-          // the per-language face `Text` resolves — it is set here directly.
+          // the per-language face or size `Text` resolves — both are set here.
           // Regular weight, and no `font-*` class, for the Android fallback
           // reason in `fonts` (shared/src/theme/tokens.ts).
-          style={{ fontFamily }}
+          style={{ fontFamily, fontSize }}
           className={cn(
             'flex-1 text-foreground',
-            isSmall ? 'py-2 text-[13px] leading-5' : 'py-3 text-[15px] leading-6',
+            isSmall ? 'py-2 leading-5' : 'py-3 leading-6',
           )}
           onFocus={(event) => {
             setFocused(true);

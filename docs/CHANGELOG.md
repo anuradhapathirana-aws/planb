@@ -4,6 +4,9 @@ All notable changes to this project are documented here. Format loosely follows 
 
 ## Unreleased
 
+### Changed
+- **Student app: Sinhala text is drawn at 90% size** (client request). Noto Sans Sinhala looks a size larger than Poppins, so Sinhala screens felt oversized next to English ones. English is unchanged. One setting (`SINHALA_FONT_SCALE` in `mobile/src/lib/useLanguage.ts`), applied by the shared `Text` component and the form/search text boxes, so no screen needed editing. Line heights are kept as they were so Sinhala never clips. JS-only, no dev-client rebuild.
+
 ### Added
 - **Course order within a category — "Course 1, Course 2…"** (client request). An admin sets the order a category's courses should be taken in, and students see it.
   - **Admin › Courses › Reorder** opens a panel from the right: pick a category (and optionally a sub-category), move courses up or down, **Save order**. It opens on the category the list is filtered by. Each category is its own path — a main category's own courses count 1, 2, 3, and each sub-category counts from 1 again. The Courses table gains an **Order** column ("Course 2"). A new course, or one moved to another category, goes to the end of that category's order.

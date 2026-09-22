@@ -5,7 +5,7 @@ import { Search, X } from '@/components/icons';
 
 import { colors } from '@shared/theme/tokens';
 import { cn } from '@/lib/cn';
-import { useFontFamily } from '@/lib/useLanguage';
+import { useFontFamily, useFontScale } from '@/lib/useLanguage';
 
 export interface SearchFieldProps extends Omit<
   TextInputProps,
@@ -42,6 +42,7 @@ export const SearchField = forwardRef<TextInput, SearchFieldProps>(function Sear
   const { t } = useTranslation();
   const [focused, setFocused] = useState(false);
   const fontFamily = useFontFamily(400);
+  const fontSize = 13 * useFontScale();
 
   return (
     <View
@@ -96,11 +97,11 @@ export const SearchField = forwardRef<TextInput, SearchFieldProps>(function Sear
           onBlur?.(event);
         }}
         // A `TextInput` renders its own text, outside `Text`, so it does not get
-        // the per-language face `Text` resolves — it is set here directly.
+        // the per-language face or size `Text` resolves — both are set here.
         // Regular weight, and no `font-*` class, for the Android fallback
         // reason in `fonts` (shared/src/theme/tokens.ts).
-        style={{ fontFamily }}
-        className="flex-1 py-1.5 text-[13px] leading-5 text-foreground"
+        style={{ fontFamily, fontSize }}
+        className="flex-1 py-1.5 leading-5 text-foreground"
         {...props}
       />
 

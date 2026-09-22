@@ -8,7 +8,7 @@ import {
 import { type FontWeight } from '@shared/theme/tokens';
 
 import { cn } from '@/lib/cn';
-import { useFontFamily } from '@/lib/useLanguage';
+import { useFontFamily, useFontScale } from '@/lib/useLanguage';
 
 /**
  * The only text component. Every string on screen goes through it, which is
@@ -138,9 +138,45 @@ function resolveFontWeight(
   );
 }
 
+const SIZE_CLASS = /\btext-\[(\d+(?:\.\d+)?)px\]/g;
+
+/** The last `text-[Npx]` size in a class string, or null when there is none. */
+function sizeFromClasses(classes: string | undefined): number | null {
+  const matches = classes ? [...classes.matchAll(SIZE_CLASS)] : [];
+  const last = matches.at(-1)?.[1];
+
+  return last === undefined ? null : Number(last);
+}
+
+/**
+ * The font size this text asks for, with the same precedence as the weight: an
+ * inline `fontSize`, then the caller's `className`, then the variant. Null when
+ * nothing sets one — the text then inherits from a parent `Text`, which has
+ * already been scaled, so it must not be scaled twice.
+ */
+function resolveFontSize(
+  variantClasses: string,
+  className: string | undefined,
+  style: TextStyle | undefined,
+): number | null {
+  return style?.fontSize ?? sizeFromClasses(className) ?? sizeFromClasses(variantClasses);
+}
+
 export function Text({ variant = 'body', className, style, ...props }: TextProps) {
   const variantClasses = VARIANTS[variant];
   const flat = StyleSheet.flatten(style) as TextStyle | undefined;
+
+  /*
+   * Sinhala glyphs draw larger than Poppins at the same size, so in Sinhala the
+   * requested size is scaled down here (`SINHALA_FONT_SCALE`). Doing it in the
+   * one text component keeps every screen writing a single size for both
+   * languages. An inline `fontSize` wins over a class in NativeWind, which is
+   * what lets this override the `text-[Npx]` class it was read from.
+   */
+  const fontScale = useFontScale();
+  const fontSize = resolveFontSize(variantClasses, className, flat);
+  const sizeStyle: TextStyle | undefined =
+    fontScale !== 1 && fontSize !== null ? { fontSize: fontSize * fontScale } : undefined;
 
   /*
    * The family also depends on the language: Poppins draws no Sinhala, so in
@@ -164,7 +200,7 @@ export function Text({ variant = 'body', className, style, ...props }: TextProps
       // their system font size up needs it to work here too. The layouts are
       // built with minHeight so they grow instead of clipping.
       className={cn(variantClasses, className)}
-      style={[style, fontStyle]}
+      style={[style, fontStyle, sizeStyle]}
       {...props}
     />
   );
