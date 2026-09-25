@@ -74,7 +74,7 @@ export function TestimonialsSection({ id, testimonials }: { id?: string; testimo
   const cardProps = { openId, onOpen: open, onScheduleClose: scheduleClose, onCancelClose: cancelClose };
 
   return (
-    <section id={id} className="relative scroll-mt-20 overflow-hidden bg-background pb-16 sm:pb-20">
+    <section id={id} className="relative scroll-mt-20 overflow-hidden bg-background pb-12 sm:pb-14">
       {/* --------------------------------------------- strip (below lg) */}
       {/*
         No `aria-hidden` on either the strip or the canopy, even though the two
@@ -87,7 +87,7 @@ export function TestimonialsSection({ id, testimonials }: { id?: string; testimo
       <div className="lg:hidden">
         <div
           // `gap-2` echoes the tight packing of the desktop wall.
-          className="flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 py-10"
+          className="flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 py-8"
           // A horizontally scrolling row of people is a list, and saying so is
           // what lets a screen reader announce "3 of 13" while moving through it.
           role="list"
@@ -186,7 +186,7 @@ export function TestimonialsSection({ id, testimonials }: { id?: string; testimo
               hidden for now, and a CTA that scrolls nowhere is worse than no
               CTA. See the note in HomePage.tsx.
             */}
-            <Button asChild size="lg" className="mt-7 rounded-full">
+            <Button asChild size="lg" className="mt-6 rounded-full">
               <Link to={paths.courses}>
                 {t('site.testimonials.cta')}
                 <ArrowRight className="size-4" aria-hidden="true" />

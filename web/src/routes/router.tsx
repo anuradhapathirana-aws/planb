@@ -53,6 +53,25 @@ const HomeBannerFormPage = lazy(() =>
     default: m.HomeBannerFormPage,
   })),
 );
+// Website Configuration — the public site's content.
+const HeroSlidesPage = lazy(() =>
+  import('@/features/admin/website/pages/HeroSlidesPage').then((m) => ({
+    default: m.HeroSlidesPage,
+  })),
+);
+const HeroSlideFormPage = lazy(() =>
+  import('@/features/admin/website/pages/HeroSlideFormPage').then((m) => ({
+    default: m.HeroSlideFormPage,
+  })),
+);
+const AboutSectionPage = lazy(() =>
+  import('@/features/admin/website/pages/AboutSectionPage').then((m) => ({
+    default: m.AboutSectionPage,
+  })),
+);
+const TeamPage = lazy(() =>
+  import('@/features/admin/website/pages/TeamPage').then((m) => ({ default: m.TeamPage })),
+);
 const BankDetailsPage = lazy(() =>
   import('@/features/admin/settings/pages/BankDetailsPage').then((m) => ({ default: m.BankDetailsPage })),
 );
@@ -126,6 +145,11 @@ export const router = createBrowserRouter([
       { path: 'mobile/home-banners', element: page(<HomeBannersPage />) },
       { path: 'mobile/home-banners/new', element: page(<HomeBannerFormPage />) },
       { path: 'mobile/home-banners/:id/edit', element: page(<HomeBannerFormPage />) },
+      { path: 'website/hero-slider', element: page(<HeroSlidesPage />) },
+      { path: 'website/hero-slider/new', element: page(<HeroSlideFormPage />) },
+      { path: 'website/hero-slider/:id/edit', element: page(<HeroSlideFormPage />) },
+      { path: 'website/about', element: page(<AboutSectionPage />) },
+      { path: 'website/team', element: page(<TeamPage />) },
       { path: 'settings/bank-details', element: page(<BankDetailsPage />) },
       { path: 'settings/app-intro', element: page(<AppIntroPage />) },
     ],

@@ -14,13 +14,24 @@ import { paths } from '@/routes/paths';
 import { cn } from '@/lib/utils';
 
 /**
- * Sticky, solid, and the same height at every width.
+ * Sticky, solid **navy**, and the same height at every width.
  *
  * It is deliberately NOT a transparent header that turns solid over the hero:
  * the hero image is admin-uploaded, so there is no guarantee the logo and links
  * will have anything to contrast against. A solid bar is legible over whatever
  * the admin puts behind it. A border fades in on scroll so the bar separates
  * from the page without a shadow sitting there from the first pixel.
+ *
+ * **Navy bar, white links** (client instruction, 2026-09-25) — the same
+ * `--surface` the footer and the hero use, so the page opens and closes on the
+ * brand colour. Two consequences that are not optional:
+ *
+ *  - **The current page is marked in gold, not `--primary`.** `--primary` *is*
+ *    this navy; `aria-[current=page]:text-primary` on a navy bar marks the
+ *    current link by making it invisible. Gold on this surface is 6.3:1, the
+ *    same pairing the hero headline uses.
+ *  - **The logo gets no plate or backing.** It is a circular badge with its own
+ *    cream field, so it reads on navy unaided — see `Logo`.
  */
 export function PublicHeader({ onSignIn }: { onSignIn: () => void }) {
   const { t } = useTranslation();
@@ -54,12 +65,15 @@ export function PublicHeader({ onSignIn }: { onSignIn: () => void }) {
   return (
     <header
       className={cn(
-        'sticky top-0 z-40 bg-background/95 backdrop-blur transition-shadow',
-        scrolled ? 'border-b border-border' : 'border-b border-transparent',
+        'sticky top-0 z-40 bg-surface text-surface-foreground transition-shadow',
+        scrolled ? 'border-b border-surface-border shadow-lg' : 'border-b border-transparent',
       )}
     >
-      <Container className="flex h-16 items-center gap-3">
-        <Logo />
+      {/* `h-20`, up from `h-16`: the taller logo needs the room (client
+          instruction, 2026-09-25). It stays one height at every width — a bar
+          that changes height between breakpoints moves the whole page with it. */}
+      <Container className="flex h-20 items-center gap-3">
+        <Logo size="lg" />
 
         <nav className="ml-6 hidden flex-1 items-center gap-1 lg:flex" aria-label={t('site.nav.home')}>
           {publicNav.map((item) => (
@@ -68,9 +82,10 @@ export function PublicHeader({ onSignIn }: { onSignIn: () => void }) {
               to={item.to}
               aria-current={isCurrent(item.to, item.isSection) ? 'page' : undefined}
               className={cn(
-                'rounded-md px-3 py-2 text-sm font-medium transition-colors',
-                'hover:bg-secondary hover:text-secondary-foreground',
-                'aria-[current=page]:text-primary',
+                'rounded-md px-3 py-2 text-sm font-medium text-white transition-colors',
+                'hover:bg-white/10',
+                // Gold, not `--primary` — see the component docblock.
+                'aria-[current=page]:text-accent',
               )}
             >
               {t(`site.nav.${item.key}`)}
@@ -79,17 +94,20 @@ export function PublicHeader({ onSignIn }: { onSignIn: () => void }) {
         </nav>
 
         <div className="ml-auto flex items-center gap-1 lg:ml-0">
-          <LanguageSwitcher className="hidden sm:inline-flex" />
+          <LanguageSwitcher onDark className="hidden sm:inline-flex" />
 
+          {/* `accent` rather than the default navy button: the default is
+              `--primary`, which is the colour of the bar it now sits on. Gold is
+              also the right weight for the one action in the header. */}
           {student ? (
-            <Button asChild size="sm" className="gap-1.5">
+            <Button asChild variant="accent" size="sm" className="gap-1.5">
               <Link to={paths.app.home}>
                 <GraduationCap className="size-4" aria-hidden="true" />
                 <span className="hidden sm:inline">{t('site.nav.myLearning')}</span>
               </Link>
             </Button>
           ) : (
-            <Button size="sm" onClick={onSignIn}>
+            <Button variant="accent" size="sm" onClick={onSignIn}>
               {t('site.nav.signIn')}
             </Button>
           )}
@@ -98,7 +116,14 @@ export function PublicHeader({ onSignIn }: { onSignIn: () => void }) {
               switcher and a button need more room than a tablet has. */}
           <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon-sm" className="lg:hidden" aria-label={t('site.nav.openMenu')}>
+              {/* `ghost` would render dark-on-navy. The sheet's own contents stay
+                  on a light surface, so only this trigger needs inverting. */}
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="text-white hover:bg-white/10 hover:text-white lg:hidden"
+                aria-label={t('site.nav.openMenu')}
+              >
                 <Menu className="size-5" aria-hidden="true" />
               </Button>
             </SheetTrigger>

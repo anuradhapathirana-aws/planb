@@ -11,11 +11,12 @@ interface ImageDropzoneProps {
   onRemove: () => void;
   /**
    * Shape of the frame. `video` is 16:9, matching course and lesson art;
-   * `banner` is 64:27, the Home carousel's shape. The frame should match what
-   * the backend crops that image to, so an admin sees the crop they are going to
-   * get rather than discovering it on a phone.
+   * `banner` is 64:27, the Home carousel's shape; `photo` is 4:3, the website
+   * hero's artwork; `portrait` is 4:5, a team member's photograph. The frame
+   * should match what the backend crops that image to, so an admin sees the crop
+   * they are going to get rather than discovering it on a phone.
    */
-  aspect?: 'video' | 'square' | 'banner';
+  aspect?: 'video' | 'square' | 'banner' | 'photo' | 'portrait';
   acceptedTypes?: string[];
   maxBytes?: number;
   /** Second line inside the empty dropzone, e.g. "PNG or JPG, up to 2MB". */
@@ -34,12 +35,16 @@ const ASPECT_RATIOS: Record<NonNullable<ImageDropzoneProps['aspect']>, number> =
   video: 16 / 9,
   banner: 64 / 27,
   square: 1,
+  photo: 4 / 3,
+  portrait: 4 / 5,
 };
 
 const ASPECT_NAMES: Record<NonNullable<ImageDropzoneProps['aspect']>, string> = {
   video: '16:9',
   banner: '64:27',
   square: 'square',
+  photo: '4:3',
+  portrait: '4:5 portrait',
 };
 
 // Loose enough that 1920×1081 or a rounded export does not nag the admin.
@@ -161,6 +166,9 @@ export function ImageDropzone({
           aspect === 'video' && 'aspect-video',
           aspect === 'banner' && 'aspect-64/27',
           aspect === 'square' && 'aspect-square',
+          aspect === 'photo' && 'aspect-4/3',
+          // Capped, or a portrait frame in a narrow form column runs off-screen.
+          aspect === 'portrait' && 'mx-auto aspect-4/5 max-w-xs',
           url ? 'border-solid border-border' : 'border-input',
           !url && !disabled && 'cursor-pointer hover:bg-secondary/50',
           isDragging && 'border-primary bg-secondary',

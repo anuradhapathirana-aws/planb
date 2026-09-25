@@ -18,6 +18,10 @@ import {
   Image,
   Landmark,
   Sparkle,
+  Globe,
+  GalleryHorizontal,
+  Play,
+  UsersRound,
   type LucideIcon,
 } from 'lucide-react';
 import { paths } from '@/routes/paths';
@@ -86,6 +90,27 @@ export const adminNavGroups: AdminNavGroup[] = [
   {
     label: 'Mobile Configuration',
     items: [{ label: 'Home Banners', icon: Image, href: paths.admin.homeBanners }],
+  },
+  /*
+   * Website Configuration — the public Plan B website (`site/`), kept in its own
+   * group beside Mobile Configuration rather than folded into it. They configure
+   * two different clients: a Home banner is the app's 64:27 carousel, a hero
+   * slide is the website's 4:3 banner with two buttons, and putting them in one
+   * group invites the assumption that editing one changes both.
+   */
+  {
+    label: 'Website Configuration',
+    items: [
+      {
+        label: 'Website',
+        icon: Globe,
+        children: [
+          { label: 'Hero Slider', icon: GalleryHorizontal, href: paths.admin.heroSlides },
+          { label: 'About Video', icon: Play, href: paths.admin.websiteAbout },
+          { label: 'The Team', icon: UsersRound, href: paths.admin.websiteTeam },
+        ],
+      },
+    ],
   },
   {
     items: [

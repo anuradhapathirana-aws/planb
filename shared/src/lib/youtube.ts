@@ -1,3 +1,18 @@
+/**
+ * Parsing a pasted YouTube link.
+ *
+ * **Shared, not duplicated**, because two clients need it for two different
+ * reasons and they must not drift: `site/` uses it to decide what reaches an
+ * `<iframe src>`, and the admin panel uses it to tell an admin whether the link
+ * they just pasted will play before they save it. A second copy would let one
+ * accept a link the other rejects.
+ *
+ * `backend/app/Support/YouTube.php` is a third implementation of the same two
+ * rules, and it is the one that actually enforces them — a check in a browser
+ * bundle protects the visitor, never the database (root CLAUDE.md §7.3). All
+ * three are kept in step deliberately; changing one means changing all three.
+ */
+
 /** A YouTube video id is exactly 11 characters of URL-safe base64. */
 const VIDEO_ID = /^[A-Za-z0-9_-]{11}$/;
 

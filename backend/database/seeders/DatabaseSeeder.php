@@ -26,6 +26,7 @@ class DatabaseSeeder extends Seeder
             IndustrySeeder::class,
             StudentSeeder::class,
             HomeCarouselSeeder::class,
+            WebsiteContentSeeder::class,
         ]);
     }
 }

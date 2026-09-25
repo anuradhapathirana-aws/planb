@@ -7,6 +7,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\UpdateAppIntroRequest;
 use App\Http\Requests\Settings\UpdateBankDetailsRequest;
+use App\Http\Requests\Settings\UpdateWebsiteContentRequest;
+use App\Http\Requests\Settings\UploadCommunityPosterRequest;
 use App\Http\Requests\Settings\UploadCompanyLogoRequest;
 use App\Http\Resources\BrandingResource;
 use App\Http\Resources\CompanySettingResource;
@@ -15,11 +17,15 @@ use App\Services\Settings\CompanySettingsService;
 use Illuminate\Http\JsonResponse;
 
 /**
- * Settings > Bank Details and Settings > App Intro.
+ * Settings > Bank Details, Settings > App Intro, and Website Configuration >
+ * About Video.
  *
- * One singleton row, saved in two halves so each settings page submits only
- * its own fields — and so the two halves can carry different permissions.
- * The logo uploads on its own endpoint, same as home banner images.
+ * One singleton row, saved in separate halves so each settings page submits
+ * only its own fields — and so the halves can carry different permissions: the
+ * bank account decides where every student's money goes and is Super Admin
+ * only, while the app intro and the website copy are content work.
+ *
+ * Images upload on their own endpoints, same as home banner artwork.
  */
 class CompanySettingController extends Controller
 {
@@ -43,6 +49,31 @@ class CompanySettingController extends Controller
     {
         return response()->json([
             'data' => new CompanySettingResource($this->settings->updateAppIntro($request->validated())),
+        ]);
+    }
+
+    public function updateWebsiteContent(UpdateWebsiteContentRequest $request): JsonResponse
+    {
+        return response()->json([
+            'data' => new CompanySettingResource($this->settings->updateWebsiteContent($request->validated())),
+        ]);
+    }
+
+    public function uploadCommunityPoster(UploadCommunityPosterRequest $request): JsonResponse
+    {
+        return response()->json([
+            'data' => new CompanySettingResource(
+                $this->settings->updateCommunityPoster($request->file('poster')),
+            ),
+        ]);
+    }
+
+    public function deleteCommunityPoster(): JsonResponse
+    {
+        $this->authorize('manageBranding', CompanySetting::class);
+
+        return response()->json([
+            'data' => new CompanySettingResource($this->settings->removeCommunityPoster()),
         ]);
     }
 

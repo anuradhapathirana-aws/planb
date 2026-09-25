@@ -1,31 +1,34 @@
-import {
-  Award,
-  BriefcaseBusiness,
-  GraduationCap,
-  Globe2,
-  Languages,
-  PlaneTakeoff,
-  ShieldCheck,
-  Users,
-} from 'lucide-react'
+import { BriefcaseBusiness, GraduationCap, PlaneTakeoff, Users } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import type { SiteCtaLink } from '@/features/marketing/siteLinks'
 
 /**
- * Placeholder copy for the home page's designed sections.
+ * The home page's view models, and the content shown when the admin has not
+ * supplied any.
  *
- * **This file is temporary and is deleted by `CMS-3`.** Every shape here is the
- * shape the API will return from `GET public/site-content`, so wiring the real
- * thing is a swap of the data source, not a rewrite of the components — which is
- * the whole reason the sections take their content as props rather than reaching
- * for it themselves.
+ * **The hero, the About band and the team are now admin-managed** (Website
+ * Configuration in the admin panel) and arrive from `GET public/site-content`.
+ * What stays here for those three is the **fallback**, not a placeholder:
+ * `useSiteContent` returns these designed defaults whenever the API sends an
+ * empty list, so the company's front page is never blank — which is what lets
+ * the site ship before the client has written the copy, and what stops a
+ * mistaken "hide all" in the admin panel taking the hero down.
  *
- * Two rules the real content must keep:
+ * **The course carousel is live too** — it comes from `GET public/courses` via
+ * `usePublicCourses`, and has no fallback for the reason noted where the old
+ * placeholder list used to be. What this file still keeps as the view model is
+ * the `ProgrammeCard` interface the card renders.
+ *
+ * The remaining exports (`successStories`, `testimonials`) are still
+ * placeholders and are replaced by a later CMS task.
+ *
+ * Two rules the content keeps, wherever it comes from:
  *  - **Headings use `**double asterisks**` to mark the gold word** — see
  *    `components/shared/Highlight.tsx` for why the emphasis travels inside the
  *    string rather than in a second column.
  *  - **`icon` is a key into a fixed registry, never a class or component name
- *    built from admin input** (`SEC-5`). Here that registry is this module's own
- *    imports; after `CMS-2` it is the shared `courseCategoryIcons` map.
+ *    built from admin input** (`SEC-5`). For admin-supplied slides that registry
+ *    is `heroIcons.ts`; the fallbacks below import their glyphs directly.
  */
 
 export interface HeroSlide {
@@ -35,8 +38,14 @@ export interface HeroSlide {
   /** `**word**` marks the gold segment. */
   heading: string
   body: string
-  primaryCta: { label: string; to: string }
-  secondaryCta?: { label: string; to: string }
+  /**
+   * Already resolved to a destination by `siteLinks.ts` — never a raw path from
+   * the API. `isExternal` decides `<a>` versus a router `<Link>`, which matters:
+   * handing an absolute URL to `<Link>` makes the router treat it as an in-app
+   * path.
+   */
+  primaryCta: SiteCtaLink | null
+  secondaryCta?: SiteCtaLink | null
   /** Admin-uploaded artwork. Null draws the designed fallback panel. */
   imageUrl: string | null
   /** Drawn in the fallback panel, and as the slide's dot label for screen readers. */
@@ -45,14 +54,21 @@ export interface HeroSlide {
   stats: { value: string; label: string }[]
 }
 
+/**
+ * The designed fallback hero, shown when no admin slide is visible.
+ *
+ * These are not admin-editable and are not meant to be: they exist so the front
+ * page always has something on it. The real slides come from Website
+ * Configuration > Hero Slider.
+ */
 export const heroSlides: HeroSlide[] = [
   {
     id: 'study',
     eyebrow: 'Study in the UAE',
     heading: 'Your route to a **UAE degree**, mapped out',
     body: 'Courses, documents and timelines in one place — built for Sri Lankan students, in English and Sinhala.',
-    primaryCta: { label: 'Browse courses', to: '/courses' },
-    secondaryCta: { label: 'How it works', to: '/#about' },
+    primaryCta: { label: 'Browse courses', to: '/courses', isExternal: false },
+    secondaryCta: { label: 'How it works', to: '/#about', isExternal: false },
     imageUrl: null,
     icon: GraduationCap,
     stats: [
@@ -67,9 +83,9 @@ export const heroSlides: HeroSlide[] = [
     body: 'Interview preparation, CV writing and profession-specific guidance from people who have placed students in the Emirates.',
     // Not `/services` — services are a signed-in feature now and the public
     // site no longer promotes them (see siteNav.ts).
-    primaryCta: { label: 'Browse courses', to: '/courses' },
+    primaryCta: { label: 'Browse courses', to: '/courses', isExternal: false },
     // Not `/#success-stories` — that section is hidden for now (see HomePage).
-    secondaryCta: { label: 'What students say', to: '/#testimonials' },
+    secondaryCta: { label: 'What students say', to: '/#testimonials', isExternal: false },
     imageUrl: null,
     icon: BriefcaseBusiness,
     stats: [
@@ -82,8 +98,8 @@ export const heroSlides: HeroSlide[] = [
     eyebrow: 'Arrive prepared',
     heading: 'Every step **before and after** you fly',
     body: 'A checklist that covers visas, medicals, housing and your Emirates ID — tick it off from your phone as you go.',
-    primaryCta: { label: 'Start free', to: '/courses' },
-    secondaryCta: { label: 'Talk to us', to: '/#contact' },
+    primaryCta: { label: 'Start free', to: '/courses', isExternal: false },
+    secondaryCta: { label: 'Talk to us', to: '/#contact', isExternal: false },
     imageUrl: null,
     icon: PlaneTakeoff,
     stats: [
@@ -93,120 +109,55 @@ export const heroSlides: HeroSlide[] = [
   },
 ]
 
-/** The reassurance strip directly under the hero. */
-export interface HeroHighlight {
-  icon: LucideIcon
-  title: string
-  body: string
-}
-
-export const heroHighlights: HeroHighlight[] = [
-  {
-    icon: Globe2,
-    title: 'Built for the UAE',
-    body: 'Every course, document and checklist is written for the Emirates, not adapted from somewhere else.',
-  },
-  {
-    icon: Languages,
-    title: 'English and Sinhala',
-    body: 'Learn in the language you think in. Switch at any time, on any screen.',
-  },
-  {
-    icon: ShieldCheck,
-    title: 'Verified guidance',
-    body: 'Consultants who have taken Sri Lankan students through the process themselves.',
-  },
-  {
-    icon: Award,
-    title: 'Assessed, not just watched',
-    body: 'Finish a course with an assessment that proves you covered it.',
-  },
-]
-
 /**
- * A course tile. Mirrors what `GET public/courses` will return (`API-2`), so
- * `PUB-3` reuses this card rather than writing a second one.
+ * A course tile, as `ProgrammeCard` renders it.
+ *
+ * The view model, not the API shape: `usePublicCourses` maps
+ * `PublicCourseSummary` onto this, which is where the category icon key becomes
+ * a component and the price flag becomes `null` for free. The card never sees
+ * the raw payload, so `PUB-3`'s catalogue reuses it verbatim.
  */
 export interface ProgrammeCard {
   id: number
+  /** The course id today; a real slug once `API-4` is settled with the client. */
   slug: string
-  title: string
+  name: string
+  /**
+   * Plain text, flattened from the admin's rich text server-side. Deliberately
+   * not HTML — a public card that renders text needs no sanitiser.
+   */
   excerpt: string
-  /** Rendered as-is; already in the visitor's language when it comes from the API. */
-  durationLabel: string
-  modeLabel: string
   categoryName: string
   icon: LucideIcon
   thumbnailUrl: string | null
-  /** Three at most — the card's height is fixed by design. */
-  highlights: string[]
+  /*
+   * No `highlights` field: the three ticked topic titles the card used to draw
+   * were removed at the client's request (2026-09-25). The API still sends
+   * `topic_names` — `PUB-4`'s course detail page needs them — but nothing maps
+   * them onto the tile, so the tile does not carry them.
+   */
+  lessonsCount: number
+  /** 0 when no lesson has a duration yet — the card hides the chip then. */
+  durationSeconds: number
   /** Null means free. Integer minor units, per root CLAUDE.md §4.11. */
   priceCents: number | null
-  currency: 'LKR' | 'AED'
+  currency: string
+  /**
+   * False when the course is sold only inside its category's bundle. The card
+   * says so rather than printing a price nobody can pay on its own.
+   */
+  soldIndividually: boolean
 }
 
-export const featuredProgrammes: ProgrammeCard[] = [
-  {
-    id: 1,
-    slug: 'uae-migration-essentials',
-    title: 'UAE Migration Essentials',
-    excerpt:
-      'The whole journey end to end — visas, documents, medicals and what happens on arrival.',
-    durationLabel: '6 weeks',
-    modeLabel: 'Online',
-    categoryName: 'Migration',
-    icon: PlaneTakeoff,
-    thumbnailUrl: null,
-    highlights: ['Visa categories', 'Document checklist', 'Arrival process'],
-    priceCents: null,
-    currency: 'LKR',
-  },
-  {
-    id: 2,
-    slug: 'workplace-english',
-    title: 'Workplace English for the Gulf',
-    excerpt:
-      'The English an Emirates workplace actually uses — email, meetings, and talking to a manager.',
-    durationLabel: '8 weeks',
-    modeLabel: 'Online',
-    categoryName: 'Language',
-    icon: Languages,
-    thumbnailUrl: null,
-    highlights: ['Professional email', 'Meeting language', 'Phone confidence'],
-    priceCents: 1_200_000,
-    currency: 'LKR',
-  },
-  {
-    id: 3,
-    slug: 'interview-preparation',
-    title: 'Interview Preparation',
-    excerpt:
-      'Practise the questions Emirates employers ask, and learn what they are listening for.',
-    durationLabel: '4 weeks',
-    modeLabel: 'Online',
-    categoryName: 'Careers',
-    icon: BriefcaseBusiness,
-    thumbnailUrl: null,
-    highlights: ['Common questions', 'Salary conversations', 'Mock interviews'],
-    priceCents: 850_000,
-    currency: 'LKR',
-  },
-  {
-    id: 4,
-    slug: 'higher-education-pathway',
-    title: 'Higher Education Pathway',
-    excerpt:
-      'Choosing a university, meeting entry requirements, and getting your student visa right.',
-    durationLabel: '5 weeks',
-    modeLabel: 'Online',
-    categoryName: 'Education',
-    icon: GraduationCap,
-    thumbnailUrl: null,
-    highlights: ['University selection', 'Entry requirements', 'Student visa'],
-    priceCents: 1_500_000,
-    currency: 'LKR',
-  },
-]
+/*
+ * There is deliberately NO fallback course list.
+ *
+ * The four placeholder programmes that used to live here were removed when the
+ * carousel became live (2026-09-25). A hero headline is decoration and a generic
+ * one is harmless; an invented course is a product Plan B does not sell, with a
+ * price on it. `ProgrammesSection` has a designed "no courses published yet"
+ * state, which is the honest answer when the catalogue is empty or unreachable.
+ */
 
 /**
  * A success story. One is shown for now; the shape is an array-ready record so
@@ -469,20 +420,43 @@ export const testimonials: Testimonial[] = [
 ]
 
 /** The "Join 500+ students" band — the About Us section, redesigned. */
-export const community = {
-  eyebrow: 'Community & trust',
-  heading: 'Join **500+ Sri Lankans** building a life in the UAE',
-  body: 'Plan B International has guided students and professionals from Colombo to Dubai, Abu Dhabi and Sharjah since day one. We do not just sell a course — we stay with you until you have landed.',
+export interface CommunityContent {
+  eyebrow: string
+  /** `**word**` marks the gold segment. */
+  heading: string
+  body: string
   /**
    * A video, not a photograph (client instruction, 2026-09-25). Same
    * click-to-load treatment as everywhere else on the site — see
    * `components/shared/YouTubeFacade.tsx` for why an embed is never rendered
-   * until someone asks for it. Placeholder link until the client supplies one.
+   * until someone asks for it.
+   *
+   * **A raw admin value.** It is parsed by `youTubeVideoId()` before it reaches
+   * an iframe and is never interpolated into markup directly.
    */
-  videoUrl: 'https://www.youtube.com/watch?v=aqz-KE-bpKQ',
-  videoPosterUrl: null,
-  videoDurationLabel: '1:58',
+  videoUrl: string | null
+  videoPosterUrl: string | null
+  videoDurationLabel: string | null
   /** Drawn in the fallback panel when no video link is set. */
+  icon: LucideIcon
+  floatingLabel: string
+}
+
+/**
+ * The designed fallback About band, shown until an admin fills this in under
+ * Website Configuration > About Video. Not a placeholder — see this file's
+ * header.
+ */
+export const community: CommunityContent = {
+  eyebrow: 'Community & trust',
+  heading: 'Join **500+ Sri Lankans** building a life in the UAE',
+  body: 'Plan B International has guided students and professionals from Colombo to Dubai, Abu Dhabi and Sharjah since day one. We do not just sell a course — we stay with you until you have landed.',
+  // No fallback video: a link here would put a stranger's video on Plan B's
+  // front page whenever the admin field is empty. With none, the section draws
+  // its designed panel instead, which is the correct empty state.
+  videoUrl: null,
+  videoPosterUrl: null,
+  videoDurationLabel: null,
   icon: Users,
   floatingLabel: 'Enrolment open now',
   // The four numbered proof points that used to live here were removed with
@@ -490,11 +464,12 @@ export const community = {
 }
 
 /**
- * A person on the Our Team carousel.
+ * A person on The Team carousel.
  *
- * `CMS-4` gives this its own `team_members` table — `name`, `role`, `role_si`,
- * `sort_order`, `is_visible` and a photo via Media Library. Sinhala gets a
- * sibling column for `role` only: a person's name is not translated.
+ * Backed by the `team_members` table and managed under Website Configuration >
+ * The Team. `role` arrives already in the visitor's language — the server picks
+ * the column, this client never does. There is no `name_si` because a person's
+ * name is not translated.
  */
 export interface TeamMember {
   id: number;
@@ -505,23 +480,16 @@ export interface TeamMember {
 }
 
 /*
- * Placeholder people until the client supplies the real team and their
- * photographs.
+ * There are deliberately NO fallback team members.
  *
- * Nine of them, because the carousel shows five and a half across on a laptop:
- * with only six there would be half a card of travel, the dots would collapse
- * to two, and the "there is more to the right" affordance the half card exists
- * to provide would be telling the truth about almost nothing. The real team is
- * whatever size it is — this number only makes the component demonstrable.
+ * The nine stand-ins that used to live here were removed when the team became
+ * admin-managed: a section headed "The Team" listing invented staff is a
+ * different kind of placeholder from a generic hero headline — it is a claim
+ * about real people. `TeamSection` already has a designed empty state
+ * (`site.team.empty*`), so an empty table shows "coming soon" rather than a
+ * fabricated roster or a hole in the page.
+ *
+ * For reference when the real team is added: the carousel shows five and a half
+ * cards across on a laptop, so it looks best with six or more. The admin panel
+ * says so too.
  */
-export const teamMembers: TeamMember[] = [
-  { id: 1, name: 'Anuradha Pathirana', role: 'Founder & Director', photoUrl: null },
-  { id: 2, name: 'Sanduni Herath', role: 'Head of Student Services', photoUrl: null },
-  { id: 3, name: 'Roshan Mendis', role: 'Migration Consultant', photoUrl: null },
-  { id: 4, name: 'Dilini Fonseka', role: 'Course Coordinator', photoUrl: null },
-  { id: 5, name: 'Chathura Ranaweera', role: 'Careers Adviser', photoUrl: null },
-  { id: 6, name: 'Piumi Senanayake', role: 'Student Support Lead', photoUrl: null },
-  { id: 7, name: 'Nuwan Jayasuriya', role: 'Visa Documentation', photoUrl: null },
-  { id: 8, name: 'Thilini Rajapakse', role: 'Accounts & Payments', photoUrl: null },
-  { id: 9, name: 'Kavinda Alwis', role: 'Partnerships Manager', photoUrl: null },
-];

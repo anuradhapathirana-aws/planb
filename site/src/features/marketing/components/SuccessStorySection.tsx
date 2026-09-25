@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Container } from '@/components/shared/Container';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { YouTubeFacade } from '@/components/shared/YouTubeFacade';
-import { youTubeVideoId } from '@/lib/youtube';
+import { youTubeVideoId } from '@shared/lib/youtube';
 import type { SuccessStory } from '@/features/marketing/homeContent';
 
 /**

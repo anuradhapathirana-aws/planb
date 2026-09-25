@@ -20,7 +20,17 @@ import { cn } from '@/lib/utils';
  * CLAUDE.md §8). That refetch happens in the background, so the page re-labels
  * itself rather than blanking.
  */
-export function LanguageSwitcher({ className }: { className?: string }) {
+export function LanguageSwitcher({
+  className,
+  /**
+   * True in the navy public header. Only the trigger is inverted — the dropdown
+   * itself opens on a light surface either way, so its items need no variant.
+   */
+  onDark = false,
+}: {
+  className?: string;
+  onDark?: boolean;
+}) {
   const { t, i18n } = useTranslation();
   // Read from i18n rather than a local state, so the tick follows a change made
   // anywhere else (the portal's Profile page also switches language).
@@ -32,7 +42,11 @@ export function LanguageSwitcher({ className }: { className?: string }) {
         <Button
           variant="ghost"
           size="sm"
-          className={cn('gap-1.5', className)}
+          className={cn(
+            'gap-1.5',
+            onDark && 'text-white hover:bg-white/10 hover:text-white',
+            className,
+          )}
           aria-label={t('site.lang.label')}
         >
           <Globe className="size-4" aria-hidden="true" />

@@ -32,19 +32,30 @@
   --muted: #f1f5f9;
   --muted-foreground: #64748b;
 
-  --accent: #c79a3a;
+  /*
+   * Plan B gold (client value, 2026-09-25).
+   *
+   * A FILL colour, and gold TEXT on the navy surface: it is 7.5:1 there, and
+   * 6.8:1 under the dark `--accent-foreground` used on gold buttons.
+   */
+  --accent: #f19f00;
   --accent-foreground: #1f2937;
 
   /*
-   * The same gold, darkened for TEXT on a light background.
+   * The same gold, darkened for TEXT on a LIGHT background.
    *
-   * `--accent` is a fill colour: it reads well as a button or on the navy
-   * surface (6.3:1 there), but as text on white it is only 2.8:1 — under even
-   * the 3:1 WCAG AA allows for large text, so a gold highlighted word in a
-   * headline would fail. This is 3.8:1 on white, which clears large text
-   * comfortably. Use `--accent` for fills, `--accent-strong` for type.
+   * **`--accent` cannot be used for type on white: it measures 2.17:1**, which
+   * is under even the 3:1 WCAG AA allows for large text, so a gold highlighted
+   * word in a section heading would fail outright. This is the same hue (39°),
+   * darkened only as far as accessibility requires: 5.3:1 on white and 4.8:1 on
+   * `--accent-soft`, both clear of the 4.5:1 AA needs for body text.
+   *
+   * **Use `--accent` for fills and for gold on navy; `--accent-strong` for gold
+   * type on anything light.** Every component already follows this split — see
+   * `SectionHeading` and `CommunitySection` (light, strong) against `HeroSlider`
+   * and `TestimonialsSection` (navy, plain).
    */
-  --accent-strong: #a3761f;
+  --accent-strong: #946100;
 
   --destructive: #dc2626;
   --destructive-foreground: #ffffff;
@@ -71,7 +82,9 @@
 
   /* Soft brand tints for section backgrounds — not semantic, purely layout. */
   --primary-soft: #eef2f7;
-  --accent-soft: #faf3e3;
+  /* A tint of the new gold, so chips sit in the same hue family as the type on
+     them. `--accent-strong` is 4.8:1 against this. */
+  --accent-soft: #fef4e0;
   /* A lift of the navy, for gradients that need two stops of the same colour. */
   --primary-tint: #1c2f66;
 

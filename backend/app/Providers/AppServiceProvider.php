@@ -53,6 +53,19 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('student-account-deletion', fn (Request $request) => Limit::perMinute(6)
             ->by('acct-del:'.($request->user()?->getAuthIdentifier() ?? $request->ip())));
+
+        /*
+         * The public website's content endpoints. Read-only, anonymous, and by
+         * IP because there is no account to key on.
+         *
+         * Deliberately generous: a household or an office behind one NAT
+         * address is a single IP, and locking a real visitor out of the company
+         * home page is a worse outcome than serving a scraper a payload that
+         * never changes between calls. It is still a ceiling, which is the
+         * point — every public route is reachable by anything on the internet.
+         */
+        RateLimiter::for('public-site', fn (Request $request) => Limit::perMinute(120)
+            ->by('public-site:'.$request->ip()));
     }
 
     /** Case-insensitive, so `A@x.com` and `a@x.com` share one bucket. */

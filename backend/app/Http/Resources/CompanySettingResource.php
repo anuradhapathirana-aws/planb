@@ -33,6 +33,25 @@ class CompanySettingResource extends JsonResource
             'intro_greeting_en' => $this->intro_greeting_en,
             'intro_greeting_si' => $this->intro_greeting_si,
             'intro_animation' => $this->intro_animation->value,
+
+            /*
+             * The website's "Community & trust" band. Both language columns raw
+             * — this is the form's payload, and a fallback shown in a Sinhala
+             * input gets saved back over the empty column on the next edit.
+             * Visitors get {@see Public\PublicCommunityResource} instead.
+             */
+            'community_eyebrow' => $this->community_eyebrow,
+            'community_eyebrow_si' => $this->community_eyebrow_si,
+            'community_heading' => $this->community_heading,
+            'community_heading_si' => $this->community_heading_si,
+            'community_body' => $this->community_body,
+            'community_body_si' => $this->community_body_si,
+            'community_video_url' => $this->community_video_url,
+            'community_video_duration_label' => $this->community_video_duration_label,
+            'community_floating_label' => $this->community_floating_label,
+            'community_floating_label_si' => $this->community_floating_label_si,
+            'community_poster_url' => PublicUrl::forRequest($this->community_poster_url, $request),
+
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];
     }

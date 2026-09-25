@@ -6,10 +6,13 @@ import type {
   SaveAppIntroPayload,
   SaveBankDetailsPayload,
 } from '@shared/types/companySettings';
+import type { SaveWebsiteContentPayload } from '@shared/types/siteContent';
 
 /**
- * Settings > Bank Details and Settings > App Intro — one singleton record saved
- * in two halves. See `backend/app/Http/Controllers/Admin/CompanySettingController.php`.
+ * Settings > Bank Details, Settings > App Intro and Website Configuration >
+ * About Video — one singleton record saved in separate halves, so each page
+ * submits only its own fields and the halves can carry different permissions.
+ * See `backend/app/Http/Controllers/Admin/CompanySettingController.php`.
  */
 
 export async function fetchCompanySettings(): Promise<CompanySettings> {
@@ -29,6 +32,36 @@ export async function updateAppIntro(payload: SaveAppIntroPayload): Promise<Comp
   const { data } = await apiClient.put<ApiResource<CompanySettings>>(
     '/admin/company-settings/app-intro',
     payload,
+  );
+  return data.data;
+}
+
+/** The website's "Community & trust" band — heading, copy and the video link. */
+export async function updateWebsiteContent(
+  payload: SaveWebsiteContentPayload,
+): Promise<CompanySettings> {
+  const { data } = await apiClient.put<ApiResource<CompanySettings>>(
+    '/admin/company-settings/website',
+    payload,
+  );
+  return data.data;
+}
+
+/** The still frame shown before the About video is played. */
+export async function uploadCommunityPoster(file: File): Promise<CompanySettings> {
+  const body = new FormData();
+  body.append('poster', file);
+
+  const { data } = await apiClient.post<ApiResource<CompanySettings>>(
+    '/admin/company-settings/community-poster',
+    body,
+  );
+  return data.data;
+}
+
+export async function deleteCommunityPoster(): Promise<CompanySettings> {
+  const { data } = await apiClient.delete<ApiResource<CompanySettings>>(
+    '/admin/company-settings/community-poster',
   );
   return data.data;
 }

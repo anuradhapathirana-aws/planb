@@ -28,14 +28,27 @@ return Application::configure(basePath: dirname(__DIR__))
          */
         then: function () {
             /*
-             * `SetLocaleFromRequest` sits on this group and only this group: the
-             * student app picks a language, the admin panel does not (see the
-             * middleware's own note).
+             * `SetLocaleFromRequest` sits on the two student-facing groups and
+             * not on the admin one: a student app and a website visitor each
+             * pick a language, the admin panel does not (see the middleware's
+             * own note).
              */
             Route::middleware(['api', SetLocaleFromRequest::class])
                 ->prefix('api/v1/student')
                 ->name('student.')
                 ->group(base_path('routes/api_student.php'));
+
+            /*
+             * The public website's anonymous endpoints. A third file, not a
+             * group inside one of the other two: this is the only part of the
+             * application with no authenticated actor, and keeping it apart on
+             * disk is what stops an authenticated route being added to it —
+             * or a public one being added to theirs — by accident.
+             */
+            Route::middleware(['api', SetLocaleFromRequest::class])
+                ->prefix('api/v1/public')
+                ->name('public.')
+                ->group(base_path('routes/api_public.php'));
         },
     )
     ->withMiddleware(function (Middleware $middleware) {

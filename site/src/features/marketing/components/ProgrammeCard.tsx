@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight, Check, Clock, Monitor } from 'lucide-react';
+import { ArrowRight, Clock, PlayCircle } from 'lucide-react';
 
-import { formatMoney } from '@shared/lib/formatters';
+import { formatCourseLength, formatMoney } from '@shared/lib/formatters';
 import { paths } from '@/routes/paths';
 import type { ProgrammeCard as Programme } from '@/features/marketing/homeContent';
 
@@ -19,6 +19,19 @@ export function ProgrammeCard({ programme }: { programme: Programme }) {
   const { icon: Icon } = programme;
   const isFree = programme.priceCents === null;
   const href = paths.courseDetail(programme.slug);
+
+  /*
+   * Both chips are real facts and both can legitimately be absent: a course with
+   * no lessons uploaded yet has nothing to count, and a course whose lessons
+   * have no duration recorded sums to 0. Each is hidden rather than drawn as
+   * "0 lessons" or "0m", which reads as a broken card rather than an empty one.
+   */
+  const durationLabel =
+    programme.durationSeconds > 0 ? formatCourseLength(programme.durationSeconds) : null;
+  const lessonsLabel =
+    programme.lessonsCount > 0
+      ? `${programme.lessonsCount} ${programme.lessonsCount === 1 ? 'lesson' : 'lessons'}`
+      : null;
 
   return (
     <article className="group relative flex flex-col overflow-hidden rounded-xl border bg-card transition-shadow hover:shadow-lg">
@@ -44,16 +57,24 @@ export function ProgrammeCard({ programme }: { programme: Programme }) {
           admin-uploaded thumbnail can be any colour, and white-on-white is how
           a badge disappears in production but not in review.
         */}
-        <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-gradient-to-t from-black/70 to-transparent p-3">
-          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-white">
-            <Clock className="size-3" aria-hidden="true" />
-            {programme.durationLabel}
-          </span>
-          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-white">
-            <Monitor className="size-3" aria-hidden="true" />
-            {programme.modeLabel}
-          </span>
-        </div>
+        {(durationLabel || lessonsLabel) && (
+          <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-gradient-to-t from-black/70 to-transparent p-3">
+            {durationLabel ? (
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-white">
+                <Clock className="size-3" aria-hidden="true" />
+                {durationLabel}
+              </span>
+            ) : (
+              <span />
+            )}
+            {lessonsLabel ? (
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-white">
+                <PlayCircle className="size-3" aria-hidden="true" />
+                {lessonsLabel}
+              </span>
+            ) : null}
+          </div>
+        )}
       </div>
 
       {/* ------------------------------------------------------------- body */}
@@ -64,25 +85,45 @@ export function ProgrammeCard({ programme }: { programme: Programme }) {
 
         <h3 className="mt-1.5 text-base font-semibold leading-snug text-primary">
           <Link to={href} className="outline-none after:absolute after:inset-0 focus-visible:underline">
-            {programme.title}
+            {programme.name}
           </Link>
         </h3>
 
-        {/* Clamped so a long excerpt cannot make one card taller than its row. */}
-        <p className="mt-2 line-clamp-2 text-[13px] leading-relaxed text-muted-foreground">{programme.excerpt}</p>
+        {/*
+          Clamped so a long excerpt cannot make one card taller than its row, and
+          omitted entirely when the course has no description yet — an empty
+          paragraph still occupies two lines, which reads as content that failed
+          to load rather than content that was never written.
+        */}
+        {programme.excerpt !== '' && (
+          <p className="mt-2 line-clamp-2 text-[13px] leading-relaxed text-muted-foreground">
+            {programme.excerpt}
+          </p>
+        )}
 
-        <ul className="mt-3 space-y-1.5">
-          {programme.highlights.slice(0, 3).map((highlight) => (
-            <li key={highlight} className="flex items-start gap-1.5 text-[13px] text-muted-foreground">
-              <Check className="mt-0.5 size-3.5 shrink-0 text-success" aria-hidden="true" />
-              {highlight}
-            </li>
-          ))}
-        </ul>
+        {/*
+          The three ticked topic-title bullets that used to sit here were removed
+          at the client's request (2026-09-25). The card is now artwork, category,
+          title, excerpt and price. Do not reinstate them without asking; the
+          topic titles are still in the payload for `PUB-4`'s detail page.
+        */}
+
+        {/* Pushes the price row to the bottom so cards in a row line up even
+            when one has no excerpt and the next has a two-line title. */}
+        <div className="flex-1" />
 
         <div className="mt-4 flex items-center justify-between gap-2 border-t pt-3">
+          {/*
+            A bundle-only course has a price that nobody can pay on its own, so
+            printing it would be an offer we do not make. The backend enforces
+            the same rule on the enrol endpoint; this is only what is drawn.
+          */}
           <p className="text-sm font-semibold text-primary">
-            {isFree ? 'Free' : formatMoney(programme.priceCents, programme.currency)}
+            {isFree
+              ? 'Free'
+              : programme.soldIndividually
+                ? formatMoney(programme.priceCents, programme.currency)
+                : 'In a bundle'}
           </p>
 
           {/*

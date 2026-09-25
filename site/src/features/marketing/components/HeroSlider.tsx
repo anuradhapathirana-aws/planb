@@ -8,6 +8,7 @@ import { Highlight } from '@/components/shared/Highlight';
 import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
 import { cn } from '@/lib/utils';
 import type { HeroSlide } from '@/features/marketing/homeContent';
+import type { SiteCtaLink } from '@/features/marketing/siteLinks';
 
 const ADVANCE_MS = 7000;
 
@@ -94,7 +95,7 @@ export function HeroSlider({ slides }: { slides: HeroSlide[] }) {
         className="pointer-events-none absolute -right-24 -top-24 size-[28rem] rounded-full bg-accent/10 blur-3xl"
       />
 
-      <Container className="relative grid items-center gap-10 py-14 sm:py-20 lg:grid-cols-2 lg:gap-14 lg:py-24">
+      <Container className="relative grid items-center gap-8 py-10 sm:py-14 lg:grid-cols-2 lg:gap-10 lg:py-16">
         {/* ------------------------------------------------------------ copy */}
         <div
           className="flex flex-col justify-center"
@@ -178,35 +179,84 @@ function HeroCopy({
         !reduceMotion && (isActive ? 'translate-y-0' : 'translate-y-2'),
       )}
     >
-      <span className="inline-flex items-center rounded-full border border-surface-border bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-accent">
-        {slide.eyebrow}
-      </span>
+      {/* The chip and the paragraph are both optional for an admin-written
+          slide. Rendered conditionally so a blank one is absent rather than an
+          empty bordered pill or a stray gap above the buttons. */}
+      {slide.eyebrow ? (
+        <span className="inline-flex items-center rounded-full border border-surface-border bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-accent">
+          {slide.eyebrow}
+        </span>
+      ) : null}
 
-      <h1 className="mt-4 text-3xl font-bold leading-[1.15] tracking-tight sm:text-4xl lg:text-5xl">
+      <h1 className="mt-3 text-3xl font-bold leading-[1.15] tracking-tight sm:text-4xl lg:text-5xl">
         {/* Gold on navy is 6.3:1, so the darker `accent-strong` that light
             backgrounds need would only muddy it here. */}
         <Highlight text={slide.heading} className="text-accent" />
       </h1>
 
-      <p className="mt-4 max-w-xl text-base leading-relaxed text-surface-muted sm:text-lg">{slide.body}</p>
+      {slide.body ? (
+        <p className="mt-3 max-w-xl text-base leading-relaxed text-surface-muted sm:text-lg">
+          {slide.body}
+        </p>
+      ) : null}
 
-      <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-        <Button asChild variant="accent" size="xl">
-          <Link to={slide.primaryCta.to} tabIndex={tabIndex}>
-            {slide.primaryCta.label}
-            <ArrowRight className="size-4" aria-hidden="true" />
-          </Link>
-        </Button>
+      {/* Either button can be absent: an admin may set a slide to show one, or
+          none at all. The row simply collapses. */}
+      {slide.primaryCta || slide.secondaryCta ? (
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+          {slide.primaryCta ? (
+            <CtaButton cta={slide.primaryCta} variant="accent" tabIndex={tabIndex} withArrow />
+          ) : null}
 
-        {slide.secondaryCta ? (
-          <Button asChild variant="onSurface" size="xl">
-            <Link to={slide.secondaryCta.to} tabIndex={tabIndex}>
-              {slide.secondaryCta.label}
-            </Link>
-          </Button>
-        ) : null}
-      </div>
+          {slide.secondaryCta ? (
+            <CtaButton cta={slide.secondaryCta} variant="onSurface" tabIndex={tabIndex} />
+          ) : null}
+        </div>
+      ) : null}
     </div>
+  );
+}
+
+/**
+ * One hero button.
+ *
+ * **An external destination is a real `<a>`, never a router `<Link>`.** Handing
+ * `<Link>` an absolute URL makes the router treat it as an in-app path and
+ * navigate to `/https://…`. `rel="noreferrer noopener"` goes with it: the target
+ * is a page an admin typed, so it is not to be trusted with a handle on this
+ * window. Only `http`/`https` reach here — the server restricts the scheme on
+ * write and `siteLinks.ts` is the only thing that marks a destination external.
+ */
+function CtaButton({
+  cta,
+  variant,
+  tabIndex,
+  withArrow,
+}: {
+  cta: SiteCtaLink;
+  variant: 'accent' | 'onSurface';
+  tabIndex: number;
+  withArrow?: boolean;
+}) {
+  const label = (
+    <>
+      {cta.label}
+      {withArrow ? <ArrowRight className="size-4" aria-hidden="true" /> : null}
+    </>
+  );
+
+  return (
+    <Button asChild variant={variant} size="xl">
+      {cta.isExternal ? (
+        <a href={cta.to} tabIndex={tabIndex} target="_blank" rel="noreferrer noopener">
+          {label}
+        </a>
+      ) : (
+        <Link to={cta.to} tabIndex={tabIndex}>
+          {label}
+        </Link>
+      )}
+    </Button>
   );
 }
 
@@ -286,7 +336,7 @@ function HeroControls({
   onTogglePause: () => void;
 }) {
   return (
-    <div className="mt-9 flex items-center gap-3">
+    <div className="mt-6 flex items-center gap-3">
       <div className="flex gap-2" role="tablist" aria-label="Slides">
         {slides.map((item, itemIndex) => (
           <button
@@ -294,7 +344,10 @@ function HeroControls({
             type="button"
             role="tab"
             aria-selected={itemIndex === index}
-            aria-label={item.eyebrow}
+            /* The chip is the slide's name for a screen reader, but it is
+               optional content — an admin may leave it blank, and an unlabelled
+               tab is unusable. The position is the honest fallback. */
+            aria-label={item.eyebrow || `Slide ${itemIndex + 1}`}
             onClick={() => onGoTo(itemIndex)}
             /*
              * The visible bar is 4px tall, but the button is a full 44px with a

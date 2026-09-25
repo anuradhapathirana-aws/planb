@@ -76,6 +76,56 @@ final class PlainText
         return $value === '' ? null : $value;
     }
 
+    /**
+     * A short plain-text summary of a rich-text field, for a card or a list row.
+     *
+     * **This is not a sanitizer and must never be used as one.** It exists so a
+     * client can show a course description as two lines of text without
+     * rendering HTML at all — which is the point: a plain string needs no
+     * DOMPurify at the other end, so a public card cannot become an injection
+     * surface by accident (root CLAUDE.md §7.6). The stored HTML is already
+     * sanitized on write by {@see HtmlSanitizer}; this throws the markup away a
+     * second time rather than relying on that.
+     *
+     * Block tags become spaces before the strip so "</p><p>" does not weld two
+     * sentences into one word. Truncation falls back to a hard cut when a value
+     * has no space in the last quarter — a long unbroken string must not return
+     * a near-empty excerpt.
+     */
+    public static function excerptFromHtml(?string $html, int $maxChars = 200): ?string
+    {
+        if ($html === null || ! mb_check_encoding($html, 'UTF-8')) {
+            return null;
+        }
+
+        $text = (string) preg_replace('/<(br|\/p|\/li|\/h[1-6]|\/blockquote)[^>]*>/i', ' ', $html);
+        $text = strip_tags($text);
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+        // Reuse the normalizer for invisible characters and whitespace runs,
+        // then flatten the newlines it deliberately preserves — an excerpt is
+        // one line.
+        $text = (string) preg_replace('/\s+/u', ' ', (string) self::clean($text));
+        $text = trim($text);
+
+        if ($text === '') {
+            return null;
+        }
+
+        if (mb_strlen($text) <= $maxChars) {
+            return $text;
+        }
+
+        $cut = mb_substr($text, 0, $maxChars);
+        $lastSpace = mb_strrpos($cut, ' ');
+
+        if ($lastSpace !== false && $lastSpace > (int) ($maxChars * 0.75)) {
+            $cut = mb_substr($cut, 0, $lastSpace);
+        }
+
+        return rtrim($cut, " \t\n,.;:").'…';
+    }
+
     /** True when the value carries something a browser would parse as a tag. */
     public static function containsMarkup(string $value): bool
     {

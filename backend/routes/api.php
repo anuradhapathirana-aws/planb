@@ -17,7 +17,9 @@ use App\Http\Controllers\Admin\OrderController;
 use App\Http\Controllers\Admin\ProfessionController;
 use App\Http\Controllers\Admin\ServiceController;
 use App\Http\Controllers\Admin\ServicePurchaseController;
+use App\Http\Controllers\Admin\SiteHeroSlideController;
 use App\Http\Controllers\Admin\StudentManagementController;
+use App\Http\Controllers\Admin\TeamMemberController;
 use App\Http\Controllers\BunnyStreamWebhookController;
 use App\Http\Controllers\CheckoutRedirectController;
 use App\Http\Controllers\CourseVideoPlaybackController;
@@ -175,6 +177,36 @@ Route::prefix('v1/admin')->group(function () {
         Route::put('/company-settings/app-intro', [CompanySettingController::class, 'updateAppIntro']);
         Route::post('/company-settings/logo', [CompanySettingController::class, 'uploadLogo']);
         Route::delete('/company-settings/logo', [CompanySettingController::class, 'deleteLogo']);
+
+        /*
+         * Website Configuration — the public site's admin-managed content.
+         * Anonymous visitors read the same three things through
+         * `GET api/v1/public/site-content`, which has its own Resources: the
+         * shapes here carry both language columns and editorial state, and
+         * `company-settings` carries the bank account, so none of them may be
+         * reused on the public route (root CLAUDE.md §16.4).
+         *
+         * The "About video" half of the website content is a third slice of
+         * the `company_settings` singleton, beside bank details and app intro.
+         *
+         * `reorder` is declared before each apiResource so the `{id}` parameter
+         * never swallows it. Images upload on their own endpoints, same as home
+         * banner artwork — which also means a record must exist before it can be
+         * given one, since Media Library needs a saved model.
+         */
+        Route::put('/company-settings/website', [CompanySettingController::class, 'updateWebsiteContent']);
+        Route::post('/company-settings/community-poster', [CompanySettingController::class, 'uploadCommunityPoster']);
+        Route::delete('/company-settings/community-poster', [CompanySettingController::class, 'deleteCommunityPoster']);
+
+        Route::post('/site-hero-slides/reorder', [SiteHeroSlideController::class, 'reorder']);
+        Route::post('/site-hero-slides/{site_hero_slide}/image', [SiteHeroSlideController::class, 'uploadImage']);
+        Route::delete('/site-hero-slides/{site_hero_slide}/image', [SiteHeroSlideController::class, 'deleteImage']);
+        Route::apiResource('site-hero-slides', SiteHeroSlideController::class);
+
+        Route::post('/team-members/reorder', [TeamMemberController::class, 'reorder']);
+        Route::post('/team-members/{team_member}/photo', [TeamMemberController::class, 'uploadPhoto']);
+        Route::delete('/team-members/{team_member}/photo', [TeamMemberController::class, 'deletePhoto']);
+        Route::apiResource('team-members', TeamMemberController::class);
 
         Route::get('/checklists/{phase}', [ChecklistItemController::class, 'index']);
         Route::put('/checklists/{phase}', [ChecklistItemController::class, 'update']);

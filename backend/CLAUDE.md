@@ -12,6 +12,14 @@ There are two kinds of authenticated actor and they share nothing:
 | Admin / staff | `App\Models\User` | `/api/v1/admin/*` | Sanctum SPA cookie session, from `web/` |
 | Student | `App\Models\Student` | `/api/v1/student/*` | Sanctum Bearer token, from `mobile/` |
 
+There is now a third route group with **no actor at all** — `/api/v1/public/*`, in
+`routes/api_public.php`, for the marketing website. It authenticates nobody and must stay that way:
+visibility is enforced in the query (a Service's `live()` scope), and **every response goes through a
+Resource in `app/Http/Resources/Public/` that names the fields it sends**. That naming is not
+stylistic. `PublicCommunityResource` reads the `company_settings` singleton, which also holds Plan
+B's bank account number — reusing `CompanySettingResource` there would publish it. `tests/Feature/
+PublicSiteContentTest.php` asserts it never appears; if that fails, stop.
+
 Both models use `HasApiTokens`. **Sanctum does not separate them for you.** Two facts in vendor code:
 
 - `vendor/laravel/sanctum/src/Guard.php` — `__invoke()` loops over

@@ -52,6 +52,17 @@ Everything built before this app was authenticated. Here, strangers reach the AP
   the `.pb-rich-text` class.
 - **The home page's sections come from a fixed registry**, keyed by the section `type` the API sends.
   An unknown type renders nothing. Never build a component name, import path or class from admin input.
+- **Two more fixed registries exist for the same reason**, and both are exhaustive `Record`s over a
+  union so a new case fails to compile rather than failing at runtime:
+  `features/marketing/heroIcons.ts` maps an admin-chosen icon key to a Lucide component, and
+  `features/marketing/siteLinks.ts` maps a button destination to a route. **An admin never types a
+  path.** The one destination that is free text (`url`) is restricted to `http`/`https` server-side
+  and renders as a real `<a rel="noreferrer noopener">` — handing an absolute URL to a router `<Link>`
+  makes it navigate to `/https://…`.
+- **A pasted video link is parsed by `@shared/lib/youtube`, never trusted.** It lives in `shared/`
+  because the admin panel uses the same parser to warn before saving, and a second copy would let
+  one accept what the other rejects. `App\Support\YouTube` is the third implementation and is the
+  one that actually enforces the rule — these two protect the visitor, not the database.
 - **Every page is `React.lazy`-loaded.** A visitor landing on the marketing home must not download the
   portal's video player. `video.js` is pinned to its own `player` chunk in `vite.config.ts`.
 - **Mobile-first.** A student who signed up on the app may well open the portal on their phone.

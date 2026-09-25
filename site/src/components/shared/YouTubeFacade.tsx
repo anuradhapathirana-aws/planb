@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Play } from 'lucide-react';
 
-import { youTubeEmbedUrl, youTubeThumbnailUrl } from '@/lib/youtube';
+import { youTubeEmbedUrl, youTubeThumbnailUrl } from '@shared/lib/youtube';
 import { cn } from '@/lib/utils';
 
 /** Injected once, on hover/focus, so the click itself starts warm. */
@@ -35,7 +35,7 @@ function preconnect() {
  *
  * Consequences worth knowing:
  *  - A visitor who does not play is never handed to Google. One who does gets
- *    `youtube-nocookie.com` (see `lib/youtube.ts`).
+ *    `youtube-nocookie.com` (see `@shared/lib/youtube`).
  *  - The poster falls back to YouTube's cookieless thumbnail host when the admin
  *    has not uploaded one, so the section is never empty.
  *  - Hovering or tab-focusing the button preconnects, so the click is not

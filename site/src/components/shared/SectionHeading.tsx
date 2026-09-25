@@ -9,6 +9,20 @@ import { cn } from '@/lib/utils';
  *
  * One component rather than one per section, so a new section cannot invent a
  * fourth heading size and knock the page's rhythm out.
+ *
+ * **The home page's vertical rhythm, tightened at the client's request
+ * (2026-09-25).** A new section should match it rather than pick its own:
+ *
+ * | Where | Value |
+ * |---|---|
+ * | Section wrapper | `py-12 sm:py-14` |
+ * | Hero (taller by design) | `py-10 sm:py-14 lg:py-16` |
+ * | Two-column grid gap | `gap-8 lg:gap-10` |
+ * | Heading → content below | `mt-8` |
+ * | Inside this block | `gap-3`, title `mt-2.5`, body `mt-2` |
+ *
+ * The title gold is `--accent-strong`, never `--accent`: the plain gold is
+ * 2.17:1 on white and fails WCAG AA outright. See `index.css`.
  */
 export function SectionHeading({
   eyebrow,
@@ -30,10 +44,19 @@ export function SectionHeading({
   return (
     <div
       className={cn(
-        'flex flex-col gap-4',
-        // The action sits beside the text on desktop and underneath on mobile,
-        // where a right-aligned link next to a wrapped title reads as debris.
-        !centered && action && 'sm:flex-row sm:items-end sm:justify-between',
+        'flex flex-col gap-3',
+        /*
+         * The action sits beside the text on desktop and underneath on mobile,
+         * where a right-aligned control next to a wrapped title reads as debris.
+         *
+         * `items-start`, so the action lines up with the TITLE (client
+         * instruction, 2026-09-25) rather than with the bottom of the lead
+         * paragraph, which is where `items-end` left it — visibly adrift from
+         * the heading it belongs to. Note that this aligns to the top of the
+         * text block: give a section with an eyebrow chip its own offset if it
+         * ever needs one, rather than changing this for everybody.
+         */
+        !centered && action && 'sm:flex-row sm:items-start sm:justify-between',
         className,
       )}
     >
@@ -44,14 +67,21 @@ export function SectionHeading({
           </span>
         ) : null}
 
-        <h2 className={cn('text-2xl font-bold tracking-tight text-primary sm:text-3xl', eyebrow && 'mt-3')}>
+        <h2 className={cn('text-2xl font-bold tracking-tight text-primary sm:text-3xl', eyebrow && 'mt-2.5')}>
           <Highlight text={title} />
         </h2>
 
-        {body ? <p className="mt-3 text-base leading-relaxed text-muted-foreground">{body}</p> : null}
+        {body ? <p className="mt-2 text-base leading-relaxed text-muted-foreground">{body}</p> : null}
       </div>
 
-      {action ? <div className={cn('shrink-0', centered && 'mx-auto')}>{action}</div> : null}
+      {/*
+        Rendered without a wrapper unless it needs centring. A wrapper is a flex
+        child whether or not anything came out of it, so `gap-3` would reserve
+        space under the paragraph for an action that decided to render nothing —
+        `CarouselArrows` does exactly that on a strip that fits in one page.
+        The trade: a left/right action supplies its own `shrink-0`.
+      */}
+      {action ? (centered ? <div className="mx-auto shrink-0">{action}</div> : action) : null}
     </div>
   );
 }

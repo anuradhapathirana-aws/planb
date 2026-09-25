@@ -156,6 +156,19 @@ Today:
    CSRF for requests from it. `site/` calls `/sanctum/csrf-cookie` before its first state-changing
    request, exactly as `web/src/api/client.ts` already does.
 
+6. **And add it to `FRONTEND_URLS` (CORS) as well. These are two lists and both are required.**
+   This was got wrong once and cost real time, so it is worth stating plainly: `site/` was added to
+   `SANCTUM_STATEFUL_DOMAINS` but not to `config/cors.php`'s origin list, and **every API call from
+   the website failed silently for days.** The failure gives you nothing to search for — the request
+   reaches Laravel, is answered `200`, and appears healthy in the log; the *browser* discards the body
+   because `Access-Control-Allow-Origin` names the admin panel instead. On the website that looked
+   like "the CMS content is not showing", not like a network error.
+
+   CORS decides whether the browser hands the response to JavaScript. Sanctum decides whether the
+   request gets a session. An origin in one list but not the other is broken in a way no server-side
+   test would have caught — which is why `tests/Feature/CorsTest.php` now asserts **the header value**,
+   not merely its presence. Add an origin to both lists or to neither.
+
 **Why this is safe:** different domains means the admin cookie and the student cookie never travel
 together. Even if they did, `student-web` has the `students` provider (can never load a `User`),
 `auth:sanctum` reads `sanctum.guard = ['web']` with the `users` provider (can never load a
@@ -525,12 +538,31 @@ ticked there too.
 - [ ] **API-1 — Public route file + resources.** `routes/api_public.php` under `/api/v1/public`, no
   auth, registered in `bootstrap/app.php` beside the student group. Own Resources in
   `app/Http/Resources/Public/`. Named IP rate limiters. Ties to **SEC-2**.
-- [ ] **API-2 — Public catalog endpoints.** `GET public/courses` (paginated, search, category filter,
-  sort), `GET public/courses/{course}` (syllabus: topic and lesson titles + durations only),
-  `GET public/course-categories`, `GET public/course-categories/{category}`, `GET public/services`,
-  `GET public/services/{service}`. Published-only scoping in the query, per `backend/CLAUDE.md` §2.
-  **Do not register a global `Route::bind` — it would filter the admin routes too.** That trap is
-  documented at the top of `routes/api_student.php`; re-read it.
+- [~] **API-2 — Public catalog endpoints.** Partly done.
+  - [x] **`GET public/courses` — DONE 2026-09-25.** Paginated, with `search` (course name OR topic
+    title, both scripts, LIKE wildcards escaped) and `category_id` (a parent means itself plus its
+    sub-categories). `PublicCourseService` + `PublicCourseSummaryResource`. **Its own Service, not a
+    nullable-`Student` branch in `StudentCourseService`** — that one joins enrolment, wishlist and
+    progress onto every row, and making the student optional there is one forgotten null check away
+    from handing a stranger another student's state. Visibility is stricter here too, deliberately: a
+    student keeps a course whose category was switched off because they paid for it; a visitor has no
+    such claim, so the category rule is absolute.
+    - `per_page` is capped at `PublicCourseService::MAX_PER_PAGE` (48) in **both** the Form Request
+      and the Service. An unbounded page on an open endpoint is a free way to make the server
+      assemble the whole catalogue on demand.
+    - `category_id` is **not** validated with `exists:` — a 422 would let a stranger enumerate which
+      category ids exist. An unknown id matches nothing, which leaks nothing.
+    - `excerpt` is **plain text**, flattened server-side by `PlainText::excerptFromHtml()`. The stored
+      description is admin-authored HTML; sending the markup would force the public card to render it
+      with DOMPurify to produce two clamped lines. Flattened text cannot be an injection surface at
+      all. The full HTML belongs on the detail endpoint, where the sanitiser is worth it.
+    - Ordering is `category → sort_order → id`, **not** `published_at desc`. Plan B's courses are a
+      sequence ("Course 1, Course 2…") and newest-first would present step four before step one.
+  - [ ] `GET public/courses/{course}` (syllabus: topic and lesson titles + durations only),
+    `GET public/course-categories`, `GET public/course-categories/{category}`, `GET public/services`,
+    `GET public/services/{service}`. Published-only scoping in the query, per `backend/CLAUDE.md` §2.
+    **Do not register a global `Route::bind` — it would filter the admin routes too.** That trap is
+    documented at the top of `routes/api_student.php`; re-read it.
 - [ ] **API-3 — Public site content endpoint.** `GET public/site-content` returns visible sections in
   admin order with their resolved content, plus vision/mission/about/contact. One request — the
   homepage must not make twelve.
@@ -540,7 +572,34 @@ ticked there too.
 
 ### PHASE CMS — Website content
 
-- [ ] **CMS-1 — Schema. ASK the user before migrating.** Proposed:
+- [x] **CMS-0 — Website Configuration (hero slider · About video · team). DONE 2026-09-25.**
+  The client asked for these three first, so they shipped as their own slice ahead of the general
+  section builder. Approved schema, migrated:
+  - `site_hero_slides` — eyebrow/heading/body (+`_si`), two buttons (label +`_si`, target, course id,
+    url), two stat pairs, `icon`, `sort_order`, `is_visible`; artwork via Media Library at
+    **1200×900 (4:3)**. **Not `home_banners`** — that is the mobile app's 64:27 carousel with one
+    headline and one tap target, and sharing a table would leave half the columns null for whichever
+    client was not being edited. The rationale is in the migration's docblock.
+  - `team_members` — `name`, `role`, `role_si`, `sort_order`, `is_visible`; photo via Media Library
+    at **800×1000 (4:5), cropped from the top** so a head-and-shoulders photo keeps the head. No
+    `name_si`: a person's name is not translated.
+  - `company_settings` extended with ten `community_*` columns + a `community_poster` collection.
+  - **Button destinations are `App\Enums\SiteLinkTarget`, a fixed nine-case list — never a typed
+    path.** `site/src/features/marketing/siteLinks.ts` is the exhaustive `Record` that resolves them,
+    and is the `SEC-5` / open-redirect boundary for links. `heroIcons.ts` is the same for icons.
+  - **The About video is a YouTube link, not an upload** (client decision). Validated three times and
+    each for a different reason: `App\Support\YouTube` on write protects the database,
+    `@shared/lib/youtube` protects the visitor before an iframe exists, and the admin form uses the
+    shared parser to warn before saving. `site/src/lib/youtube.ts` **moved to
+    `shared/src/lib/youtube.ts`** so the admin panel and the website cannot drift.
+  - `GET api/v1/public/site-content` serves all three, with `routes/api_public.php`, the
+    `public-site` IP rate limiter and **its own Resources in `app/Http/Resources/Public/`** — that
+    separation is load-bearing here, because `company_settings` also holds Plan B's bank account.
+    A test asserts the account number never appears in the response.
+  - The website **falls back to designed defaults** for the hero and About band when the admin has
+    published nothing, and shows `TeamSection`'s own empty state for the team. `WebsiteContentSeeder`
+    puts the same copy in the database locally, so the admin panel opens with something to edit.
+- [ ] **CMS-1 — The remaining schema. ASK the user before migrating.** Proposed:
   - `site_sections` — `type` (string-backed PHP enum), `sort_order`, `is_visible`, `heading`,
     `heading_si`, `body`, `body_si`, `settings` (json), timestamps.
   - `success_stories` — `student_name`, `role`, `role_si`, `year`, `quote`, `quote_si`, `body`,
@@ -553,11 +612,16 @@ ticked there too.
     `is_visible`, photo via Media Library.
   - `faqs` — `question`, `question_si`, `answer`, `answer_si`, `sort_order`, `is_visible`.
   - **Extend the existing `company_settings` singleton** for vision, mission, about, contact details
-    and social links — rather than adding a second settings table.
+    and social links — rather than adding a second settings table. `CMS-0` already did this for the
+    About band; follow the same `community_*` naming and add the new fields to
+    `UpdateWebsiteContentRequest` and `PublicCommunityResource` (never to the admin Resource alone —
+    the public one names what it sends on purpose).
 - [ ] **CMS-2 — Section types + per-type Zod/Form Request schemas.** Hero · Stats · Course Categories ·
   Featured Courses · Why Plan B · Vision & Mission · Success Stories · Testimonials · Premium Services ·
   CTA Banner · FAQ · Contact. Ties to **SEC-5**.
-- [ ] **CMS-3 — Admin UI: homepage builder.** New "Website" sidebar group. Drag-to-reorder list of
+- [ ] **CMS-3 — Admin UI: homepage builder.** The **Website Configuration** sidebar group already
+  exists (`CMS-0`) with Hero Slider, About Video and The Team — add the section builder to it rather
+  than creating a second group. Drag-to-reorder list of
   sections with show/hide, and an edit panel per section. Follow the Sectioned Admin Forms pattern and
   the repeatable-row conventions in root `CLAUDE.md` §8 — collapsible cards, explicit up/down buttons,
   `client_key` per row, position in the array *is* `sort_order`.
@@ -850,8 +914,9 @@ written and worth reusing rather than re-deriving.
 
 ### PHASE DEP — Deployment
 
-- [ ] **DEP-1 — Domains + DNS. ASK** for the exact names. Add them to `SANCTUM_STATEFUL_DOMAINS`, CORS
-  `allowed_origins` and `SESSION_DOMAIN`.
+- [ ] **DEP-1 — Domains + DNS. ASK** for the exact names. Add **both** the admin and the site origin
+  to `FRONTEND_URLS` (CORS) **and** `SANCTUM_STATEFUL_DOMAINS`, plus `SESSION_DOMAIN`. Missing one of
+  the two lists fails silently — see §2.3 step 6. Then run `CorsTest` against the real hosts.
 - [ ] **DEP-2 — Nginx vhost + TLS** for the site domain; SPA fallback that does not swallow the
   prerendered files; security headers (**SEC-10**).
 - [ ] **DEP-3 — Build pipeline** for `site/`. Extend `docs/deployment.md`.
@@ -885,8 +950,13 @@ Append one line per completed task: date · task ID · what landed · files touc
 | 2026-09-25 | PUB-1 (part) | Community/About band's four numbered proof cards removed and its background made a gradient fading to the page surface. |
 | 2026-09-25 | PUB-1 (part) | Community/About band's right column became a video (same `YouTubeFacade`), keeping the "Enrolment open now" pill. **Success stories hidden** on the home page at the client's request — component kept, and the three links that pointed at it (nav, hero slide 2, testimonials CTA) all retargeted so nothing scrolls nowhere. |
 | 2026-09-25 | PUB-1 (part) | Testimonial wall retuned to a second client reference: cards widened to 9.9% and squared to **4:5**, packed to an **11.6px gap** on an even 10.85% column pitch, and **all rotation and scaling removed** — every card upright and identical. |
+| 2026-09-25 | CMS-0 | **Website Configuration shipped** — admin-managed hero slider, About video and team, plus the first public endpoint (`GET public/site-content`) and the website wired to it. Three migrations, two enums, two policies, three services, eight Form Requests, five Resources (three of them public-only), 29 new feature tests. `site/src/lib/youtube.ts` moved to `shared/` so the admin panel and the website parse a pasted link identically. The nine invented team members were **deleted** rather than kept as a fallback — a section headed "The Team" is a claim about real people. |
+| 2026-09-25 | API-2 (part) · PUB-1 | **"Our Programmes" is live.** `GET public/courses` built (own Service and Resource, 19 tests) and the section rewritten from a 4-across grid to a **carousel** at the client's request — every published course, 4.5 cards across a laptop down to 1.5 on a phone. The card's three ticked bullets are now the course's **first three topic titles** and the fixed "Online" badge became the **lesson count**; neither `highlights` nor a mode column exists, and inventing admin fields for them was rejected in favour of content that is already written. The four placeholder programmes were **deleted** — an invented course is a product with a price on it. The scroll/dot maths moved to `components/shared/SnapCarousel.tsx` and `TeamSection` was refactored onto it, so the two carousels cannot drift. |
+| 2026-09-25 | PUB-1 | **Gold retuned to the client's `#f19f00`**, and home page spacing tightened to one rhythm (`py-12 sm:py-14` sections, `gap-8 lg:gap-10` columns, `mt-8` under each heading — the table is in `SectionHeading`). The fill/text split was **kept and is load-bearing**: `#f19f00` is 7.5:1 on the navy but only **2.17:1 on white**, below even the 3:1 AA allows for large text, so `--accent-strong` is the same hue (39°) darkened to 5.3:1 on white and 4.8:1 on `--accent-soft`. Contrast was computed, not eyeballed. `web/`'s two live previews hardcode these literals on purpose and were moved with them; `web/`'s own `--accent` is the admin panel's chrome and was deliberately left alone. |
+| 2026-09-25 | PUB-1 | **Header is navy with white links** (client instruction), logo enlarged (`h-16`→`h-20` bar, `h-12 sm:h-14` mark). The current-page marker moved from `--primary` to gold — `--primary` *is* this navy, so the old rule marked the current link by making it invisible. `Logo` is now shared by the header and footer. **It gets no plate on the navy**: `logo.png` is a circular badge carrying its own cream field and gold ring, so a white panel behind it just draws a rectangle around a round logo. A plate was added on the first pass and removed at the client's request the same day — along with the footer's long-standing hand-rolled copy of it, which had the same problem. Do not reintroduce one. |
+| 2026-09-25 | CMS-0 (fix) | **`site/` was never able to read the API.** Its origin (`:5184`) was in `SANCTUM_STATEFUL_DOMAINS` but not in CORS `allowed_origins`, so every request was answered `200` and then discarded by the browser — invisible server-side. Surfaced as "the About video is not showing", because the website's designed fallback has no video by design. `allowed_origins` is now a comma-separated `FRONTEND_URLS` list, and `tests/Feature/CorsTest.php` asserts the **value** of `Access-Control-Allow-Origin` per origin, which is the only assertion that would have caught it. |
 | 2026-09-24 | SEC-14 | Raised, not fixed. `npm audit` found an open-redirect advisory in `react-router` `<7.18.0`, which **`web/` shares**. Fix is a semver-major upgrade of both apps — needs the client's decision. |
 
 ---
 
-**Last updated:** 24 September 2026. **Update this file at the end of every session.**
+**Last updated:** 25 September 2026. **Update this file at the end of every session.**

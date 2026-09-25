@@ -21,6 +21,14 @@ export const paths = {
     homeBanners: '/admin/mobile/home-banners',
     homeBannerNew: '/admin/mobile/home-banners/new',
     homeBannerEdit: (id: number | string) => `/admin/mobile/home-banners/${id}/edit`,
+    // Website Configuration — the public site's content. Under `/admin/website/`
+    // so it never collides with `/admin/mobile/`; the two configure different
+    // clients over the same API.
+    heroSlides: '/admin/website/hero-slider',
+    heroSlideNew: '/admin/website/hero-slider/new',
+    heroSlideEdit: (id: number | string) => `/admin/website/hero-slider/${id}/edit`,
+    websiteAbout: '/admin/website/about',
+    websiteTeam: '/admin/website/team',
     settingsBankDetails: '/admin/settings/bank-details',
     settingsAppIntro: '/admin/settings/app-intro',
   },

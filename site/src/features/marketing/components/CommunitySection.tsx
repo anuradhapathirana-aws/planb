@@ -6,13 +6,19 @@ import { Button } from '@/components/ui/button';
 import { Container } from '@/components/shared/Container';
 import { Highlight } from '@/components/shared/Highlight';
 import { YouTubeFacade } from '@/components/shared/YouTubeFacade';
-import { youTubeVideoId } from '@/lib/youtube';
+import { youTubeVideoId } from '@shared/lib/youtube';
 import { paths } from '@/routes/paths';
-import { community } from '@/features/marketing/homeContent';
+import type { CommunityContent } from '@/features/marketing/homeContent';
 
 /**
  * About Us, in the "Join 500+ Students" treatment: copy on the left, a video
  * with a floating status pill on the right.
+ *
+ * Content comes in as a prop — it is admin-managed (Website Configuration >
+ * About Video) and reaches this component through `useSiteContent`, which also
+ * supplies the designed defaults for any field the admin has left blank. This
+ * component never reaches for content itself, so the same markup serves live
+ * copy and the fallback.
  *
  * The four numbered proof cards this once carried were **removed at the
  * client's request (2026-09-25)**, along with their `points` data. The column
@@ -20,7 +26,13 @@ import { community } from '@/features/marketing/homeContent';
  * the 16:9 video beside it closely enough that `items-center` does the rest.
  * Do not reinstate them without asking.
  */
-export function CommunitySection({ id }: { id?: string }) {
+export function CommunitySection({
+  id,
+  community,
+}: {
+  id?: string;
+  community: CommunityContent;
+}) {
   const { t } = useTranslation();
   const Icon = community.icon;
   // Null when no link is set, or when it is not a YouTube URL. `youTubeVideoId`
@@ -40,9 +52,9 @@ export function CommunitySection({ id }: { id?: string }) {
   return (
     <section
       id={id}
-      className="scroll-mt-20 bg-gradient-to-b from-muted/50 via-muted/30 to-background py-16 sm:py-20"
+      className="scroll-mt-20 bg-gradient-to-b from-muted/50 via-muted/30 to-background py-12 sm:py-14"
     >
-      <Container className="grid items-center gap-10 lg:grid-cols-2 lg:gap-14">
+      <Container className="grid items-center gap-8 lg:grid-cols-2 lg:gap-10">
         {/* ------------------------------------------------------------ copy */}
         <div>
           <span className="inline-flex items-center rounded-full bg-accent-soft px-3 py-1 text-xs font-semibold uppercase tracking-wider text-accent-strong">
@@ -55,11 +67,11 @@ export function CommunitySection({ id }: { id?: string }) {
 
           {/* Slightly larger than the default body size: with the proof cards
               gone this paragraph carries the section on its own. */}
-          <p className="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
+          <p className="mt-3 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
             {community.body}
           </p>
 
-          <Button asChild size="lg" className="mt-8">
+          <Button asChild size="lg" className="mt-6">
             <Link to={paths.courses}>
               Start learning
               <ArrowRight className="size-4" aria-hidden="true" />

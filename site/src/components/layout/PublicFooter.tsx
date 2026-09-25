@@ -4,6 +4,7 @@ import { Facebook, Instagram, Linkedin, Mail, MapPin, Phone } from 'lucide-react
 import type { LucideIcon } from 'lucide-react';
 
 import { Container } from '@/components/shared/Container';
+import { Logo } from '@/components/layout/Logo';
 import { publicNav, sectionIds } from '@/components/layout/siteNav';
 import { siteContact, telHref } from '@/lib/siteContact';
 import { paths } from '@/routes/paths';
@@ -27,10 +28,11 @@ export function PublicFooter() {
     <footer id={sectionIds.contact} className="mt-auto bg-surface text-surface-foreground">
       <Container className="grid gap-8 py-10 sm:grid-cols-2 lg:grid-cols-4">
         <div className="sm:col-span-2 lg:col-span-1">
-          {/* A dark band needs the light mark, so this is not the <Logo> component. */}
-          <div className="inline-flex items-center rounded-lg bg-white/95 p-1.5">
-            <img src="/logo.png" alt={t('common.appName')} className="h-8 w-auto" width={32} height={32} />
-          </div>
+          {/* The white plate this used to sit on is gone: the mark is a circular
+              badge with its own cream field, so the plate only drew a rectangle
+              around a round logo. Shared with the header, which had the same
+              problem. */}
+          <Logo />
 
           <p className="mt-3 max-w-xs text-sm leading-relaxed text-surface-muted">{t('site.footer.tagline')}</p>
 

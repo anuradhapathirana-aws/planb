@@ -20,6 +20,26 @@ export interface CompanySettings {
   intro_greeting_en: string | null;
   intro_greeting_si: string | null;
   intro_animation: IntroAnimation;
+
+  /*
+   * The website's "Community & trust" band, edited under Website Configuration
+   * > About Video. It lives on this singleton because it is about-the-company
+   * copy and there is exactly one of it. Visitors receive `PublicCommunity`
+   * from `@shared/types/siteContent` instead — a separate Resource, because
+   * this shape also carries the bank account above.
+   */
+  community_eyebrow: string | null;
+  community_eyebrow_si: string | null;
+  community_heading: string | null;
+  community_heading_si: string | null;
+  community_body: string | null;
+  community_body_si: string | null;
+  community_video_url: string | null;
+  community_video_duration_label: string | null;
+  community_floating_label: string | null;
+  community_floating_label_si: string | null;
+  community_poster_url: string | null;
+
   updated_at: string | null;
 }
 
