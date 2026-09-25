@@ -50,10 +50,15 @@
    * darkened only as far as accessibility requires: 5.3:1 on white and 4.8:1 on
    * `--accent-soft`, both clear of the 4.5:1 AA needs for body text.
    *
-   * **Use `--accent` for fills and for gold on navy; `--accent-strong` for gold
-   * type on anything light.** Every component already follows this split — see
-   * `SectionHeading` and `CommunitySection` (light, strong) against `HeroSlider`
-   * and `TestimonialsSection` (navy, plain).
+   * **Use `--accent` for fills, for gold on navy, and for a marked word in a
+   * heading; `--accent-strong` for small gold type on anything light** — eyebrow
+   * chips, the course card's category label, a gold link in body copy.
+   *
+   * The heading exception is the client's instruction (2026-09-26), taken with
+   * the 2.17:1 measurement in front of them: a 24px+ bold word is where the
+   * bright gold costs least, and `Highlight` is the one component that applies
+   * it. Small uppercase labels are where it costs most, and they kept the
+   * darker value.
    */
   --accent-strong: #946100;
 

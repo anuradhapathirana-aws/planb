@@ -189,9 +189,9 @@ function HeroCopy({
       ) : null}
 
       <h1 className="mt-3 text-3xl font-bold leading-[1.15] tracking-tight sm:text-4xl lg:text-5xl">
-        {/* Gold on navy is 6.3:1, so the darker `accent-strong` that light
-            backgrounds need would only muddy it here. */}
-        <Highlight text={slide.heading} className="text-accent" />
+        {/* No colour override: `Highlight` is `--accent` everywhere now, and on
+            this navy that gold measures 7.5:1. */}
+        <Highlight text={slide.heading} />
       </h1>
 
       {slide.body ? (

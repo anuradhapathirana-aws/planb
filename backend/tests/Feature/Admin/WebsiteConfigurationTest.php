@@ -325,6 +325,54 @@ class WebsiteConfigurationTest extends TestCase
             ->assertJsonCount(1, 'data');
     }
 
+    public function test_a_team_members_profile_links_are_stored_and_returned(): void
+    {
+        $this->actingAsRole(RoleName::SuperAdmin);
+
+        $this->postJson('/api/v1/admin/team-members', [
+            'name' => 'Apsara Abbas',
+            'role' => 'Student Counsellor',
+            'facebook_url' => 'https://facebook.com/apsara',
+            'linkedin_url' => 'https://www.linkedin.com/in/apsara',
+            'is_visible' => true,
+        ])
+            ->assertCreated()
+            ->assertJsonPath('data.facebook_url', 'https://facebook.com/apsara')
+            ->assertJsonPath('data.linkedin_url', 'https://www.linkedin.com/in/apsara');
+    }
+
+    /**
+     * The website renders these as anchors, so a scheme that is not http(s) is
+     * admin-authored XSS on the front page. The rule, not the field, is the
+     * thing under test.
+     */
+    public function test_a_javascript_profile_link_is_refused(): void
+    {
+        $this->actingAsRole(RoleName::SuperAdmin);
+
+        $this->postJson('/api/v1/admin/team-members', [
+            'name' => 'Apsara Abbas',
+            'facebook_url' => 'javascript:alert(1)',
+            'is_visible' => true,
+        ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('facebook_url');
+    }
+
+    /** A cleared field is null, not '' — the card tests for a link before drawing an icon. */
+    public function test_a_blank_profile_link_is_stored_as_null(): void
+    {
+        $this->actingAsRole(RoleName::SuperAdmin);
+
+        $this->postJson('/api/v1/admin/team-members', [
+            'name' => 'Apsara Abbas',
+            'facebook_url' => '   ',
+            'is_visible' => true,
+        ])
+            ->assertCreated()
+            ->assertJsonPath('data.facebook_url', null);
+    }
+
     public function test_a_team_member_without_a_name_is_refused(): void
     {
         $this->actingAsRole(RoleName::SuperAdmin);

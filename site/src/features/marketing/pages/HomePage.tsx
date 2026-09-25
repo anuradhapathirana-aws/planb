@@ -31,6 +31,31 @@ export function HomePage() {
   const { heroSlides, community, team } = useSiteContent();
   const { programmes, isLoading: coursesLoading } = useHomePageCourses();
 
+  /*
+   * ⚠ TEMPORARY, FOR LOOKING AT ONLY — delete this block and pass `testimonials`
+   * straight to the section below (2026-09-25).
+   *
+   * The wall has no photographs yet, so every card draws initials and the
+   * section cannot be judged. This borrows the team's portraits and cycles them
+   * across the thirteen cards purely so the layout can be seen.
+   *
+   * It is wrong on its face: these are Plan B's own staff shown as students who
+   * have migrated, next to quotes they never said. **It must not reach a
+   * visitor.** The real photographs are a `CMS-4` field on the testimonial
+   * record, and this goes the moment that lands or the moment the look is
+   * rejected — whichever comes first.
+   *
+   * Cycled by index rather than `Math.random()`: a random pick reshuffles on
+   * every render and would differ between the prerender pass and the browser.
+   */
+  const previewTestimonials =
+    team.length > 0
+      ? testimonials.map((person, index) => ({
+          ...person,
+          photoUrl: team[index % team.length].photoUrl,
+        }))
+      : testimonials;
+
   return (
     <>
       {/*
@@ -66,7 +91,9 @@ export function HomePage() {
         CTA back at `/#success-stories`, and restore the hero's second-slide
         secondary CTA in homeContent.ts. All four are marked in place.
       */}
-      <TestimonialsSection id={sectionIds.testimonials} testimonials={testimonials} />
+      {/* `previewTestimonials`, not `testimonials` — see the temporary block
+          above. Put `testimonials` back when it goes. */}
+      <TestimonialsSection id={sectionIds.testimonials} testimonials={previewTestimonials} />
 
       {/* Replaced the FAQ placeholder at the client's request (2026-09-25).
           Empty until the client adds people in Website Configuration > The Team;

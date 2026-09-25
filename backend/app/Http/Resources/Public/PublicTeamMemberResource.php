@@ -27,6 +27,12 @@ class PublicTeamMemberResource extends JsonResource
             'name' => $this->name,
             'role' => $this->translated('role'),
             'photo_url' => PublicUrl::forRequest($this->photo_url, $request),
+            // Already restricted to http/https on write (SaveTeamMemberRequest),
+            // which is what makes it safe to render as an anchor. Null when the
+            // admin has not given one — the card draws no icon rather than a
+            // dead link.
+            'facebook_url' => $this->facebook_url,
+            'linkedin_url' => $this->linkedin_url,
         ];
     }
 }

@@ -115,5 +115,7 @@ function toTeamMember(member: PublicTeamMember): TeamMember {
     name: member.name,
     role: member.role ?? '',
     photoUrl: member.photo_url,
+    facebookUrl: member.facebook_url,
+    linkedinUrl: member.linkedin_url,
   };
 }

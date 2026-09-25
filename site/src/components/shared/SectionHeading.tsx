@@ -21,8 +21,10 @@ import { cn } from '@/lib/utils';
  * | Heading → content below | `mt-8` |
  * | Inside this block | `gap-3`, title `mt-2.5`, body `mt-2` |
  *
- * The title gold is `--accent-strong`, never `--accent`: the plain gold is
- * 2.17:1 on white and fails WCAG AA outright. See `index.css`.
+ * The title's marked word is `--accent` (#f19f00) — see `Highlight`, which owns
+ * that decision and records why it overrides the contrast rule. The eyebrow chip
+ * below stays on `--accent-strong`: it is 12px uppercase, which is where the
+ * bright gold is least readable.
  */
 export function SectionHeading({
   eyebrow,

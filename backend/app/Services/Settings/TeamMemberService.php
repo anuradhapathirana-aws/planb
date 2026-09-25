@@ -137,11 +137,22 @@ class TeamMemberService
             'name' => $data['name'],
             'role' => $data['role'] ?? null,
             'role_si' => $data['role_si'] ?? null,
+            // Normalised to null when cleared, so the Resource can test for a
+            // link with `!== null` rather than also having to treat '' as absent.
+            'facebook_url' => $this->url($data['facebook_url'] ?? null),
+            'linkedin_url' => $this->url($data['linkedin_url'] ?? null),
             'is_visible' => $data['is_visible'] ?? false,
         ]);
 
         $member->save();
 
         return $member->fresh() ?? $member;
+    }
+
+    private function url(?string $value): ?string
+    {
+        $trimmed = trim((string) $value);
+
+        return $trimmed === '' ? null : $trimmed;
     }
 }

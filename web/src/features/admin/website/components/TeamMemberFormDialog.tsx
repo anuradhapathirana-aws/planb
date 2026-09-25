@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
-import { Globe, IdCard, Languages, Loader2, UserRound } from 'lucide-react';
+import { Facebook, Globe, IdCard, Languages, Linkedin, Loader2, UserRound } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -26,7 +26,7 @@ import {
 } from '@/features/admin/website/websiteSchema';
 import type { TeamMember } from '@shared/types/siteContent';
 
-const FIELD_NAMES = ['name', 'role', 'role_si', 'is_visible'];
+const FIELD_NAMES = ['name', 'role', 'role_si', 'facebook_url', 'linkedin_url', 'is_visible'];
 
 interface TeamMemberFormDialogProps {
   open: boolean;
@@ -62,7 +62,14 @@ export function TeamMemberFormDialog({ open, onOpenChange, member }: TeamMemberF
     // Never mid-keystroke (CLAUDE.md §8 "Sectioned Admin Forms").
     mode: 'onBlur',
     reValidateMode: 'onBlur',
-    defaultValues: { name: '', role: '', role_si: '', is_visible: true },
+    defaultValues: {
+      name: '',
+      role: '',
+      role_si: '',
+      facebook_url: '',
+      linkedin_url: '',
+      is_visible: true,
+    },
   });
 
   useEffect(() => {
@@ -74,6 +81,8 @@ export function TeamMemberFormDialog({ open, onOpenChange, member }: TeamMemberF
       // The stored Sinhala column, never the English fallback — what is in this
       // input is what gets saved back over it.
       role_si: member?.role_si ?? '',
+      facebook_url: member?.facebook_url ?? '',
+      linkedin_url: member?.linkedin_url ?? '',
       is_visible: member?.is_visible ?? true,
     });
   }, [open, member, reset]);
@@ -87,6 +96,10 @@ export function TeamMemberFormDialog({ open, onOpenChange, member }: TeamMemberF
       // Blank stays blank all the way to the column — null there is what the
       // public API reads as "fall back to English".
       role_si: values.role_si.trim() || null,
+      // Cleared means null, not '' — the website tests for a link before it
+      // draws the icon, and an empty string would draw one pointing nowhere.
+      facebook_url: values.facebook_url.trim() || null,
+      linkedin_url: values.linkedin_url.trim() || null,
       is_visible: values.is_visible,
     };
 
@@ -166,6 +179,45 @@ export function TeamMemberFormDialog({ open, onOpenChange, member }: TeamMemberF
             <p className="text-xs text-muted-foreground">
               Optional. Visitors reading in Sinhala see the English title until you add one.
             </p>
+          </div>
+
+          {/*
+            Both optional. They render as the two icons under the job title on
+            the website's team card; a person with neither simply gets no icons,
+            which is why a blank field is normal rather than an omission.
+          */}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <FieldLabel htmlFor="member-facebook" icon={Facebook}>
+                Facebook
+              </FieldLabel>
+              <Input
+                id="member-facebook"
+                className="h-9"
+                type="url"
+                inputMode="url"
+                placeholder="https://facebook.com/username"
+                aria-invalid={!!errors.facebook_url}
+                {...register('facebook_url')}
+              />
+              <FieldError message={errors.facebook_url?.message} />
+            </div>
+
+            <div className="space-y-1">
+              <FieldLabel htmlFor="member-linkedin" icon={Linkedin}>
+                LinkedIn
+              </FieldLabel>
+              <Input
+                id="member-linkedin"
+                className="h-9"
+                type="url"
+                inputMode="url"
+                placeholder="https://linkedin.com/in/username"
+                aria-invalid={!!errors.linkedin_url}
+                {...register('linkedin_url')}
+              />
+              <FieldError message={errors.linkedin_url?.message} />
+            </div>
           </div>
 
           <div className="space-y-1">

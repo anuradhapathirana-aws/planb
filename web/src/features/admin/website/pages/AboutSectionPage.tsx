@@ -421,7 +421,10 @@ function AboutPreview({
           {values.community_heading.trim() === '' ? (
             <span className="text-[#0f1e45]/40">Your heading appears here</span>
           ) : (
-            renderHighlight(values.community_heading, 'text-[#946100]')
+            /* `#f19f00`, matching the website's `Highlight` since 2026-09-26 —
+               a marked word in a heading is the bright brand gold there now.
+               The eyebrow chip above keeps `#946100`, as it does on the site. */
+            renderHighlight(values.community_heading, 'text-[#f19f00]')
           )}
         </p>
 

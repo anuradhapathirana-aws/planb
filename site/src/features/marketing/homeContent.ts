@@ -477,6 +477,13 @@ export interface TeamMember {
   /** Job title. Set in the visitor's language by the server, like every other title. */
   role: string;
   photoUrl: string | null;
+  /**
+   * Profile links, each null when the admin has not given one. Already
+   * restricted to http/https server-side, which is what makes them safe to put
+   * in an `href` — never render one that has not been through that check.
+   */
+  facebookUrl: string | null;
+  linkedinUrl: string | null;
 }
 
 /*

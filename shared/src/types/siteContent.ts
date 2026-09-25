@@ -140,6 +140,9 @@ export interface TeamMember {
   name: string;
   role: string | null;
   role_si: string | null;
+  /** Restricted to http/https on write — the card renders these as anchors. */
+  facebook_url: string | null;
+  linkedin_url: string | null;
   is_visible: boolean;
   sort_order: number;
   photo_url: string | null;
@@ -152,6 +155,8 @@ export interface SaveTeamMemberPayload {
   name: string;
   role: string | null;
   role_si: string | null;
+  facebook_url: string | null;
+  linkedin_url: string | null;
   is_visible: boolean;
 }
 
@@ -243,6 +248,9 @@ export interface PublicTeamMember {
   /** Already in the visitor's language. */
   role: string | null;
   photo_url: string | null;
+  /** Null when not given: the card draws no icon rather than a dead link. */
+  facebook_url: string | null;
+  linkedin_url: string | null;
 }
 
 /** Everything `GET public/site-content` returns, in one payload. */

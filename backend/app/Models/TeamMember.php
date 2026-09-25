@@ -27,6 +27,8 @@ class TeamMember extends Model implements HasMedia
         'name',
         'role',
         'role_si',
+        'facebook_url',
+        'linkedin_url',
         'is_visible',
         'sort_order',
     ];

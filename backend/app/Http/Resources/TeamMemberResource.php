@@ -26,6 +26,8 @@ class TeamMemberResource extends JsonResource
             'name' => $this->name,
             'role' => $this->role,
             'role_si' => $this->role_si,
+            'facebook_url' => $this->facebook_url,
+            'linkedin_url' => $this->linkedin_url,
             'is_visible' => $this->is_visible,
             'sort_order' => $this->sort_order,
             'photo_url' => PublicUrl::forRequest($this->photo_url, $request),

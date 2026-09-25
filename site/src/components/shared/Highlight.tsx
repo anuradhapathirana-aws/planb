@@ -20,6 +20,14 @@ import { cn } from '@/lib/utils';
  * `dangerouslySetInnerHTML` here and no sanitiser needed (root CLAUDE.md §7.6).
  * An unclosed `**` simply renders literally rather than swallowing the rest of
  * the line.
+ *
+ * **The gold is `--accent` (#f19f00), the brand value at full brightness** —
+ * the client's instruction, 2026-09-26, given after being shown the measurement:
+ * on white it is 2.17:1, under the 3:1 WCAG AA asks even of large text. It
+ * applies to marked words in headings only, which are 24px bold and up. The
+ * small uppercase labels — section eyebrows, the course card's category — stay
+ * on `--accent-strong`, where the same colour would be least readable and
+ * nobody asked for it.
  */
 export function Highlight({ text, className }: { text: string; className?: string }) {
   // Capturing group, so the delimited parts survive the split at odd indexes.
@@ -29,7 +37,7 @@ export function Highlight({ text, className }: { text: string; className?: strin
     <>
       {parts.map((part, index) =>
         index % 2 === 1 ? (
-          <span key={index} className={cn('text-accent-strong', className)}>
+          <span key={index} className={cn('text-accent', className)}>
             {part}
           </span>
         ) : (

@@ -164,10 +164,27 @@ export const heroSlideFormSchema = z
 
 export type HeroSlideFormSchema = z.infer<typeof heroSlideFormSchema>;
 
+/** A pasted profile address: blank, or a full http(s) URL. */
+const profileUrl = z
+  .string()
+  .max(2048, 'That web address is too long.')
+  .refine(
+    (value) => value.trim() === '' || /^https?:\/\/\S+$/i.test(value.trim()),
+    'Enter a full web address starting with http:// or https://.',
+  );
+
 export const teamMemberFormSchema = z.object({
   name: z.string().min(1, 'Enter this person’s name.').max(120, 'That name is too long.'),
   role: z.string().max(120, 'Keep the job title under 120 characters.'),
   role_si: z.string().max(120, 'Keep the job title under 120 characters.'),
+  /*
+   * Optional, so blank passes. The shape check mirrors the hero CTA's and the
+   * server's `url:http,https` — this one is UX (the admin sees it before
+   * saving); the Form Request is the control that keeps a `javascript:` value
+   * out of an anchor on the front page.
+   */
+  facebook_url: profileUrl,
+  linkedin_url: profileUrl,
   is_visible: z.boolean(),
 });
 

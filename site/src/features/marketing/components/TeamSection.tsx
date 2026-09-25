@@ -1,14 +1,10 @@
 import { useTranslation } from 'react-i18next';
+import { Facebook, Linkedin, type LucideIcon } from 'lucide-react';
 
 import { Container } from '@/components/shared/Container';
 import { SectionHeading } from '@/components/shared/SectionHeading';
 import { EmptyState } from '@/components/shared/EmptyState';
-import {
-  CAROUSEL_ITEM_CLASSES,
-  CAROUSEL_TRACK_CLASSES,
-  CarouselDots,
-  useSnapCarousel,
-} from '@/components/shared/SnapCarousel';
+import { CAROUSEL_ITEM_CLASSES, CAROUSEL_TRACK_CLASSES } from '@/components/shared/SnapCarousel';
 import { cn } from '@/lib/utils';
 import type { TeamMember } from '@/features/marketing/homeContent';
 
@@ -16,13 +12,14 @@ import type { TeamMember } from '@/features/marketing/homeContent';
  * Our Team — a paged carousel of portrait cards, each with a white name plate
  * floating over the bottom of the photograph.
  *
- * The scroll and dot behaviour lives in `useSnapCarousel` — shared with
- * `ProgrammesSection`, because that maths is subtle enough that two copies
- * would drift. What is specific to this section is the card below.
+ * **No page dots and no arrows** (client instruction, 2026-09-25): the row is
+ * swiped on a phone and dragged or scrolled on a laptop, so `useSnapCarousel`
+ * is not used here at all — nothing measures the strip because nothing reports
+ * its position. `ProgrammesSection` still uses the hook for its arrows; bring it
+ * back here the moment this section grows a control of its own.
  */
 export function TeamSection({ id, members }: { id?: string; members: TeamMember[] }) {
   const { t } = useTranslation();
-  const { trackRef, page, pageCount, goToPage } = useSnapCarousel();
 
   return (
     <section id={id} className="scroll-mt-20 bg-muted/40 py-12 sm:py-14">
@@ -34,13 +31,14 @@ export function TeamSection({ id, members }: { id?: string; members: TeamMember[
         ) : (
           <>
             {/*
-              `pb-16` leaves room for the name plates, which hang below their
-              cards — without it the last row of plates is clipped by the
-              scroll container. `pt-2` gives the hover lift somewhere to go.
+              `pb-14` leaves room for the name plates, which hang half below
+              their cards — without it the plates are clipped by the scroll
+              container. It went up a step from `pb-12` when the profile icons
+              made the plate taller, so half of it now hangs further; these two
+              move together. `pt-2` gives the hover lift somewhere to go.
             */}
             <div
-              ref={trackRef}
-              className={cn(CAROUSEL_TRACK_CLASSES, 'mt-8 pb-12 pt-2')}
+              className={cn(CAROUSEL_TRACK_CLASSES, 'mt-8 pb-14 pt-2')}
               role="list"
               aria-label={t('site.team.heading')}
             >
@@ -53,16 +51,58 @@ export function TeamSection({ id, members }: { id?: string; members: TeamMember[
               ))}
             </div>
 
-            <CarouselDots
-              page={page}
-              pageCount={pageCount}
-              onGoTo={goToPage}
-              label={t('site.team.pagesLabel')}
-            />
+            {/*
+              No page dots (client instruction, 2026-09-25) — the row is swiped
+              or dragged. They also carried 44px of touch target, which was most
+              of the gap between the last name plate and the footer.
+            */}
           </>
         )}
       </Container>
     </section>
+  );
+}
+
+/**
+ * One social profile icon: a circular outlined button (client instruction,
+ * 2026-09-26). The ring is what makes it read as something to press — on a white
+ * plate a bare grey glyph looks like a label, not a link.
+ *
+ * 32px rather than the house 44px minimum (root CLAUDE.md §8), deliberately: the
+ * card is ~200px wide at five across and a 44px control would force the name
+ * plate to eat a third of the portrait. 32px still clears WCAG 2.2's 24px target
+ * minimum with room to spare, and these are supplementary links — the card's
+ * own content is not behind them.
+ *
+ * `border` + `rounded-full`, not `ring`: the border takes part in layout, so the
+ * two circles cannot overlap each other or the plate's own edge, and the focus
+ * ring stays available to mean focus.
+ */
+function SocialLink({
+  href,
+  label,
+  icon: Icon,
+}: {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+}) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer noopener"
+      aria-label={label}
+      className={cn(
+        // Brand navy ring, with the glyph in the same navy: a navy circle around
+        // a grey icon reads as two unrelated decisions. Hover fills the circle.
+        'inline-flex size-8 items-center justify-center rounded-full border border-primary text-primary',
+        'transition-colors hover:bg-primary hover:text-primary-foreground',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1',
+      )}
+    >
+      <Icon className="size-3.5" aria-hidden="true" />
+    </a>
   );
 }
 
@@ -127,6 +167,37 @@ function TeamCard({ member }: { member: TeamMember }) {
           {member.name}
         </h3>
         <p className="mt-0.5 truncate text-[11px] italic text-muted-foreground">{member.role}</p>
+
+        {/*
+          Facebook and LinkedIn, under the job title (client instruction,
+          2026-09-25). Both optional and independent: a person with one link
+          gets one icon, a person with neither gets no row at all rather than
+          greyed-out placeholders for accounts that do not exist.
+
+          The addresses are restricted to http/https server-side, in
+          `SaveTeamMemberRequest` — that is what makes rendering them as anchors
+          safe. `rel="noreferrer noopener"` because they leave our origin, and
+          `stopPropagation` is not needed here: unlike the course card, nothing
+          wraps this card in a link for these to fight with.
+        */}
+        {(member.facebookUrl || member.linkedinUrl) && (
+          <div className="mt-1.5 flex items-center justify-center gap-1">
+            {member.facebookUrl ? (
+              <SocialLink
+                href={member.facebookUrl}
+                label={`${member.name} on Facebook`}
+                icon={Facebook}
+              />
+            ) : null}
+            {member.linkedinUrl ? (
+              <SocialLink
+                href={member.linkedinUrl}
+                label={`${member.name} on LinkedIn`}
+                icon={Linkedin}
+              />
+            ) : null}
+          </div>
+        )}
       </div>
     </article>
   );

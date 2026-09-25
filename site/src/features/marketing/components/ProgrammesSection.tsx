@@ -10,7 +10,6 @@ import {
   CAROUSEL_ITEM_CLASSES,
   CAROUSEL_TRACK_CLASSES,
   CarouselArrows,
-  CarouselDots,
   useSnapCarousel,
 } from '@/components/shared/SnapCarousel';
 import { ProgrammeCard } from '@/features/marketing/components/ProgrammeCard';
@@ -98,14 +97,12 @@ export function ProgrammesSection({
               ))}
             </div>
 
-            <CarouselDots
-              page={page}
-              pageCount={pageCount}
-              onGoTo={goToPage}
-              label={t('site.programmes.pagesLabel')}
-            />
-
             {/*
+              No page dots here (client instruction, 2026-09-25): the arrows
+              beside the heading are this carousel's control. `CarouselDots` is
+              still shared and `TeamSection` still uses it — this section opts
+              out, it was not removed.
+
               The section's closing call to action: a hairline rule running the
               width of the container with the button sitting on top of it,
               centred. The rule reads as a full stop under the strip — it ends
@@ -113,11 +110,11 @@ export function ProgrammesSection({
               the button is opaque, so it masks the line behind itself instead of
               needing a matching background colour set on it.
 
-              `mt-2` only, because `CarouselDots` already carries 44px of touch
-              target around a 10px dot and stacking a full margin on top of that
-              leaves a visible hole.
+              `mt-6` now that the dots are gone: they carried 44px of touch
+              target that was doing the spacing, and `mt-2` under the bare strip
+              left the button sitting on the cards.
             */}
-            <div className="relative mt-2 flex items-center justify-center">
+            <div className="relative mt-6 flex items-center justify-center">
               <span className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-border" aria-hidden="true" />
 
               <Button asChild size="lg" className="relative rounded-full px-7 shadow-sm">
