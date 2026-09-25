@@ -534,5 +534,68 @@
     "swap": "Swap to convert from {{from}} to {{to}}",
     "unavailableTitle": "Rate unavailable",
     "unavailableBody": "We couldn't get today's rate. Check your connection and try again."
+  },
+  "site": {
+    "nav": {
+      "home": "Home",
+      "courses": "Courses",
+      "about": "About Us",
+      "successStories": "Success stories",
+      "testimonials": "Our Values",
+      "openMenu": "Open menu",
+      "signIn": "Sign in",
+      "myLearning": "My learning",
+      "team": "The Team"
+    },
+    "footer": {
+      "tagline": "We prepare Sri Lankan students for education and employment in the UAE.",
+      "quickLinks": "Quick links",
+      "forStudents": "For students",
+      "contact": "Contact",
+      "getTheApp": "Get the app",
+      "rights": "© {{year}} Plan B International. All rights reserved.",
+      "privacy": "Privacy policy",
+      "terms": "Terms of service"
+    },
+    "lang": {
+      "label": "Language",
+      "en": "English",
+      "si": "සිංහල"
+    },
+    "portal": {
+      "title": "My learning",
+      "backToSite": "Back to website",
+      "account": "Account"
+    },
+    "story": {
+      "heading": "Real people, already there",
+      "videoTitle": "{{name}}'s story",
+      "playVideo": "Play video: {{title}}",
+      "emptyTitle": "No stories published yet",
+      "emptyBody": "We are filming with our first students now. Check back soon."
+    },
+    "testimonials": {
+      "headingLead": "Trusted by students",
+      "headingTail": "across Sri Lanka",
+      "body": "Hear why students and professionals trust Plan B to guide their move to the Emirates.",
+      "cta": "Browse our courses",
+      "cardLabel": "Read {{name}}'s testimonial",
+      "listLabel": "Student testimonials"
+    },
+    "community": {
+      "videoTitle": "Inside Plan B International"
+    },
+    "team": {
+      "heading": "The people behind **Plan B**",
+      "body": "Consultants and course writers who have taken Sri Lankans through this move themselves.",
+      "emptyTitle": "Team coming soon",
+      "emptyBody": "We are putting our profiles together. Check back shortly.",
+      "pagesLabel": "Team pages",
+      "goToPage": "Go to page {{number}}"
+    },
+    "whatsapp": {
+      "label": "Chat on WhatsApp",
+      "prefill": "Hi Plan B, I would like to know more about studying and working in the UAE."
+    }
   }
 }

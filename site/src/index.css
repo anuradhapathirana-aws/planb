@@ -1,0 +1,233 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/*
+ * Plan B brand tokens. Mirrors `shared/src/theme/tokens.json` and `web/`'s
+ * palette so the admin panel, the website and the app are visibly one product.
+ *
+ * LIGHT ONLY, deliberately — unlike `web/`, this app has no dark-mode block.
+ * Most of what renders here is admin-uploaded imagery (hero photos, success
+ * story portraits, course thumbnails) composed against a light page. Flipping
+ * the surface under artwork nobody re-shot for dark is how a brand site ends up
+ * looking broken. Revisit only if the client asks.
+ */
+:root {
+  --radius: 0.5rem;
+
+  --background: #ffffff;
+  --foreground: #0f172a;
+
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+
+  --primary: #14224b;
+  --primary-foreground: #ffffff;
+
+  --secondary: #eef2f7;
+  --secondary-foreground: #14224b;
+
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+
+  --accent: #c79a3a;
+  --accent-foreground: #1f2937;
+
+  /*
+   * The same gold, darkened for TEXT on a light background.
+   *
+   * `--accent` is a fill colour: it reads well as a button or on the navy
+   * surface (6.3:1 there), but as text on white it is only 2.8:1 — under even
+   * the 3:1 WCAG AA allows for large text, so a gold highlighted word in a
+   * headline would fail. This is 3.8:1 on white, which clears large text
+   * comfortably. Use `--accent` for fills, `--accent-strong` for type.
+   */
+  --accent-strong: #a3761f;
+
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+
+  --success: #16a34a;
+  --success-foreground: #ffffff;
+
+  --warning: #d97706;
+  --warning-foreground: #ffffff;
+
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #14224b;
+
+  /*
+   * The deep navy band used for the header on scroll, the footer and full-bleed
+   * marketing sections. Named `surface` rather than `sidebar` (web/'s name for
+   * the same colour) because there is no sidebar on this site.
+   */
+  --surface: #0f1e45;
+  --surface-foreground: #e2e8f0;
+  --surface-muted: #94a3c4;
+  --surface-border: #24356e;
+
+  /* Soft brand tints for section backgrounds — not semantic, purely layout. */
+  --primary-soft: #eef2f7;
+  --accent-soft: #faf3e3;
+  /* A lift of the navy, for gradients that need two stops of the same colour. */
+  --primary-tint: #1c2f66;
+
+  /*
+   * WhatsApp's own green. **Not a fourth palette colour** — root CLAUDE.md §8
+   * caps us at one accent plus three semantic colours, and this breaks none of
+   * that because it is never used for anything of ours. It exists only so the
+   * WhatsApp button looks like a WhatsApp button: that green is the whole
+   * reason people recognise the control without reading it, and rendering it in
+   * Plan B navy would throw that recognition away for the sake of a palette
+   * rule it was never meant to cover. Do not reuse it anywhere else.
+   */
+  --whatsapp: #25d366;
+  --whatsapp-dark: #1da851;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-tint: var(--primary-tint);
+  --color-whatsapp: var(--whatsapp);
+  --color-whatsapp-dark: var(--whatsapp-dark);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-strong: var(--accent-strong);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-surface: var(--surface);
+  --color-surface-foreground: var(--surface-foreground);
+  --color-surface-muted: var(--surface-muted);
+  --color-surface-border: var(--surface-border);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 8px);
+  --radius-2xl: calc(var(--radius) + 12px);
+
+  /* Noto Sans Sinhala carries the Sinhala locale; Inter has no Sinhala glyphs. */
+  --font-sans: "Inter", "Noto Sans Sinhala", ui-sans-serif, system-ui, sans-serif;
+
+  /* Radix Accordion's open/close. `tw-animate-css` does not ship these. */
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+}
+
+@keyframes accordion-down {
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--radix-accordion-content-height);
+  }
+}
+
+@keyframes accordion-up {
+  from {
+    height: var(--radix-accordion-content-height);
+  }
+  to {
+    height: 0;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  /*
+   * The header is sticky, so an in-page anchor would otherwise scroll its target
+   * underneath it. This is what makes the one-page nav land correctly.
+   */
+  :target {
+    scroll-margin-top: 5rem;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+}
+
+/*
+ * Admin-authored rich text (course descriptions, CMS section bodies). Tailwind
+ * resets every element, so the tags `App\Support\HtmlSanitizer` allows need
+ * their spacing and weight put back. Mirrors `web/src/index.css`, but scaled up
+ * — this renders at reading size on a marketing page, not inside a dense admin
+ * panel.
+ *
+ * Rendering saved HTML still requires DOMPurify at the call site (root
+ * CLAUDE.md §7.6). This class only styles it.
+ */
+@layer components {
+  .pb-rich-text {
+    @apply text-base leading-relaxed text-muted-foreground;
+  }
+  .pb-rich-text p {
+    @apply my-3 first:mt-0 last:mb-0;
+  }
+  .pb-rich-text h2,
+  .pb-rich-text h3,
+  .pb-rich-text h4 {
+    @apply mt-6 mb-2 font-semibold text-foreground first:mt-0;
+  }
+  .pb-rich-text h2 {
+    @apply text-xl;
+  }
+  .pb-rich-text h3 {
+    @apply text-lg;
+  }
+  .pb-rich-text h4 {
+    @apply text-base;
+  }
+  .pb-rich-text ul {
+    @apply my-3 list-disc space-y-1 pl-5;
+  }
+  .pb-rich-text ol {
+    @apply my-3 list-decimal space-y-1 pl-5;
+  }
+  .pb-rich-text a {
+    @apply font-medium text-primary underline underline-offset-2 hover:text-primary/80;
+  }
+  .pb-rich-text blockquote {
+    @apply my-4 border-l-2 border-accent pl-4 italic;
+  }
+  .pb-rich-text strong {
+    @apply font-semibold text-foreground;
+  }
+}

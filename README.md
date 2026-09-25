@@ -34,21 +34,68 @@ See `docs/deployment.md` for the full server setup.
 
 Run tests: `php artisan test`
 
-## Web (`web/`)
+## Web — admin panel (`web/`)
 
 ```bash
 cd web
 npm install
 cp .env.example .env        # points at http://localhost:8001 by default
-npm run dev                 # http://localhost:5173
+npm run dev                 # http://localhost:5183
 ```
 
-Type-check: `npx tsc -b --noEmit` · Build: `npm run build`
+Type-check: `npx tsc -b` · Build: `npm run build` · Lint: `npm run lint`
+
+## Site — public website + student portal (`site/`)
+
+```bash
+cd site
+npm install
+cp .env.example .env        # points at http://localhost:8001 by default
+npm run dev                 # http://localhost:5184
+```
+
+Type-check: `npx tsc -b` · Build: `npm run build` · Lint: `npm run lint`
+
+Read `site/CLAUDE.md` and `docs/WEBSITE_AND_PORTAL_GUIDE.md` before working in here.
+
+## Mobile — student app (`mobile/`)
+
+```bash
+cd mobile
+npm install
+npx expo start              # press a for Android, i for iOS
+```
+
+Use `npx expo install <pkg>`, never `npm install` — it pins the SDK-compatible version. See `mobile/CLAUDE.md`.
+
+## Running the whole stack
+
+Three terminals. The API must be first; the two web apps are independent of each other.
+
+| # | Folder | Command | URL |
+|---|---|---|---|
+| 1 | `backend/` | `php artisan serve --port=8001` | http://localhost:8001 |
+| 2 | `site/` | `npm run dev` | http://localhost:5184 |
+| 3 | `web/` | `npm run dev` | http://localhost:5183 |
+
+Both ports are `strictPort` — if one is taken the dev server fails rather than silently moving, because
+`SANCTUM_STATEFUL_DOMAINS` in `backend/.env` lists these exact hosts and auth breaks on any other port.
+
+### Two local gotchas that look like bugs
+
+- **Sign-in emails are not sent.** `MAIL_MAILER=log` locally, so a student's sign-in code is written to
+  `backend/storage/logs/laravel.log` instead. Tail that file and read the code from it.
+- **If `QUEUE_CONNECTION` is `database`, nothing sends until a worker runs.** The sign-in code is a
+  queued notification, so with no `php artisan queue:work` running the job just sits in the `jobs`
+  table and nobody can log in — with no error anywhere. Local `.env` currently uses `sync`, which
+  sends inline and needs no worker. See `backend/CLAUDE.md` §6.
 
 ## What's built so far
 
-- Admin authentication (Sanctum SPA cookie sessions, roles, lockout).
-- Student Management: list/search/filter, create/edit, block/unblock, soft delete, bulk CSV Student-ID import, detail page.
-- Admin panel shell (sidebar, mobile drawer, dashboard) showing the full intended navigation, with unbuilt sections marked "Soon".
+The admin panel, the student mobile app and the API behind both are substantially built — students,
+courses and bundles, video lessons, assessments, checklists, premium services, orders and payments,
+Sinhala translation. **`docs/CHANGELOG.md` is the accurate record**; this list used to drift, so it no
+longer tries to duplicate it.
 
-Everything else in `CLAUDE.md`'s tech stack (courses, payments, checklists, jobs, the mobile-web student area, PWA install flow, i18n) is scaffolded for but not yet implemented — see `docs/CHANGELOG.md`.
+In progress: `site/` — the public website and the browser student portal. See
+`docs/WEBSITE_AND_PORTAL_GUIDE.md`.

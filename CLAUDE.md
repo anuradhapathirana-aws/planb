@@ -8,10 +8,11 @@
 
 **Client:** Plan B International (contact: Anuradha).
 
-**Platform decision:** Two clients over one Laravel API.
+**Platform decision:** Three clients over one Laravel API.
 
-- **`web/`** — React PWA. Ships the **admin panel** today; the student web area follows later, reusing the same student API.
+- **`web/`** — React PWA. The **admin panel**, and only the admin panel. Ships on its own admin subdomain.
 - **`mobile/`** — React Native + Expo. The **student** app, one codebase for Android and iOS. This is the primary student experience.
+- **`site/`** — React + Vite. The **public Plan B website** and the **browser student portal**, together on the public domain. Consumes the same student API as `mobile/` and adds no endpoints of its own. See `docs/WEBSITE_AND_PORTAL_GUIDE.md`.
 
 Students authenticate by **email OTP or Sign in with Google** — there is no SMS and no phone verification. Admins authenticate by email + password on web only.
 
@@ -30,16 +31,19 @@ Students authenticate by **email OTP or Sign in with Google** — there is no SM
 ```
 planb/
 ├── backend/         Laravel 11 API          — see backend/CLAUDE.md
-├── web/             React 18 + Vite PWA (admin panel; student web area later)
+├── web/             React 18 + Vite PWA — ADMIN PANEL ONLY (admin subdomain)
+├── site/            React 18 + Vite — public website + student portal (public domain)
 ├── mobile/          React Native + Expo (student app) — see mobile/CLAUDE.md
-├── shared/          Source-only TS shared by web/ and mobile/ (types, Zod schemas, tokens, i18n)
+├── shared/          Source-only TS shared by all three clients (types, Zod schemas, tokens, i18n)
 ├── docs/            Specs, schema, deployment
 └── CLAUDE.md        This file
 ```
 
 Each app folder has its own `package.json` / `composer.json`. Do not create shared root-level dependencies.
 
-**`shared/` is the one carve-out**, and it is deliberately not a dependency: it ships **TypeScript source only, with no dependencies of its own** (`zod`, `axios` etc. are `peerDependencies`). Both apps reach it through a `@shared/*` tsconfig path alias — Vite resolves it via an alias, Metro via `watchFolders`. There is nothing to install and nothing to hoist, so no root `package.json` and no workspace tooling exist. A published app bundle is fully standalone; `shared/` is compile-time only.
+**`web/` and `site/` are separate apps on purpose.** A different domain means a different build artifact, so admin code never lands on the public host; the marketing bundle never inherits the admin's dependency graph (TanStack Table, TipTap, Recharts, tus); and the admin session and the student session end up separated by origin, which reinforces the guard split `backend/CLAUDE.md` §1 exists to protect. The reasoning in full is in `docs/WEBSITE_AND_PORTAL_GUIDE.md` §2.
+
+**`shared/` is the one carve-out**, and it is deliberately not a dependency: it ships **TypeScript source only, with no dependencies of its own** (`zod`, `axios` etc. are `peerDependencies`). All three clients reach it through a `@shared/*` tsconfig path alias — Vite resolves it via an alias, Metro via `watchFolders`. There is nothing to install and nothing to hoist, so no root `package.json` and no workspace tooling exist. A published app bundle is fully standalone; `shared/` is compile-time only.
 
 Anything describing the API contract — types mirroring an API Resource, a Zod schema, brand tokens, i18n strings — belongs in `shared/`, never copy-pasted into an app.
 
@@ -72,12 +76,14 @@ Anything describing the API contract — types mirroring an API Resource, a Zod 
 9. **All queries scoped by authenticated user where relevant.** Use Policies + `authorize()` in every non-public endpoint.
 10. **Files uploaded by users go through Spatie Media Library**, stored on Bunny Storage (production) or local disk (dev).
 11. **Money is stored in the smallest unit (cents/paisa) as an integer.** Never float for currency.
-12. **Auth is Sanctum, in two modes, over two separate guards.** Admins (`User`) use SPA cookie sessions from `web/`; students (`Student`) use Bearer tokens from `mobile/`. No manual JWT handling. The two actor types must never authenticate on each other's routes — read `backend/CLAUDE.md` before touching `config/auth.php`, any guard, or any policy signature.
+12. **Auth is Sanctum, over separate guards per actor type.** Admins (`User`) use SPA cookie sessions from `web/`; students (`Student`) use Bearer tokens from `mobile/` and a cookie session from `site/`. No manual JWT handling. The two actor types must never authenticate on each other's routes — read `backend/CLAUDE.md` before touching `config/auth.php`, any guard, or any policy signature, and `docs/WEBSITE_AND_PORTAL_GUIDE.md` §2.3 before touching the student web session.
 
-### Web (Single App, Multiple Roles)
+### Web — the admin panel (`web/`)
 
-1. **Feature-based organization** in `src/features/{role}/{feature}/`. Roles: `marketing`, `auth`, `student`, `admin`.
-2. **Three layout components** — `PublicLayout`, `StudentLayout`, `AdminLayout`. Route guards wrap each area.
+The public website and the student portal are **not** here; they are `site/`. Do not add a `marketing` or `student` feature folder to this app.
+
+1. **Feature-based organization** in `src/features/{role}/{feature}/`. Roles: `auth`, `admin`.
+2. **`AdminLayout`** is the shell; route guards wrap the area.
 3. **Shared UI in `src/components/ui/`** (shadcn/ui primitives — never edit directly unless customizing globally) **and `src/components/shared/`** (custom composites built on top: `DataTable`, `FilterCard`, `ConfirmDialog`, `EmptyState`, `Pagination`, `StatusBadge`, `Breadcrumbs`, `FullScreenSpinner`, `PageLoader`, and the Sectioned Admin Forms building blocks `FormSection`, `FieldLabel`/`FieldError`, `SegmentedToggle`, `RichTextEditor`). A pattern used by more than one feature belongs in `shared/`, not copy-pasted per feature.
 4. **Routes are code-split.** Every page component (and `AdminLayout` itself) is `React.lazy`-loaded in `src/routes/router.tsx`, each wrapped in its own `<Suspense>` (`PageLoader` inside the admin shell, `FullScreenSpinner` before it). Keeps the admin bundle from shipping student/marketing-area code and vice versa once those areas exist — cheap to keep up as new routes are added, expensive to retrofit later.
 5. **Server state via TanStack Query.** No manual `useEffect + fetch`. Every API call goes through a typed function in `src/api/` called via `useQuery` or `useMutation`.
@@ -429,14 +435,14 @@ eas build --profile production --platform ios       # Builds on EAS macOS worker
 - Never expose technical errors ("Something went wrong. Please try again." not "500 Internal Server Error").
 - Every user-facing string wrapped in `t('key')` for Sinhala translation.
 
-## 16. One API, Two Clients
+## 16. One API, Three Clients
 
-The API is UI-agnostic and serves `web/` and `mobile/` equally.
+The API is UI-agnostic and serves `web/`, `site/` and `mobile/` equally.
 
 1. **API responses are JSON, never HTML fragments.** No Inertia.js. Pure API + separate clients.
 2. **No client-specific logic in the API.** All UI concerns stay in the React / React Native app. If an endpoint needs to know which client called it, the design is wrong.
-3. **Two actor types, two guards.** `/api/v1/admin/*` authenticates a `User` (SPA cookie session); `/api/v1/student/*` authenticates a `Student` (Bearer token, and later a student SPA session). Neither may authenticate on the other's routes — `backend/CLAUDE.md` explains the exact mechanism and why it is not automatic.
-4. **The student API is written once and consumed twice.** The student web area, when it is built, adds no endpoints — it is UI only.
+3. **Two actor types, separate guards.** `/api/v1/admin/*` authenticates a `User` (SPA cookie session from `web/`); `/api/v1/student/*` authenticates a `Student` (Bearer token from `mobile/`, cookie session from `site/`). Neither may authenticate on the other's routes — `backend/CLAUDE.md` explains the exact mechanism and why it is not automatic.
+4. **The student API is written once and consumed twice.** The student portal in `site/` adds no endpoints — it is UI only. The **public, anonymous** catalogue is different: it has no student to scope by, so it lives under `/api/v1/public/*` with its own Resources in `app/Http/Resources/Public/`, never a reused student one.
 5. **A student-facing endpoint always gets its own API Resource**, never a reused admin one. See "Answer Keys & Student-Facing Payloads" in §8.
 
 ## 17. Deeply follow these for development
@@ -446,6 +452,7 @@ The API is UI-agnostic and serves `web/` and `mobile/` equally.
 - Properly optimized Page Layout withing the screen to reduce scroll, That will user friendly.
 - Working in `backend/`? Read `backend/CLAUDE.md` first — the guard split is not obvious and is easy to break.
 - Working in `mobile/`? Read `mobile/CLAUDE.md` first.
+- Working in `site/`? Read `site/CLAUDE.md` and `docs/WEBSITE_AND_PORTAL_GUIDE.md` first — that guide carries the whole build plan, the decisions already made, and the security gates.
 - Read and Follow `C:\laragon\www\planb\.agents\skills\laravel-specialist\SKILL.md` file for backend Guidelines
 - Read and Follow `C:\laragon\www\planb\.agents\skills\ui-ux-pro-max\SKILL.md` file for frontend development
 - Always Follow last changed & existing UI and styles withing the whole app to keep the same UI consistency of Admin.
