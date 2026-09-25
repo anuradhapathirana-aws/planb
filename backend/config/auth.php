@@ -69,6 +69,21 @@ return [
             'driver' => 'sanctum',
             'provider' => 'students',
         ],
+
+        /*
+         * The student's cookie session on the public website (site/). A plain
+         * `session` driver, NOT `sanctum`, and it names the `students` provider,
+         * so it can only ever resolve a `Student`.
+         *
+         * It must never be added to `config/sanctum.php`'s `guard` array: that
+         * list is global, every Sanctum guard reads it, and adding this there is
+         * how a student session would start satisfying `auth:sanctum` on the
+         * admin API. See docs/WEBSITE_AND_PORTAL_GUIDE.md §2.3.
+         */
+        'student-web' => [
+            'driver' => 'session',
+            'provider' => 'students',
+        ],
     ],
 
     /*

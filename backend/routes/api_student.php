@@ -17,6 +17,7 @@ use App\Http\Controllers\Student\PaymentController;
 use App\Http\Controllers\Student\ProfileController;
 use App\Http\Controllers\Student\ReferenceDataController;
 use App\Http\Controllers\Student\ServiceController;
+use App\Http\Controllers\Student\WebSessionController;
 use App\Http\Controllers\Student\WishlistController;
 use App\Models\CourseProgramme;
 use App\Models\CourseVideo;
@@ -67,6 +68,22 @@ Route::post('auth/google', [AuthController::class, 'google'])
     ->middleware('throttle:student-login-verify');
 
 /*
+ * The website's sign-in: the same checks, on the same limiters, ending in an
+ * httpOnly cookie session on the `student-web` guard instead of a token. They
+ * only work for a request from a SANCTUM_STATEFUL_DOMAINS origin, which is also
+ * what makes Sanctum enforce CSRF on them. `request-code` above is shared.
+ * See docs/WEBSITE_AND_PORTAL_GUIDE.md §2.3.
+ */
+Route::post('auth/session/verify-code', [WebSessionController::class, 'verifyCode'])
+    ->middleware('throttle:student-login-verify');
+
+Route::post('auth/session/google', [WebSessionController::class, 'google'])
+    ->middleware('throttle:student-login-verify');
+
+Route::post('auth/session/logout', [WebSessionController::class, 'logout'])
+    ->middleware('throttle:30,1');
+
+/*
  * Logo and intro, read before the app knows whether anyone is signed in — the
  * intro plays ahead of Sign in too. Branding only; bank details stay behind
  * the authenticated payment endpoint below.
@@ -78,10 +95,28 @@ Route::get('app-config', [AppConfigController::class, 'show'])->middleware('thro
  * the first keeps an admin session out (Sanctum's stateful branch reads one
  * global guard list), the second kills a token the moment its student is
  * blocked or deleted, rather than at its 30-day expiry.
+ *
+ * Token-only. These two act on the bearer token itself, and `refresh` MINTS
+ * one — reachable from a website session, it would turn an httpOnly cookie into
+ * a 30-day token that JavaScript can read and that outlives signing out. The
+ * website signs out through `auth/session/logout` instead.
  */
 Route::middleware(['auth:student', 'student.actor', 'student.active'])->group(function () {
     Route::post('auth/refresh', [AuthController::class, 'refresh']);
     Route::post('auth/logout', [AuthController::class, 'logout']);
+});
+
+/*
+ * Everything else accepts either credential: the app's bearer token or the
+ * website's cookie session. `student-web` is tried FIRST, and the order matters:
+ * the API has one host, so one browser holds one session cookie for it, and an
+ * admin who is also signed in to the portal has both logins in that session.
+ * Tried second, `student` (Sanctum) would find the admin through its global
+ * `web` guard list first, and `student.actor` would then 401 the student.
+ *
+ * `student.actor` / `student.active` hold the line for both guards unchanged.
+ */
+Route::middleware(['auth:student-web,student', 'student.actor', 'student.active'])->group(function () {
     Route::get('me', [AuthController::class, 'me']);
 
     // Reference data for the profile form. Active rows only.

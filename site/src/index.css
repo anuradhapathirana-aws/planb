@@ -249,3 +249,31 @@
     @apply font-semibold text-foreground;
   }
 }
+
+/*
+ * The lesson player (video.js). Its own stylesheet loads with the player chunk;
+ * these few rules only mean anything once it has, and are harmless before.
+ *
+ * `.pb-vjs-unlocked` is the stretch of the seek bar the student has already
+ * reached — where they may freely seek. Beyond it the bar is still drawn, but
+ * a seek there snaps back (see LessonPlayer). Showing the boundary is what
+ * makes the rule feel fair instead of broken.
+ */
+@layer components {
+  .video-js .vjs-progress-holder .pb-vjs-unlocked {
+    position: absolute;
+    inset-block: 0;
+    left: 0;
+    width: 0;
+    background: rgb(255 255 255 / 0.35);
+    pointer-events: none;
+  }
+  .video-js .vjs-play-progress,
+  .video-js .vjs-volume-level {
+    background-color: var(--accent);
+  }
+  .video-js .vjs-big-play-button {
+    border-color: var(--accent);
+    background-color: rgb(15 30 69 / 0.8);
+  }
+}

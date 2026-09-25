@@ -22,6 +22,7 @@ export function RequireStudent({ children }: { children: ReactNode }) {
   const location = useLocation();
   const student = useSessionStore((s) => s.student);
   const isResolved = useSessionStore((s) => s.isResolved);
+  const signedOutByStudent = useSessionStore((s) => s.signedOutByStudent);
 
   // Still asking the server who this is. Bouncing now would flash the home page
   // at a signed-in student on every hard refresh of a portal page.
@@ -31,7 +32,15 @@ export function RequireStudent({ children }: { children: ReactNode }) {
     return (
       <Navigate
         to={paths.home}
-        state={{ from: safeReturnPath(location.pathname + location.search) }}
+        /*
+         * `from` makes the public layout open sign-in and come back here
+         * afterwards — right for a deep link or an expired session, wrong for
+         * a student who just pressed "Sign out" (it would offer to sign them
+         * straight back in).
+         */
+        state={
+          signedOutByStudent ? null : { from: safeReturnPath(location.pathname + location.search) }
+        }
         replace
       />
     );

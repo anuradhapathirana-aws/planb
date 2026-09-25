@@ -5,6 +5,63 @@ All notable changes to this project are documented here. Format loosely follows 
 ## Unreleased
 
 ### Added
+- **Checklists in the student portal** (`/app/checklist`, task POR-7). The same Before arrival / After arrival checklists as the app, with the same ticks, since both read the student's one saved list.
+  - **Two tabs**, each showing how far along it is ("3/10"). The chosen tab is kept in the address, so a refresh or a shared link opens the same one.
+  - **A progress card** with a bar, how many steps are left and a one-line hint for the phase. When every step is done it changes to "All done".
+  - **Each step** has its own checkbox, and clicking the title opens Plan B's instructions for it underneath (one at a time), with a "Mark as done" button at the end, so the student can read a step and tick it without scrolling back up.
+  - **Ticking is instant.** If saving fails, only that step goes back and the student is told. Finishing a whole list gets a short "Nice work" message. The checklist summary on the portal home updates too.
+- **Watching lessons on the website** (`/app/lessons/…`, task POR-4). A student can now play a course's lessons in the browser, with the same rules as the app.
+  - **No skipping ahead:** the student can rewind freely (there's a "back 10 seconds" button), but jumping forward past what they've watched snaps back with a short message — in fullscreen too. The part of the bar they can move around in is shown lighter. The rule is also enforced by the server, so it can't be got around by fiddling with the browser.
+  - **Progress is saved as they watch** — every few seconds, when they pause, when they switch tabs and even when they close the tab — and they pick up a few seconds before where they stopped next time.
+  - **When a lesson is finished**, the page says so and offers **Next lesson**, which is unlocked straight away. The course's lesson list sits beside the video, showing what's playing.
+  - If a lesson has no video uploaded yet, or the student can't open it, the page says exactly that instead of showing a broken player.
+  - No download button, no picture-in-picture and no right-click save. This makes copying harder, not impossible — the same as any online course site without paid DRM.
+  - **Before students use this for real, video hosting must move to Bunny Stream** (task DEP-4); serving videos from our own server can't take many viewers at once.
+- **The course page inside the student portal** (`/app/courses/15`, task POR-3). Every "Resume", "Go to course" and "Start learning" button on the website now opens it.
+  - **The student's progress** — a bar, "3 of 8 lessons", and what's **up next**, with one button: Start learning or Continue learning. A finished course says so and offers "Watch again".
+  - **Every topic and lesson**, opened at the topic where they left off. Watched lessons get a green tick; lessons not reached yet show a lock (a lesson opens once the one before it is watched), and pressing one explains why. Topic descriptions written in the admin panel appear here.
+  - **The final assessment**, when the course has one: pass mark, number of questions, attempts left, and — if it isn't open yet — why (usually "watch every lesson first").
+  - "Course 1 / Course 2" and the reminder to take them in order, as on the app.
+  - Opening this page for a course the student doesn't own takes them to the course's public page, where they can enrol.
+  - The video player and the assessment itself are the next pieces of work; their buttons are in place.
+- **Checkout on the website — bank transfer** (`/checkout/27`, task PUB-8). Buying a course or a bundle on the website now leads here. Card payment is not offered yet (by decision); it comes later.
+  - **Order summary** on the side: what is being bought (a bundle lists its courses), the order number, the total and its status.
+  - **Step 1 — Transfer the amount:** the exact amount, and Plan B's bank, account name, account number and branch, with **Copy** buttons so the number is pasted into the banking app instead of retyped. Any extra instructions from Settings > Bank Details are shown too.
+  - **Step 2 — Send us your slip:** the bank's reference number and the slip — click to choose or drag it in; JPG, PNG or PDF up to 5 MB, with a preview. Wrong types and oversized files are caught before uploading.
+  - **After sending**, the page says it's waiting for Plan B to check it, with a "Check status" button. If an admin rejects it, the page shows their reason and lets the student send another slip. Once approved, it offers "Start learning". Nothing unlocks until an admin approves.
+  - Someone not signed in is asked to sign in first; an order belonging to someone else is never shown.
+  - Slips from the website go through exactly the same checks as the app: file type checked on the real file, photos re-saved (removing hidden location data), and stored privately under a random name.
+- **Course bundle pages on the website** (`/bundles/8`, task PUB-5). The "View Course Bundle" button on a course page now opens one.
+  - **Shows every course in the bundle**, grouped by sub-category, with how many courses, lessons and hours of video it holds. Sub-categories sold as a bundle of their own are linked separately underneath.
+  - **The price box** shows the bundle price to visitors, with a note that once signed in they only pay for courses they don't own yet. Signed in, it shows **their own price**, how many they already own, and an "Enrolled" tag on those courses.
+  - **The button:** "Go to my courses" if they own everything; "Coming soon · price" while payments are off; otherwise buy the rest — a visitor signs in first and comes back to the same page. If nothing is left to pay for, the courses open straight away.
+  - Opening a category that isn't sold as a bundle shows its courses on the Courses page instead, and a sub-category that belongs to a bigger bundle goes to that bundle's page — so a bundle is always bought from the page that lists what's in it.
+- **A page for every course on the website** (`/courses/12`, task PUB-4). Clicking any course card now opens it.
+  - **What's in it:** the course name and description, how long it is, how many lessons and topics, and the full **course content** — every topic, and every lesson in it with its length — in sections that open and close.
+  - **A price box** that stays in view while you scroll on a laptop, with what the course includes (video length, lessons, topics, the final assessment if there is one). Its button always shows the right next step:
+    - already enrolled → **Go to course**
+    - sold only in a bundle → the bundle's name and price, and a button to it
+    - a paid course while payments are switched off → **Coming soon · price** (the price stays visible)
+    - otherwise **Enrol** — a free course opens straight away; a paid one goes to payment. Someone not signed in is asked to sign in first and brought back to the same course page, so nobody is enrolled or charged without pressing the button themselves.
+  - **More courses from the same category** at the bottom, and a **Share** button (the phone's share menu, so WhatsApp is one tap; on a computer it copies the link).
+  - Sharing a course link on WhatsApp or Facebook shows the course name, description and picture.
+  - **No star ratings or learner numbers**, by decision: the app's are sample figures, and a public page must not show made-up reviews. They come back when real reviews exist.
+- **Courses page on the website** (`/courses`, task PUB-3). Every published course in one place, reached from the "Courses" link in the menu and the "View all courses" button on the home page.
+  - **Search** by course name or by what a course covers — "visa" finds a course with a visa topic even if the word is not in its name.
+  - **Category buttons** across the top, each showing how many courses it has; picking a main category shows its sub-categories underneath. Categories with no courses are not shown, so no button leads to an empty page.
+  - **Free / Paid** switch and **Sort by**: recommended order (Plan B's Course 1, Course 2 …), newest, or price low-to-high / high-to-low.
+  - **Pages of 12 courses**, with numbered pages on a laptop and "Page 2 of 5" on a phone.
+  - **Every search and filter is part of the page address**, so a link like "our free courses" can be sent on WhatsApp or used in an ad and opens exactly that view.
+  - A student who is signed in sees an **"Enrolled"** tag on courses they already have.
+  - The course cards now show "Free", "In a bundle", "View details" and the lesson count in Sinhala when the site is in Sinhala.
+- **Students can sign in on the website and land in their student portal** (`site/`, tasks API-5, SEC-1, PUB-7, POR-1, POR-2).
+  - **Sign in from the website header** with an emailed six-digit code or "Continue with Google" — the same two ways as the mobile app, and the same accounts. After signing in the student goes straight to their portal at `/app`. Someone who opened a portal link while signed out is asked to sign in and then taken to the page they were trying to open.
+  - **The code field works like a phone expects**: one box, the keyboard offers the code from the email, pasting works, and it signs in by itself on the sixth digit. A student who never receives a code is told to check their spam folder and that codes only go to addresses Plan B has on record — the website never says whether an address belongs to a student, so nobody can use it to find out who studies with Plan B.
+  - **Portal home**: a greeting, three quick numbers (courses enrolled, lessons watched, checklist done), the course to pick up next with a Resume button, the student's courses with their progress, how far they are through each arrival checklist, and any announcements Plan B has published for the app's home screen. It fits a laptop screen without scrolling and becomes one column on a phone.
+  - **My Courses page** in the portal: every course the student is enrolled in, in Plan B's course order (Course 1, Course 2 …), each with its picture, length, category and how far through it they are, plus a Complete badge on finished ones. A search box appears once they have more than one course, and a Browse button leads to the course catalogue. Clicking a course will open its lessons once the course page is built — that is the next step.
+  - **Sign out** from the account menu. Everything the portal had loaded for that student is wiped from the browser straight away, so the next person at a shared computer sees nothing of theirs.
+  - **How the sign-in is kept safe (for the developers):** the website gets an httpOnly session cookie, never a token — JavaScript on the page cannot read the credential at all. It is a separate login type from the admin panel's, and tests prove neither can open the other's pages, including when one browser is signed in as both. A website session can no longer be swapped for a mobile app token. Sign-in only works from the Plan B website's own address, and every sign-in request is protected against cross-site forgery.
+  - **Google on the website needs setting up once**: a Google "Web" client id in `site/.env` (`VITE_GOOGLE_CLIENT_ID`), the same id added to the backend's `GOOGLE_CLIENT_IDS`, and the website's address added in Google Cloud Console. Until then the Google button is simply hidden and the emailed code works on its own.
 - **`site/` — the public website and the browser student portal** (client request, beyond the SRS). Work has started on branch `feature/public-website-and-student-portal`; nothing is live yet.
   - **A new third client app**, alongside `web/` (admin) and `mobile/` (student app). It holds both the public Plan B website and a student portal students reach in a browser, on one domain, under one session. `web/` becomes admin-only on its own subdomain. Same approved stack — React 18, Vite, TypeScript, Tailwind, shadcn/ui, TanStack Query, Zustand — and it reads types, Zod schemas, brand tokens and i18n strings from `shared/`, so the three clients cannot drift apart on a contract.
   - **Why its own app rather than a folder inside `web/`:** a different domain means a different build, so admin code never lands on the public host; the marketing bundle never inherits the admin's dependency graph (TanStack Table, TipTap, Recharts, tus); and the admin and student Sanctum sessions end up separated by origin, which reinforces the guard split `backend/CLAUDE.md` §1 exists to protect.

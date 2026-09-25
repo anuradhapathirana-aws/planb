@@ -10,6 +10,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\Models\Role;
+use Tests\Concerns\SignsInOnTheWebsite;
 use Tests\TestCase;
 
 /**
@@ -31,6 +32,7 @@ use Tests\TestCase;
 class GuardIsolationTest extends TestCase
 {
     use RefreshDatabase;
+    use SignsInOnTheWebsite;
 
     protected function setUp(): void
     {
@@ -154,5 +156,157 @@ class GuardIsolationTest extends TestCase
         Sanctum::actingAs($student, ['student'], 'student');
 
         $this->getJson('/api/v1/student/me')->assertForbidden();
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | The student web session (SEC-1)
+    |--------------------------------------------------------------------------
+    |
+    | site/ adds a third credential: a `student-web` cookie session. Every test
+    | below uses a REAL session — signed in through the endpoint, cookie sent
+    | back — because `actingAs()` would skip the guard resolution these exist
+    | to prove. See docs/WEBSITE_AND_PORTAL_GUIDE.md §2.3.
+    */
+
+    public function test_a_student_web_session_cannot_reach_the_admin_api(): void
+    {
+        $this->useWebsiteOrigin();
+        $cookie = $this->signInOnTheWebsite(Student::factory()->create(['is_blocked' => false]));
+
+        // The session is real: it works where it belongs...
+        $this->fromWebsite($cookie)->getJson('/api/v1/student/me')->assertOk();
+
+        // ...and nowhere else.
+        $this->fromWebsite($cookie)->getJson('/api/v1/admin/me')->assertUnauthorized();
+        $this->fromWebsite($cookie)->getJson('/api/v1/admin/students')->assertUnauthorized();
+        $this->fromWebsite($cookie)->getJson('/api/v1/admin/course-programmes')->assertUnauthorized();
+    }
+
+    /** An admin's browser session on the student API, over the stateful path. */
+    public function test_an_admin_web_session_cannot_reach_the_student_api(): void
+    {
+        $this->useWebsiteOrigin();
+        $admin = User::factory()->create();
+        $admin->assignRole(RoleName::SuperAdmin->value);
+
+        $this->actingAs($admin, 'web');
+
+        $this->withHeader('Origin', $this->siteOrigin)
+            ->getJson('/api/v1/student/me')
+            ->assertUnauthorized();
+    }
+
+    /**
+     * The API has one host, so one browser holds one session cookie for it —
+     * an admin signed in to the portal too has BOTH logins in one session.
+     * Each area must still resolve its own actor, never the other.
+     */
+    public function test_one_browser_signed_in_as_both_resolves_each_area_to_its_own_actor(): void
+    {
+        $this->useWebsiteOrigin();
+        $student = Student::factory()->create(['is_blocked' => false]);
+        $cookie = $this->signInOnTheWebsite($student);
+
+        $admin = User::factory()->create();
+        $admin->assignRole(RoleName::SuperAdmin->value);
+
+        $this->fromWebsite($cookie);
+        $this->actingAs($admin, 'web');
+
+        $this->getJson('/api/v1/student/me')
+            ->assertOk()
+            ->assertJsonPath('data.student_id', $student->student_id);
+
+        $this->fromWebsite($cookie);
+        $this->actingAs($admin, 'web');
+
+        $this->getJson('/api/v1/admin/me')
+            ->assertOk()
+            ->assertJsonPath('data.email', $admin->email);
+    }
+
+    /**
+     * `auth/refresh` MINTS a bearer token. From a cookie session it would turn
+     * an httpOnly credential into a 30-day one JavaScript can read, which
+     * survives signing out. It is token-only.
+     */
+    public function test_a_student_web_session_cannot_mint_a_bearer_token(): void
+    {
+        $this->useWebsiteOrigin();
+        $student = Student::factory()->create(['is_blocked' => false]);
+        $cookie = $this->signInOnTheWebsite($student);
+
+        $this->fromWebsite($cookie)->postJson('/api/v1/student/auth/refresh')->assertUnauthorized();
+
+        $this->assertSame(0, $student->tokens()->count());
+    }
+
+    /** Mobile is unaffected by the new guard sitting in front of it. */
+    public function test_a_bearer_token_still_works_beside_the_web_guard(): void
+    {
+        $student = Student::factory()->create(['is_blocked' => false]);
+        $token = $student->createToken('mobile', ['student'])->plainTextToken;
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson('/api/v1/student/me')
+            ->assertOk()
+            ->assertJsonPath('data.student_id', $student->student_id);
+
+        $this->app['auth']->forgetGuards();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->postJson('/api/v1/student/auth/refresh')
+            ->assertOk();
+    }
+
+    public function test_a_web_session_dies_when_the_student_is_blocked(): void
+    {
+        $this->useWebsiteOrigin();
+        $student = Student::factory()->create(['is_blocked' => false]);
+        $cookie = $this->signInOnTheWebsite($student);
+
+        $student->forceFill(['is_blocked' => true])->save();
+
+        $this->fromWebsite($cookie)->getJson('/api/v1/student/me')->assertForbidden();
+    }
+
+    /**
+     * 401, not the 403 a bearer token gets: the `students` provider excludes
+     * soft-deleted rows, so the session cannot even resolve the student — it
+     * dies one step before `EnsureStudentActive` would have stopped it.
+     */
+    public function test_a_web_session_dies_when_the_student_is_deleted(): void
+    {
+        $this->useWebsiteOrigin();
+        $student = Student::factory()->create(['is_blocked' => false]);
+        $cookie = $this->signInOnTheWebsite($student);
+
+        $student->delete();
+
+        $this->fromWebsite($cookie)->getJson('/api/v1/student/me')->assertUnauthorized();
+    }
+
+    /**
+     * A session cookie is only honoured on a request Sanctum treats as stateful
+     * — i.e. from a listed website origin. Replayed from anywhere else (a
+     * script, an unlisted site), it authenticates nobody.
+     */
+    public function test_a_web_session_cookie_is_ignored_from_an_unlisted_origin(): void
+    {
+        $this->useWebsiteOrigin();
+        $cookie = $this->signInOnTheWebsite(Student::factory()->create(['is_blocked' => false]));
+
+        // The cookie is live — proven from the real origin first...
+        $this->fromWebsite($cookie)->getJson('/api/v1/student/me')->assertOk();
+
+        // ...and worthless from anywhere else.
+        $this->freshRequest();
+
+        $this->withCredentials()
+            ->withHeader('Origin', 'https://attacker.example')
+            ->withCookie(config('session.cookie'), $cookie)
+            ->getJson('/api/v1/student/me')
+            ->assertUnauthorized();
     }
 }

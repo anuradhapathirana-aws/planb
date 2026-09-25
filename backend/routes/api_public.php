@@ -62,3 +62,36 @@ Route::get('/site-content', SiteContentController::class)
 Route::get('/courses', [CourseController::class, 'index'])
     ->name('courses.index')
     ->middleware('throttle:public-site');
+
+/*
+ * One course's page. **The parameter is `{id}`, and must never be renamed to
+ * `{course}`**: `Route::bind('course', …)` in routes/api_student.php is GLOBAL,
+ * so a `{course}` here would be resolved by the student binder — which checks
+ * "published" but not the visitor's stricter category rule — before this
+ * controller ever ran. The Service's query is the scope. `whereNumber` keeps
+ * anything else from reaching the controller at all.
+ */
+Route::get('/courses/{id}', [CourseController::class, 'show'])
+    ->whereNumber('id')
+    ->name('courses.show')
+    ->middleware('throttle:public-site');
+
+/*
+ * The `/courses` page's category filter. Not the student app's
+ * `course-categories`: that one lists empty categories on purpose (Home's row)
+ * and sits behind a session. This one lists only categories a visitor would
+ * find a course in, with the count.
+ */
+Route::get('/course-categories', [CourseController::class, 'categories'])
+    ->name('course-categories.index')
+    ->middleware('throttle:public-site');
+
+/*
+ * One category's page — a course bundle's, on the website (`/bundles/:id`).
+ * `{id}`, not `{category}`, for the same reason as the course route above:
+ * never let a route name collide with a global binder.
+ */
+Route::get('/course-categories/{id}', [CourseController::class, 'category'])
+    ->whereNumber('id')
+    ->name('course-categories.show')
+    ->middleware('throttle:public-site');

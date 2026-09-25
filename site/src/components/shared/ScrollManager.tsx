@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useLocation, useNavigationType } from 'react-router-dom';
 
 /**
@@ -19,8 +19,19 @@ import { useLocation, useNavigationType } from 'react-router-dom';
 export function ScrollManager() {
   const { pathname, hash } = useLocation();
   const navigationType = useNavigationType();
+  const lastTarget = useRef<string | null>(null);
 
   useEffect(() => {
+    /*
+     * Only a new path or anchor counts. `navigationType` is a dependency, so
+     * this also runs when only it changes — e.g. the catalogue pushing a page
+     * change then replacing for a filter change, on the same path. Without
+     * this check that re-run scrolled a visitor to the top mid-filter.
+     */
+    const target = pathname + hash;
+    if (lastTarget.current === target) return;
+    lastTarget.current = target;
+
     if (navigationType === 'POP') return;
 
     if (hash) {

@@ -1,6 +1,12 @@
 import { apiClient } from '@/api/client';
-import type { PaginatedResponse } from '@shared/types/api';
-import type { PublicCourseListParams, PublicCourseSummary } from '@shared/types/publicCourse';
+import type { ApiResource, PaginatedResponse } from '@shared/types/api';
+import type {
+  PublicCategoryDetail,
+  PublicCourseCategory,
+  PublicCourseDetail,
+  PublicCourseListParams,
+  PublicCourseSummary,
+} from '@shared/types/publicCourse';
 
 /**
  * The public course catalogue — anonymous, no session involved.
@@ -22,4 +28,28 @@ export async function fetchPublicCourses(
   });
 
   return data;
+}
+
+/** One course's public page. 404 for anything a visitor may not see. */
+export async function fetchPublicCourse(id: number): Promise<PublicCourseDetail> {
+  const { data } = await apiClient.get<ApiResource<PublicCourseDetail>>(`/public/courses/${id}`);
+
+  return data.data;
+}
+
+/** One category's (a bundle's) public page, at its LIST price. 404 for a hidden one. */
+export async function fetchPublicCategory(id: number): Promise<PublicCategoryDetail> {
+  const { data } = await apiClient.get<ApiResource<PublicCategoryDetail>>(`/public/course-categories/${id}`);
+
+  return data.data;
+}
+
+/**
+ * The catalogue page's category filter: only categories a visitor would find a
+ * course in, each with its count, sub-categories nested under their parent.
+ */
+export async function fetchPublicCourseCategories(): Promise<PublicCourseCategory[]> {
+  const { data } = await apiClient.get<ApiResource<PublicCourseCategory[]>>('/public/course-categories');
+
+  return data.data;
 }

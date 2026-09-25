@@ -566,7 +566,23 @@
     "portal": {
       "title": "මගේ ඉගෙනුම",
       "backToSite": "වෙබ් අඩවියට ආපසු",
-      "account": "ගිණුම"
+      "account": "ගිණුම",
+      "signedOut": "ඔබ පිටවී ඇත.",
+      "home": {
+        "greeting": "ආයුබෝවන්, {{name}} 👋",
+        "subtitle": "Plan B සමඟ ඔබගේ ප්‍රගතිය මෙන්න.",
+        "statCourses": "ලියාපදිංචි පාඨමාලා",
+        "announcements": "Plan B වෙතින්",
+        "bannerLabel": "Plan B නිවේදන"
+      },
+      "course": {
+        "progressTitle": "ඔබගේ ප්‍රගතිය",
+        "upNext": "ඊළඟට",
+        "completeTitle": "පාඨමාලාව සම්පූර්ණයි",
+        "completeBody": "ඔබ සියලු පාඩම් නරඹා ඇත.",
+        "watchAgain": "නැවත නරඹන්න",
+        "viewPage": "පාඨමාලා පිටුව"
+      }
     },
     "story": {
       "heading": "දැනටමත් එහි සිටින සැබෑ අය",
@@ -609,6 +625,115 @@
       "listLabel": "අපගේ පාඨමාලා",
       "emptyTitle": "තවම පාඨමාලා ප්‍රකාශ කර නැත",
       "emptyBody": "නව පාඨමාලා නිතර එකතු වේ. නැවත පරීක්ෂා කරන්න, නැතහොත් අප හා සම්බන්ධ වන්න."
+    },
+    "auth": {
+      "codeLabel": "පිවිසුම් කේතය",
+      "changeEmail": "වෙනත් විද්‍යුත් තැපෑලක් භාවිත කරන්න",
+      "checkInbox": "සොයාගත නොහැකිද? ඔබගේ spam ෆෝල්ඩරය පරීක්ෂා කරන්න. කේත යවනු ලබන්නේ Plan B වාර්තාවල ඇති විද්‍යුත් තැපැල් ලිපිනවලට පමණි.",
+      "googleFailed": "Google හරහා ඔබව ඇතුළු කිරීමට නොහැකි විය. නැවත උත්සාහ කරන්න, නැතහොත් ඊමේල් කේතයක් භාවිත කරන්න."
+    },
+    "catalogue": {
+      "metaTitle": "පාඨමාලා — Plan B International",
+      "metaDescription": "අධ්‍යාපනය හෝ රැකියාව සඳහා UAE වෙත යන ශ්‍රී ලාංකිකයින් සඳහා ප්‍රායෝගික පාඨමාලා. ඔබේ වේගයට, ඉංග්‍රීසියෙන් හෝ සිංහලෙන් ඉගෙන ගන්න.",
+      "heading": "අපගේ **පාඨමාලා** ගවේෂණය කරන්න",
+      "body": "UAE වෙත යන ශ්‍රී ලාංකිකයින් සඳහා ප්‍රායෝගික පාඨමාලා — ඔබේ වේගයට, ඉංග්‍රීසියෙන් හෝ සිංහලෙන් ඉගෙන ගන්න.",
+      "searchLabel": "පාඨමාලා සොයන්න",
+      "searchPlaceholder": "පාඨමාලා හෝ මාතෘකා සොයන්න, උදා: වීසා",
+      "categoriesLabel": "කාණ්ඩය අනුව පෙරන්න",
+      "allCategories": "සියලු පාඨමාලා",
+      "allInCategory": "{{name}} හි සියල්ල",
+      "priceLabel": "මිල",
+      "priceAll": "ඕනෑම මිලක්",
+      "priceFree": "නොමිලේ",
+      "pricePaid": "ගෙවිය යුතු",
+      "sortLabel": "අනුපිළිවෙළ",
+      "sortRecommended": "නිර්දේශිත අනුපිළිවෙළ",
+      "sortNewest": "නවතම",
+      "sortPriceAsc": "මිල: අඩු සිට වැඩි",
+      "sortPriceDesc": "මිල: වැඩි සිට අඩු",
+      "results_one": "පාඨමාලා {{count}}",
+      "results_other": "පාඨමාලා {{count}}",
+      "clearFilters": "පෙරහන් ඉවත් කරන්න",
+      "paginationLabel": "පාඨමාලා පිටු",
+      "previous": "පෙර",
+      "next": "ඊළඟ",
+      "pageOf": "පිටුව {{page}} / {{total}}",
+      "inBundle": "පැකේජයක",
+      "viewDetails": "විස්තර බලන්න"
+    },
+    "course": {
+      "metaTitle": "{{name}} — Plan B International",
+      "aboutTitle": "මෙම පාඨමාලාව ගැන",
+      "contentTitle": "පාඨමාලා අන්තර්ගතය",
+      "expandAll": "සියල්ල විවෘත කරන්න",
+      "collapseAll": "සියල්ල හකුළන්න",
+      "includesTitle": "මෙම පාඨමාලාවට ඇතුළත් වේ",
+      "includesVideo": "වීඩියෝ පාඩම් {{length}}",
+      "includesTopics_one": "මාතෘකා {{count}}",
+      "includesTopics_other": "මාතෘකා {{count}}",
+      "includesAssessment_one": "අවසාන ඇගයීම · ප්‍රශ්න {{count}}",
+      "includesAssessment_other": "අවසාන ඇගයීම · ප්‍රශ්න {{count}}",
+      "includesDevices": "ඔබගේ දුරකථනයෙන් හෝ පරිගණකයෙන් ඉගෙන ගන්න",
+      "goToCourse": "පාඨමාලාවට යන්න",
+      "enrolledNote": "ඔබ මෙම පාඨමාලාවට ලියාපදිංචි වී ඇත.",
+      "signInFirst": "පළමුව ඔබ පිවිසිය යුතුය. ඒ සඳහා විනාඩියක් පමණ ගත වේ.",
+      "bundlePrice": "පැකේජ මිල {{price}}",
+      "relatedTitle": "{{category}} හි තවත්",
+      "notFoundTitle": "පාඨමාලාව හමු නොවීය",
+      "notFoundBody": "මෙම පාඨමාලාව ඉවත් කර ඇති හෝ තවදුරටත් ලබා ගත නොහැකි විය හැක.",
+      "linkCopied": "සබැඳිය පිටපත් කළා",
+      "breadcrumbLabel": "පිටු මාර්ගය"
+    },
+    "bundle": {
+      "metaTitle": "{{name}} පාඨමාලා පැකේජය — Plan B International",
+      "metaDescription": "එක් පැකේජයක පාඨමාලා {{count}}ක්, එක් ගෙවීමකින් එකට මිලදී ගන්න. ඔබේ වේගයට, ඉංග්‍රීසියෙන් හෝ සිංහලෙන් ඉගෙන ගන්න.",
+      "body": "පහත සියලු පාඨමාලා එක් ගෙවීමකින් ලැබේ.",
+      "listPrice": "පැකේජ මිල",
+      "yourPrice": "ඔබගේ මිල",
+      "ownedNote": "ඔබ පිවිසි පසු, ඔබට තවම නැති පාඨමාලා සඳහා පමණක් ගෙවන්න.",
+      "goToMyCourses": "මගේ පාඨමාලා වෙත යන්න",
+      "coursesTitle": "මෙම පැකේජයේ ඇත්තේ",
+      "separateTitle": "වෙනම පැකේජ ලෙසද විකිණේ",
+      "notFoundTitle": "පැකේජය හමු නොවීය",
+      "notFoundBody": "මෙම පැකේජය ඉවත් කර ඇති හෝ තවදුරටත් ලබා ගත නොහැකි විය හැක."
+    },
+    "checkout": {
+      "metaTitle": "ගෙවීම — Plan B International",
+      "signInTitle": "මෙම ඇණවුම බැලීමට පිවිසෙන්න",
+      "signInBody": "ඔබගේ ගෙවීම ඔබගේ Plan B ගිණුමට සම්බන්ධයි.",
+      "notFoundTitle": "ඇණවුම හමු නොවීය",
+      "notFoundBody": "මෙම ඇණවුම නොපවතී, නැතහොත් එය වෙනත් ගිණුමකට අයත්ය.",
+      "methodTitle": "බැංකු මාරුවකින් ගෙවන්න",
+      "stepTransfer": "මුදල මාරු කරන්න",
+      "stepProof": "ඔබගේ රිසිට්පත අපට එවන්න",
+      "amountToPay": "මාරු කළ යුතු මුදල",
+      "copy": "පිටපත් කරන්න",
+      "copyLabel": "{{label}} පිටපත් කරන්න",
+      "copied": "පිටපත් කළා",
+      "slipDrop": "උඩුගත කිරීමට ක්ලික් කරන්න හෝ ඇදගෙන එන්න",
+      "slipChange": "ගොනුව වෙනස් කරන්න",
+      "slipRemove": "ගොනුව ඉවත් කරන්න",
+      "summaryTitle": "ඇණවුම් සාරාංශය",
+      "bankUnavailable": "බැංකු මාරුව දැනට ලබා ගත නොහැක. කරුණාකර Plan B අමතන්න.",
+      "closedTitle": "මෙම ඇණවුම ගෙවිය නොහැක",
+      "closedBody": "එය අවලංගු කර හෝ මුදල් ආපසු ගෙවා ඇත. ඔබට තවමත් අවශ්‍ය නම් පාඨමාලා පිටුවෙන් නැවත ආරම්භ කරන්න.",
+      "goToMyCourses": "මගේ පාඨමාලා වෙත යන්න",
+      "typeCourse": "පාඨමාලාව",
+      "typeBundle": "පාඨමාලා පැකේජය",
+      "typeService": "සේවාව"
+    },
+    "player": {
+      "nowPlaying": "දැන් වාදනය වේ",
+      "nextLesson": "ඊළඟ පාඩම",
+      "backToCourse": "පාඨමාලාවට ආපසු",
+      "lessonComplete": "පාඩම සම්පූර්ණයි",
+      "lessonCompleteBody": "ඊළඟ පාඩම විවෘත කර ඇත.",
+      "courseLessons": "මෙම පාඨමාලාවේ පාඩම්",
+      "noSkipHint": "ඔබට නිදහසේ ආපසු යා හැක. ඉදිරියට යාම ඔබ නරඹන විට විවෘත වේ.",
+      "videoLabel": "පාඩම් වීඩියෝව: {{title}}"
+    },
+    "checklist": {
+      "phasesLabel": "පිරික්සුම් ලැයිස්තු අදියර"
     }
   }
 }

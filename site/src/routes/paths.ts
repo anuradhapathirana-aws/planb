@@ -25,7 +25,13 @@ export const paths = {
     home: '/app',
     courses: '/app/courses',
     courseDetail: (id: number | string) => `/app/courses/${id}`,
-    lesson: (id: number | string) => `/app/lessons/${id}`,
+    /**
+     * `course` rides along so the player can show the lesson's title, the rest
+     * of the course and a "Next lesson" button from the course the student just
+     * came from. The page validates it and copes without it.
+     */
+    lesson: (id: number | string, courseId?: number | string) =>
+      courseId === undefined ? `/app/lessons/${id}` : `/app/lessons/${id}?course=${courseId}`,
     paper: (courseId: number | string) => `/app/courses/${courseId}/paper`,
     paperResult: (attemptId: number | string) => `/app/paper-attempts/${attemptId}`,
     services: '/app/services',

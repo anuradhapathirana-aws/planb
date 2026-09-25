@@ -6,6 +6,7 @@ namespace App\Http\Requests\Public;
 
 use App\Services\Course\PublicCourseService;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
  * Query parameters for the public course catalogue.
@@ -45,6 +46,14 @@ class ListPublicCoursesRequest extends FormRequest
              */
             'category_id' => ['nullable', 'integer', 'min:1'],
 
+            /*
+             * Closed lists, never a column name. `sort` in particular is mapped
+             * to an ORDER BY inside the Service from this fixed set — a value
+             * from the request never reaches the query builder as a column.
+             */
+            'price' => ['nullable', 'string', Rule::in(PublicCourseService::PRICE_FILTERS)],
+            'sort' => ['nullable', 'string', Rule::in(PublicCourseService::SORTS)],
+
             // The Service clamps to MAX_PER_PAGE as well; this is so an
             // out-of-range value is an honest 422 rather than a silent clamp.
             'per_page' => ['nullable', 'integer', 'min:1', 'max:'.PublicCourseService::MAX_PER_PAGE],
@@ -53,7 +62,7 @@ class ListPublicCoursesRequest extends FormRequest
     }
 
     /**
-     * @return array{search: string|null, category_id: int|null, per_page: int|null}
+     * @return array{search: string|null, category_id: int|null, price: string|null, sort: string|null, per_page: int|null}
      */
     public function filters(): array
     {
@@ -62,6 +71,8 @@ class ListPublicCoursesRequest extends FormRequest
             'category_id' => $this->validated('category_id') === null
                 ? null
                 : (int) $this->validated('category_id'),
+            'price' => $this->validated('price'),
+            'sort' => $this->validated('sort'),
             'per_page' => $this->validated('per_page') === null
                 ? null
                 : (int) $this->validated('per_page'),

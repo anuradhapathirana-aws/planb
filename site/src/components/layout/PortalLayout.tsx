@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import { NavLink, Outlet, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Globe, LogOut, Settings } from 'lucide-react';
+import { ArrowLeft, Globe, Loader2, LogOut, Settings } from 'lucide-react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ import { ScrollManager } from '@/components/shared/ScrollManager';
 import { Logo } from '@/components/layout/Logo';
 import { LanguageSwitcher } from '@/components/layout/LanguageSwitcher';
 import { portalNav } from '@/components/layout/siteNav';
+import { useSignOut } from '@/features/auth/hooks/useSignOut';
 import { useSessionStore } from '@/stores/sessionStore';
 import { paths } from '@/routes/paths';
 import { cn } from '@/lib/utils';
@@ -30,6 +31,7 @@ import { cn } from '@/lib/utils';
 export function PortalLayout() {
   const { t } = useTranslation();
   const student = useSessionStore((s) => s.student);
+  const signOut = useSignOut();
 
   const initials =
     student?.full_name
@@ -108,13 +110,26 @@ export function PortalLayout() {
                   </Link>
                 </DropdownMenuItem>
 
-                <DropdownMenuSeparator />
-
                 <DropdownMenuItem asChild>
                   <Link to={paths.home}>
-                    <LogOut className="size-4" aria-hidden="true" />
+                    <ArrowLeft className="size-4" aria-hidden="true" />
                     {t('site.portal.backToSite')}
                   </Link>
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator />
+
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  disabled={signOut.isPending}
+                  onSelect={() => signOut.mutate()}
+                >
+                  {signOut.isPending ? (
+                    <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <LogOut className="size-4 text-destructive" aria-hidden="true" />
+                  )}
+                  {t('auth.signOut')}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

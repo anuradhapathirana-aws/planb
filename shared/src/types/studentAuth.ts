@@ -94,6 +94,18 @@ export interface StudentSession {
 }
 
 /**
+ * What the WEBSITE's sign-in returns (`POST /student/auth/session/*`).
+ *
+ * Deliberately has no `token`: the credential is an httpOnly session cookie the
+ * browser holds and JavaScript cannot read. There is nothing here to store.
+ */
+export interface StudentWebSession {
+  /** Presentation only — picks "Welcome" over "Welcome back". */
+  is_new_student: boolean;
+  student: StudentProfile;
+}
+
+/**
  * `POST /student/account/deletion-code` — same timings as a sign-in code.
  *
  * Unlike `RequestCodeResponse` this one is only returned when a code really was

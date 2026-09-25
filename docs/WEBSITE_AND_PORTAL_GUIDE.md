@@ -71,6 +71,7 @@ Confirmed with the client (Anuradha) on 23–24 September 2026.
 | **Student portal scope** | **Full parity with the mobile app**, including video lessons and assessments. | See §2.4 — the no-skip rule is already enforced server-side and is client-agnostic, and Bunny Stream removes the bandwidth objection. |
 | **Auth on `site/`** | Student **Sanctum cookie session** (httpOnly), not a Bearer token. | Root `CLAUDE.md` §13.12 forbids tokens in `localStorage`; in-memory tokens log the student out on every page refresh. Mechanism and its danger: §2.3. |
 | **Student sign-in methods** | Email OTP **and** Sign in with Google. No SMS, no passwords. | Matches mobile and the SRS. |
+| **Where sign-in lands** | **The student portal (`/app`)** — confirmed by Anuradha 2026-09-26. The one exception: a visitor bounced from a deep link into `/app/*` returns to that page. | A student signing in on the website wants their learning, not the marketing page they happened to be on. §4's earlier "returns to the same scroll position" is superseded. |
 | **Languages** | English + Sinhala from day one, via `shared/src/i18n`. Admin-authored content uses `*_si` sibling columns. | Root `CLAUDE.md` §8. |
 | **Branding** | Plan B navy `#14224b` primary, gold `#c79a3a` accent. **Ignore the colours in the reference screenshots** — they are eLearning.lk's. | |
 
@@ -169,10 +170,31 @@ Today:
    test would have caught — which is why `tests/Feature/CorsTest.php` now asserts **the header value**,
    not merely its presence. Add an origin to both lists or to neither.
 
-**Why this is safe:** different domains means the admin cookie and the student cookie never travel
-together. Even if they did, `student-web` has the `students` provider (can never load a `User`),
+**Why this is safe:** `student-web` has the `students` provider (can never load a `User`),
 `auth:sanctum` reads `sanctum.guard = ['web']` with the `users` provider (can never load a
 `Student`), and the two actor middlewares 401 anything that slips through.
+
+> **Correction (2026-09-26, at `API-5`).** This paragraph used to open with "different domains means
+> the admin cookie and the student cookie never travel together". **That is not true, and nothing may
+> rely on it.** The session cookie belongs to the **API's** host, not to the page that made the
+> request — so `web/` and `site/` in one browser send the *same* API session cookie, and an admin who
+> also signs in to the portal holds **both logins in one Laravel session**. Separate front-end domains
+> separate the *pages*, not the API session.
+>
+> The isolation therefore rests entirely on the guards and actor middleware above, and
+> `GuardIsolationTest` now proves it for that exact case
+> (`test_one_browser_signed_in_as_both_resolves_each_area_to_its_own_actor`). Two consequences built in:
+> - **Guard order is `auth:student-web,student`, never the reverse.** Tried second, the Sanctum
+>   `student` guard's stateful branch finds the *admin* through the global `web` list first, and
+>   `student.actor` then 401s the student. A mutation test confirmed the reversed order fails.
+> - Signing out of either area invalidates the shared session, which signs that browser out of the
+>   other area too. Accepted: it only affects staff who test the portal in their admin browser, and
+>   failing closed is the right direction.
+>
+> **Also found at `API-5`: `auth/refresh` MINTS a bearer token**, so on the shared group it would have
+> let a website session trade its httpOnly cookie for a 30-day token that JavaScript can read and that
+> survives signing out. `refresh` and `logout` are now **token-only** (`auth:student`), and a test
+> proves a website session gets 401 there.
 
 **`tests/Feature/GuardIsolationTest.php` proves the existing four directions and must be extended to
 prove the new ones** (task `SEC-1`). *If that test fails, stop — do not adjust the test.*
@@ -282,9 +304,10 @@ their typography and their card treatment are theirs, not ours.
 /app/profile            Profile, language, account deletion
 ```
 
-Sign-in is a **dialog from the header**, not a page — the visitor stays where they were and returns to
-the same scroll position. Deep-linking `/app/*` while signed out sends them to `/` with the dialog
-open and the intended path remembered.
+Sign-in is a **dialog from the header**, not a page. On success it goes to the portal home (`/app`) —
+see "Where sign-in lands" in §1. Deep-linking `/app/*` while signed out sends them to `/` with the
+dialog open and the intended path remembered (in router state, never the URL), and sign-in returns
+them there instead.
 
 ---
 
@@ -357,10 +380,20 @@ now reaches the API.** Every `API-x` task must assume the caller is hostile, unt
 Each of these is a real task with its own tests. They are listed in the phases in §8 and must be
 ticked there too.
 
-- [ ] **SEC-1 — Extend `GuardIsolationTest` for the student web session.**
+- [x] **SEC-1 — Extend `GuardIsolationTest` for the student web session.** — done 2026-09-26.
   Prove all of: a `student-web` session cannot authenticate `/api/v1/admin/*`; an admin session cannot
   authenticate `/api/v1/student/*`; a student Bearer token still works; a `student-web` session is
   killed by `EnsureStudentActive` when the student is blocked or soft-deleted. **If it fails, stop.**
+  **Built:** 8 new cases, all over a **real** session (signed in through the endpoint, cookie sent
+  back) via `tests/Concerns/SignsInOnTheWebsite.php` — never `actingAs()`, which skips the guard
+  resolution being tested. Beyond the four required: one browser holding **both** logins resolves
+  each area to its own actor; a web session cannot mint a bearer token; a session cookie replayed
+  from an unlisted origin authenticates nobody. A **soft-deleted** student's session gets 401, not
+  403 — the `students` provider excludes trashed rows, so it dies a step *before* `EnsureStudentActive`.
+  Two harness traps are documented in the trait and must not be "simplified" away: the test client
+  drops cookies from JSON requests without `withCredentials()`, and the session `Store` keeps the last
+  request's login in memory — without `freshRequest()` a request with **no** cookie still passed,
+  which is exactly how a leak would hide. Mutation-checked: reversing the guard order fails the suite.
 
 - [ ] **SEC-2 — Public endpoints are rate-limited by IP and return catalog fields only.**
   Named limiters in `AppServiceProvider` (start at `60,1`). Every public Resource lives in
@@ -389,6 +422,8 @@ ticked there too.
   (never more than 2h); Bunny token authentication on when Bunny is on; no `download` attribute;
   `controlsList="nodownload"`; context menu suppressed on the player. Document in the task that this
   raises the bar and does not make ripping impossible.
+  **Player side done 2026-09-26 at `POR-4`** (see there). Still open: Bunny token authentication
+  switched on in production (`DEP-4`).
 
 - [ ] **SEC-8 — CSRF and session hardening for the new origin.**
   `SANCTUM_STATEFUL_DOMAINS` lists exact hosts, never a wildcard. `SESSION_SECURE_COOKIE=true`,
@@ -403,11 +438,16 @@ ticked there too.
 - [ ] **SEC-10 — Security headers cover the new origin.** `SecurityHeaders` middleware already exists
   (P3-8). Verify CSP does not break the site's fonts/images/video and is not loosened to `unsafe-inline`
   to make something work. Prerendered HTML must carry the same headers from Nginx.
+  **Google sign-in (added at `PUB-7`) needs `script-src https://accounts.google.com` and
+  `frame-src https://accounts.google.com`** — its button is Google's iframe. Missing either hides the
+  Google button in production only (the dialog degrades to the emailed code, so it fails quietly).
 
 - [ ] **SEC-11 — File uploads from the portal** (bank receipt, profile photo, CV) validate MIME +
   extension + size on the backend, store on a **private** disk with a non-guessable name, and re-encode
   images with Intervention. This is already done for mobile (P2-2, P2-3) — verify the web path hits the
   same code and add tests for it.
+  **Bank receipts: done 2026-09-26** (`WebsiteBankTransferTest`, at `PUB-8`). Profile photo and CV
+  still to verify when `POR-9` builds those uploads.
 
 - [ ] **SEC-12 — Sign-in responses stay identical on every failure.** `backend/CLAUDE.md` §4: the OTP
   request endpoint returns a byte-identical 200 whether the email belongs to nobody, a blocked student
@@ -558,8 +598,13 @@ ticked there too.
       all. The full HTML belongs on the detail endpoint, where the sanitiser is worth it.
     - Ordering is `category → sort_order → id`, **not** `published_at desc`. Plan B's courses are a
       sequence ("Course 1, Course 2…") and newest-first would present step four before step one.
-  - [ ] `GET public/courses/{course}` (syllabus: topic and lesson titles + durations only),
-    `GET public/course-categories`, `GET public/course-categories/{category}`, `GET public/services`,
+  - [x] **`GET public/course-categories` — DONE 2026-09-26** (with `PUB-3`). Only categories holding a
+    visible course, with counts; see `PUB-3`.
+  - [x] **`price` and `sort` on `GET public/courses` — DONE 2026-09-26** (with `PUB-3`).
+  - [x] **`GET public/courses/{id}` — DONE 2026-09-26** (with `PUB-4`). Parameter is `{id}`, not
+    `{course}` — see `PUB-4`.
+  - [x] **`GET public/course-categories/{id}` — DONE 2026-09-26** (with `PUB-5`).
+  - [ ] `GET public/services`,
     `GET public/services/{service}`. Published-only scoping in the query, per `backend/CLAUDE.md` §2.
     **Do not register a global `Route::bind` — it would filter the admin routes too.** That trap is
     documented at the top of `routes/api_student.php`; re-read it.
@@ -568,7 +613,18 @@ ticked there too.
   homepage must not make twelve.
 - [ ] **API-4 — Slugs for course and category URLs.** `/courses/:slug` needs a stable unique slug
   column. **ASK** before the migration. Keep numeric-id URLs working as a redirect.
-- [ ] **API-5 — Student web session.** As specified in §2.3. Paired with **SEC-1**; neither ships alone.
+- [x] **API-5 — Student web session.** — done 2026-09-26. As specified in §2.3. Paired with **SEC-1**.
+  **Built:** `student-web` session guard (`students` provider; **nothing** added to `sanctum.guard`);
+  `WebSessionController` with `auth/session/verify-code`, `auth/session/google`, `auth/session/logout`;
+  `StudentAuthService` split into `authenticateWithCode()` / `authenticateWithGoogle()` (verify, no
+  credential) so the token and session paths share one set of checks — mobile's behaviour is
+  unchanged. Student routes are `auth:student-web,student` (order matters — see the §2.3 correction);
+  `refresh`/`logout` stay token-only. `remember: false` because `students` has no `remember_token`
+  by design; the session lives `SESSION_LIFETIME` (480 min locally), sliding. Session sign-ins answer
+  **400 before the code is checked** when the request is not stateful, so a script cannot burn a code.
+  10 endpoint tests in `StudentWebSessionTest`. Verified live with curl against the local API: CSRF
+  missing → 419, non-website → 400, session cookie `HttpOnly`, admin route 401, refresh 401, replay
+  from another origin 401, logout → 401 after. Full suite 684 passing, Pint clean.
 
 ### PHASE CMS — Website content
 
@@ -877,16 +933,121 @@ ticked there too.
 - [ ] **PUB-2 — Home page.** Assembles the renderer from `public/site-content`. Header nav scrolls to
   sections. Sticky header, mobile drawer nav. The page currently composes the four built sections in
   a fixed order in `HomePage.tsx`; this task replaces that list with the registry.
-- [ ] **PUB-3 — Courses catalog.** Search, category/bundle filter, price filter, sort, pagination.
-  Skeletons. Empty state.
-- [ ] **PUB-4 — Course detail.** Syllabus accordion, what's included, price, ratings if present,
-  related courses, OG tags. "Enrol" → sign-in dialog if signed out, then checkout.
-- [ ] **PUB-5 — Bundle detail** — same shape, listing the courses in the bundle.
+- [x] **PUB-3 — Courses catalog.** — done 2026-09-26. Search, category/bundle filter, price filter,
+  sort, pagination. Skeletons. Empty state.
+  **Backend:** `price` (`free`/`paid`) and `sort` (`recommended`/`newest`/`price_asc`/`price_desc`)
+  on `GET public/courses` — closed lists in the Form Request, mapped to fixed ORDER BYs in
+  `PublicCourseService::applySort()`, every one ending on `id` so paging is stable. New
+  `GET public/course-categories` (from API-2's list) + `PublicCourseCategoryResource`: only categories
+  holding a visible course, with counts. List and counts share one `visibleCourses()` builder so they
+  cannot disagree. 9 new tests (price, each sort, 422 on unknown values, stable paging on ties,
+  category tree/counts/hiding/fields/language).
+  **Site:** `features/catalogue/` — `CoursesPage` (navy header band with the search box, category
+  chips with a sub-category row, Free/Paid segmented control, sort select, result count, 1/2/3/4-column
+  grid of the home page's `ProgrammeCard`, numbered pagination collapsing to "Page 2 of 5" on a
+  phone). **Filters live in the URL** (`?q=&category=&price=&sort=&page=`) so a filtered view is
+  shareable; every value is re-validated client-side against the same closed lists. Search is
+  debounced 400 ms, Enter searches immediately. `keepPreviousData` dims the old grid instead of
+  flashing skeletons. A signed-in student sees **Enrolled** on their own courses (from their own
+  `student/courses`, presentation only). Helmet title/description/OG/canonical. `ProgrammeCard`'s
+  hard-coded "Free", "In a bundle", "View details" and lesson count now go through `t()`, and it takes
+  an optional `badge`. Added `components/ui/select.tsx` (copied from `web/`, `h-10` trigger).
+  Fixed `ScrollManager` jumping to the top when only the navigation *type* changed on the same path
+  (a paging push followed by a filter replace). 27 new i18n keys EN+SI.
+  **Not done:** "bundle" filtering — bundles are categories, so the category chips cover it; a
+  dedicated bundle page is `PUB-5`. Course cards link to `/courses/:id`, still `PUB-4`'s placeholder.
+- [x] **PUB-4 — Course detail.** — done 2026-09-26. Syllabus accordion, what's included, price,
+  ratings if present, related courses, OG tags. "Enrol" → sign-in dialog if signed out, then checkout.
+  **Client decisions (2026-09-26):** (1) **No ratings, reviews or learner count** — mobile's are
+  invented sample numbers (`courseSocialProof.ts`), and on a public page fake reviews are a trust and
+  consumer-protection risk; they return when a real reviews feature exists. (2) **Numeric URLs**
+  (`/courses/12`) for now; readable slugs stay `API-4`. (3) **Enrol while signed out opens sign-in and
+  returns to the course page** — it never enrols or opens checkout on a click made before sign-in.
+  **Backend:** `GET public/courses/{id}` + `PublicCourseDetailResource` (composed from the summary
+  Resource so card and page cannot disagree). Syllabus is titles and durations only; `assessment` is a
+  question count; `bundle` carries the list price. **Route parameter is `{id}` on purpose** — the
+  student routes' global `Route::bind('course')` checks "published" only and would bypass the
+  visitor's category rule; a test fails if that ever happens. 404s carry one fixed message: the
+  default `findOrFail` message names the model class and echoes the id, and Laravel keeps an HTTP
+  exception's message with debug off. 10 tests.
+  **Site:** `features/catalogue/pages/CourseDetailPage.tsx` — navy band (breadcrumb Courses ›
+  category, title, excerpt, length/lessons/topics, Share: native share sheet or copy link), About
+  (plain text, line breaks kept, no HTML), `CourseSyllabus` (Radix accordion, first topic open,
+  expand/collapse all, per-lesson durations), related courses (same category, up to 4, the shared
+  `ProgrammeCard`). `CourseEnrolCard` — sticky on a laptop, pulled over the band; right under the
+  header on a phone — decides in order: enrolled → "Go to course"; bundle-only → bundle + list price
+  → `/bundles/:id`; paid with payments off → "Coming soon · price", disabled; else Enrol (free:
+  enrol then open it in the portal; paid: server creates the order → `/checkout/:orderId`).
+  `payments_enabled` is read from `student/app-config`; anything but `true` counts as off. Pages
+  open sign-in through `useSignInDialog()` — `PublicLayout` now passes `openSignIn(returnTo)` as
+  outlet context. Helmet title, description, OG image and canonical. 21 i18n keys EN+SI.
+  **Leads to placeholders still:** `/checkout/:orderId` (`PUB-8`), `/bundles/:id` (`PUB-5`),
+  `/app/courses/:id` (`POR-3`). Locally every seeded course is bundle-only, so the Enrol path is only
+  reachable with a free or individually-sold course.
+- [x] **PUB-5 — Bundle detail** — done 2026-09-26. Same shape, listing the courses in the bundle.
+  **Backend:** `GET public/course-categories/{id}` (`{id}`, not `{category}` — same binder rule as
+  `PUB-4`) + `PublicCategoryDetailResource`. For a category that is its own bundle, `courses` is
+  exactly `bundleCategoryIds()` — what the button buys; otherwise the category and its
+  sub-categories. `bundle` carries the owner's id and **list price**; `children` flags `own_bundle`
+  (sold separately → linked, not listed). No student state; hidden or unknown → one fixed 404.
+  8 tests.
+  **Site:** `features/catalogue/pages/BundlePage.tsx` — navy band (breadcrumb, "Course bundle"
+  badge, courses/lessons/length), courses grouped by sub-category as on mobile, "Also sold as
+  separate bundles" links, and `BundleBuyCard`. **Two prices, never mixed:** signed out, the list
+  price plus "you only pay for courses you don't own yet"; signed in, the student's own quote from
+  `student/course-categories/{id}` (their remaining price, owned count, `is_available`) and
+  "Enrolled" badges on what they own. Actions: owns everything → "Go to my courses"; payments off →
+  "Coming soon · price"; signed out → sign-in, back to this page; signed in → `POST
+  student/course-categories/{id}/purchase` → free remainder enrolled on the spot (→ My courses),
+  otherwise `/checkout/:orderId`. **Redirects:** a category not sold as a bundle →
+  `/courses?category=id`; a sub-category following its main bundle → the main bundle's page, so a
+  bundle is only ever bought from the page listing it. 11 i18n keys EN+SI.
+  Locally, "UAE Programs" (id 8) is the one bundle: 5 courses, LKR 10,450 — the listed prices sum to
+  exactly the bundle price. **Checkout (`PUB-8`) is still a placeholder.**
 - [ ] **PUB-6 — Services page.**
-- [ ] **PUB-7 — Sign-in dialog.** Email OTP + Google. Returns the visitor to exactly where they were.
-  UI copy carries the explanation that **SEC-12** forbids the API from giving.
-- [ ] **PUB-8 — Checkout.** Card (hosted redirect) + bank transfer with receipt upload. Respects
+- [x] **PUB-7 — Sign-in dialog.** — done 2026-09-26. Email OTP + Google. ~~Returns the visitor to
+  exactly where they were~~ **Lands on the portal** (§1 "Where sign-in lands"), or on the `/app/*`
+  page a bounced deep link was heading for. UI copy carries the explanation **SEC-12** forbids the API
+  from giving.
+  **Built:** `features/auth/components/SignInDialog.tsx` — email step (RHF + the shared
+  `requestCodeSchema`, validated on blur) → code step (one `autocomplete="one-time-code"` input,
+  auto-submits on the sixth digit, guarded against double submission, resend countdown from the
+  server's `resend_after_seconds`, "use a different email", spam-folder hint). Wrong/expired/unknown
+  all show one message; only a suspended account (403) is named. 419/429/5xx are left to the client
+  interceptor's toast rather than being reported as "wrong code".
+  **Google:** `GoogleSignInButton` + `googleIdentity.ts` — **Google Identity Services, loaded as a
+  script from `accounts.google.com` on first open**, because the backend verifies an ID token and GIS
+  is the only thing that gives a web page one; Google does not publish it to npm, so no package was
+  added. Hidden when `VITE_GOOGLE_CLIENT_ID` is unset or the script is blocked. Needs a CSP allowance
+  at `SEC-10`, the Web client id in the backend's `GOOGLE_CLIENT_IDS`, and the site origin as an
+  Authorised JavaScript origin in Google Cloud.
+  **The dialog is lazy-loaded on first open** — it brings React Hook Form and Zod, which every
+  marketing visitor would otherwise download. `PublicLayout` chunk 37.9 → **6.4 kB gzip**, entry
+  144.6 → **117 kB gzip**.
+  **Not yet:** a course page's "Enrol" button opening the dialog with its own `returnTo` — that is
+  `PUB-4`'s, and the `returnTo` prop is already there for it.
+- [~] **PUB-8 — Checkout.** Card (hosted redirect) + bank transfer with receipt upload. Respects
   `payments_enabled`. See §5 and §6.
+  - [x] **Bank transfer — DONE 2026-09-26.** Card is out of scope for now (client instruction,
+    2026-09-26) and **not shown at all** — no greyed-out option. `features/checkout/`:
+    `CheckoutPage` (in the public shell, but needs a signed-in student: signed out → a sign-in prompt
+    that returns here; not theirs / unknown → "Order not found"; `noindex`), `OrderSummaryCard`
+    (artwork, type, order number, a bundle's frozen items, total, status — visible in every state), a
+    panel per order state (paid → Start learning / My courses / My service; awaiting verification →
+    Check status; cancelled/refunded → can't be paid; payable → newest rejection remark + the form),
+    and `BankTransferPanel`: step 1 amount + account with **copy buttons** for name and number and
+    the admin's notes; step 2 reference (shared `bankTransferSchema`, on blur) + a click-or-drag
+    **dropzone** checking type and size before upload, image thumbnail via an object URL that is
+    revoked. Multipart `File` upload, 60s timeout, no amount sent. The order refetches on tab focus,
+    so a student returning from their banking app sees the current status.
+    **`SEC-11` web path proven:** `tests/Feature/Payment/WebsiteBankTransferTest.php` — a real website
+    session uploads a slip; it is re-encoded, stored on the private disk under a random name, the order
+    goes to `awaiting_verification`; a disguised HTML "jpg" and a bad reference 422; another student's
+    order is refused; no session is 401. Also verified live against the local API end to end (sign in →
+    bundle purchase → order → bank details → multipart upload → awaiting verification).
+    23 i18n keys EN+SI.
+  - [ ] **Card** — later. The mobile card flow (`useCheckout`, hosted redirect, polling) is the model;
+    the landing route is `PUB-9`.
 - [ ] **PUB-9 — Payment return landing.** Polls the order. Reads nothing from the URL.
 
 ### PHASE POR — Student portal
@@ -894,14 +1055,101 @@ ticked there too.
 Mirrors `mobile/app/`. Read the matching mobile screen before building each one — the logic is already
 written and worth reusing rather than re-deriving.
 
-- [ ] **POR-1 — Portal shell + auth guard + session bootstrap.**
-- [ ] **POR-2 — Portal home.** Continue learning, progress summary, banners.
-- [ ] **POR-3 — My courses + course detail** with topics, lessons and progress.
-- [ ] **POR-4 — Lesson player.** `video.js`, no-skip, progress posted to the server, re-seeded from the
-  server's numbers on every response. Lazy-loaded chunk. Ties to **SEC-7**. Depends on **DEP-4**.
+- [x] **POR-1 — Portal shell + auth guard + session bootstrap.** — done 2026-09-26. The shell, guard
+  and bootstrap existed from `FND-3`/`FND-4`; this added the missing pieces.
+  **Built:** **Sign out** in the account menu (`useSignOut`) — local state and the **whole query
+  cache** are cleared whether or not the request succeeds, so a shared computer never shows the last
+  student's data. The guard's bounce now **opens the sign-in dialog** (`PublicLayout` reads
+  `state.from`, validates it with `safeReturnPath`, then drops it from history so a refresh does not
+  reopen it). `sessionStore.signOut()` vs `clear()`: pressing Sign out sends the student home
+  *without* re-offering sign-in; an expired session mid-visit does re-offer it and returns them.
+- [x] **POR-2 — Portal home.** — done 2026-09-26. Continue learning, progress summary, banners.
+  **Built:** `features/portal/pages/PortalHomePage.tsx` — greeting, three stat tiles (courses
+  enrolled, lessons watched, checklist %), `ContinueLearningCard` (navy hero; same next-course rule
+  as mobile's card), `MyCoursesCard` (up to four enrolled, in progress first), `ChecklistSummaryCard`,
+  `AnnouncementsStrip` (the app's `home-banners`, scroll-snap, links resolved by an exhaustive
+  `switch` over the server's link union; `url` must be http/https and renders as a real `<a>`).
+  Three requests, the same endpoints mobile uses, under `features/portal/queries.ts` keys that
+  `POR-3`/`POR-7` will share. Each block loads and fails on its own, with skeletons. Two-thirds /
+  one-third on a laptop, one column on a phone. Added `components/ui/progress.tsx` (shadcn, from
+  FND-2's "when a page needs it" list). **Links to `/app/courses/:id` still land on `POR-3`'s
+  placeholder** — that page is next.
+- [x] **POR-3 — My courses + course detail** with topics, lessons and progress. — done 2026-09-26.
+  - [x] **My Courses (`/app/courses`) — DONE 2026-09-26.** `features/portal/pages/MyCoursesPage.tsx`
+    + `components/EnrolledCourseCard.tsx`, mirroring mobile's Courses tab: **enrolled courses only**,
+    in the **server's order** (category → Course 1, Course 2 — a sequence, not sorted by progress),
+    a client-side search over name and category that appears once there is more than one course, and
+    a "Browse" button to the public catalogue (mobile's All/Mine toggle was dropped at the client's
+    request; do not reinstate it here). Each card: artwork (branded fallback on a missing or broken
+    image), "Course N", title, run time or lesson count, category, progress bar + percentage, and a
+    Complete badge. Loading skeletons; error, nothing-enrolled and no-match empty states. One column
+    on a phone, two from `lg`. Reads the same `student/courses` cache as the portal home. No new i18n
+    keys — every string already existed for mobile.
+  - [x] **Course detail (`/app/courses/:id`) — DONE 2026-09-26.**
+    `features/portal/pages/PortalCourseDetailPage.tsx`, reading `GET student/courses/{id}` (no
+    backend change). Header: breadcrumb My Courses › course, artwork, "Course N" + the order hint
+    (advice, not a lock), length, topics/lessons, a link to the public page. `CourseProgressPanel`
+    (server progress, "Up next", Start/Continue learning → `/app/lessons/:id`; finished → complete
+    note + Watch again). `CourseAssessmentCard` (pass mark, questions, attempts left, instructions,
+    the server's `blocked_reason` explained; start → `/app/courses/:id/paper`). `CourseTopicList`
+    (Radix accordion opened on the topic holding the next lesson; ticks, locks, durations, "Up next"
+    badge; a locked row explains itself on press instead of navigating). Next-lesson rule copied from
+    mobile. **A course the student does not own redirects to its public page**, which already sells
+    it — one place does that, not two. New `components/shared/RichText.tsx`: the only
+    `dangerouslySetInnerHTML` in the app, with `DOMPurify.sanitize()` on the same line and the
+    server's exact `HtmlSanitizer` allowlist (`SEC-6`); used for topic descriptions and assessment
+    instructions. `noindex`. 6 i18n keys EN+SI. Verified against local data (course 15).
+    **Still placeholders behind it:** the lesson player (`POR-4`) and the assessment (`POR-5`).
+- [x] **POR-4 — Lesson player.** — built 2026-09-26. `video.js`, no-skip, progress posted to the
+  server, re-seeded from the server's numbers on every response. Lazy-loaded chunk. Ties to **SEC-7**.
+  Depends on **DEP-4**.
+  > **Built, but NOT ready for real students until `DEP-4`.** With `BUNNY_STREAM_ENABLED=false` the
+  > stream endpoint hands out a signed MP4 served by the API itself — the arrangement
+  > `docs/bunny-stream-setup.md` records taking the whole API down at ~30 concurrent viewers. The
+  > player needs no change when Bunny is switched on: it picks HLS or MP4 from the link it is given.
+  **Built:** `features/player/components/LessonPlayer.tsx` (video.js, the web twin of mobile's
+  `useNoSkipPlayer`) and `features/player/pages/LessonPage.tsx` at `/app/lessons/:id?course=:id`.
+  No-skip: seeded from the server's `max_position_seconds` (never 0); any forward jump past the mark
+  — bar, keyboard, devtools — snaps back on `seeking`/`timeupdate` with an overlay message
+  **portalled into the player element so it shows in fullscreen**; the reachable stretch is drawn
+  inside video.js's own seek bar (`.pb-vjs-unlocked`); rewind is free (plus a −10s button). Watched
+  time accrues from the wall clock while playing only; **no playback-speed menu** (the server
+  credits ≤ ~2× real time). Flushes every 15s, on pause, on `ended` (with the true duration, which
+  is what crosses the 95% gate), on tab hidden, on unmount — and on `pagehide` via `fetch`
+  **keepalive** with the XSRF header read from the cookie (`sendBeacon` cannot carry it). A failed
+  flush puts its seconds back. The flush is behind a ref for the render-churn reason mobile learned
+  the hard way. The signed link (30 min) is re-fetched 5 minutes before expiry and swapped in,
+  keeping position and play state. Resumes 3s before where the student stopped.
+  Page: the lesson's title and topic (from `?course=`, validated; the page still plays without it —
+  the stream endpoint is the authority), "Lesson complete" + **Next lesson** once the server says
+  watched (course and list queries are invalidated at that moment so the next lesson arrives
+  unlocked), the course's lesson list with "Now playing", and a distinct state per failure: not
+  uploaded (404), no access (403), offline, unknown. Lesson links now carry `?course=`.
+  **SEC-7 in the browser:** `controlsList="nodownload noplaybackrate"`, picture-in-picture off (its
+  window has its own controls), context menu suppressed on the player, links ≤ 30 min. This raises
+  the bar; it does not make ripping impossible — the signed link is visible in the network tab for
+  its short life, and true DRM is out of scope (§2.4).
+  **Verified locally:** the server clamps a skip (a claimed 9,999s position was held to 11s) and a
+  lesson with no file answers the "not ready" state; a tampered signed link is 403. **Not verified:
+  actual playback in a browser** — no lesson in a published course has an uploaded video in the
+  local data (the one file belongs to a deleted course). Upload a video to a lesson of course 15 and
+  watch it through once before calling this done. video.js stays in the `player` chunk (205 kB gzip),
+  loaded by the lesson page only.
 - [ ] **POR-5 — Assessments.** Take, submit, result. Score only until passed or attempts exhausted.
 - [ ] **POR-6 — Services.** Catalog + my purchases.
-- [ ] **POR-7 — Checklists.** Both phases, optimistic ticks, PUT-the-state (not a toggle).
+- [x] **POR-7 — Checklists.** Both phases, optimistic ticks, PUT-the-state (not a toggle). — built
+  2026-09-26. **No backend change** — `GET student/checklists` and `PUT student/checklist-items/{id}`
+  already existed for mobile. `/app/checklist`: the two phases as tabs (`?phase=after` in the URL,
+  each tab showing "3/10"), a navy progress card (bar, steps to go, the phase's hint; an "All done"
+  card at 100%), and the steps as rows — the web twin of mobile's `ChecklistItemCard`: a separate
+  44px checkbox (`role="checkbox"`) so reading never ticks, the title opens the admin's instructions
+  inline (via `RichText`, one open at a time, "N steps" counted from the `<li>`s) with the action
+  repeated at the bottom. Ticks are optimistic with mobile's rules (`useChecklistTick`): per-item
+  rollback, out-of-order responses dropped, the server's recount trusted, a toast when a phase
+  reaches 100%; a 404 (step removed) refetches the list. It shares the `student/checklists` cache
+  with the portal home, so the home summary moves with each tick. `ui/tabs.tsx` copied from `web/`
+  (`@radix-ui/react-tabs` was already a dependency). Verified live: tick, repeated tick (idempotent),
+  untick, 404, 422, 401.
 - [ ] **POR-8 — Orders & payments history.**
 - [ ] **POR-9 — Profile.** Edit, photo, language switch (**must refetch** anything cached under the old
   `Accept-Language`), account deletion.
@@ -955,8 +1203,18 @@ Append one line per completed task: date · task ID · what landed · files touc
 | 2026-09-25 | PUB-1 | **Gold retuned to the client's `#f19f00`**, and home page spacing tightened to one rhythm (`py-12 sm:py-14` sections, `gap-8 lg:gap-10` columns, `mt-8` under each heading — the table is in `SectionHeading`). The fill/text split was **kept and is load-bearing**: `#f19f00` is 7.5:1 on the navy but only **2.17:1 on white**, below even the 3:1 AA allows for large text, so `--accent-strong` is the same hue (39°) darkened to 5.3:1 on white and 4.8:1 on `--accent-soft`. Contrast was computed, not eyeballed. `web/`'s two live previews hardcode these literals on purpose and were moved with them; `web/`'s own `--accent` is the admin panel's chrome and was deliberately left alone. |
 | 2026-09-25 | PUB-1 | **Header is navy with white links** (client instruction), logo enlarged (`h-16`→`h-20` bar, `h-12 sm:h-14` mark). The current-page marker moved from `--primary` to gold — `--primary` *is* this navy, so the old rule marked the current link by making it invisible. `Logo` is now shared by the header and footer. **It gets no plate on the navy**: `logo.png` is a circular badge carrying its own cream field and gold ring, so a white panel behind it just draws a rectangle around a round logo. A plate was added on the first pass and removed at the client's request the same day — along with the footer's long-standing hand-rolled copy of it, which had the same problem. Do not reintroduce one. |
 | 2026-09-25 | CMS-0 (fix) | **`site/` was never able to read the API.** Its origin (`:5184`) was in `SANCTUM_STATEFUL_DOMAINS` but not in CORS `allowed_origins`, so every request was answered `200` and then discarded by the browser — invisible server-side. Surfaced as "the About video is not showing", because the website's designed fallback has no video by design. `allowed_origins` is now a comma-separated `FRONTEND_URLS` list, and `tests/Feature/CorsTest.php` asserts the **value** of `Access-Control-Allow-Origin` per origin, which is the only assertion that would have caught it. |
+| 2026-09-26 | API-5 · SEC-1 | **Student web session.** `student-web` guard, three `auth/session/*` endpoints, `StudentAuthService` split so token and session share one verification path. Two findings recorded in §2.3: the API session cookie is **shared** by both front ends in one browser (the old "never travel together" claim was wrong), and `auth/refresh` would have let a web session mint a JS-readable token — now token-only. 18 new tests over real sessions; mutation-checked; 684 passing. |
+| 2026-09-26 | PUB-7 · POR-1 · POR-2 | **Sign in on the website → the portal.** Sign-in dialog (email code + Google Identity Services), lazy-loaded; sign-out; guard bounce opens sign-in and returns to the deep link; portal home (continue learning, stats, my courses, checklist, announcements). 10 new i18n keys EN+SI, appended to the review sheet. |
+| 2026-09-26 | POR-7 | **Checklists page** — both phases as tabs, progress card, steps with inline instructions, optimistic ticks with per-item rollback (mobile's rules), shared cache with the portal home. No backend change; 1 new i18n key. |
+| 2026-09-26 | POR-4 · SEC-7 (player) | **Lesson player** — video.js no-skip player, progress flushes incl. keepalive on tab close, link refresh, lesson page with Next lesson and the course's lesson list. Not live-ready until `DEP-4`; browser playback still to be checked with a real uploaded lesson. |
+| 2026-09-26 | POR-3 | **Portal course page** — progress, next lesson, syllabus with ticks and locks, assessment card. `RichText` (DOMPurify, server allowlist) added. Non-owners redirect to the public page. POR-3 complete. |
+| 2026-09-26 | PUB-8 (bank transfer) · SEC-11 (web path) | **Checkout, bank transfer only** — order summary, per-state panels, account details with copy, reference + slip dropzone. 5 new tests prove the website upload path; full flow verified live. Card deferred by the client. |
+| 2026-09-26 | PUB-5 · API-2 (part) | **Bundle page** — contents grouped by sub-category, list price signed out / personal price signed in, buy flow, redirects for non-bundle and following categories. `GET public/course-categories/{id}`. 8 new tests. |
+| 2026-09-26 | PUB-4 · API-2 (part) | **Course detail page** — syllabus, what's included, enrol card (enrolled / bundle / coming soon / enrol), related courses, share, OG tags. `GET public/courses/{id}`. No ratings (client decision). 10 new tests. |
+| 2026-09-26 | PUB-3 · API-2 (part) | **Public course catalogue at `/courses`** — search, category chips, Free/Paid, sort, paging, all in the URL. Backend: `price`/`sort` on `public/courses`, new `public/course-categories`. 9 new tests. |
+| 2026-09-26 | POR-3 (part) | **My Courses page** — enrolled courses in course order, search, progress per course, all empty/loading/error states. Course detail still to build. |
 | 2026-09-24 | SEC-14 | Raised, not fixed. `npm audit` found an open-redirect advisory in `react-router` `<7.18.0`, which **`web/` shares**. Fix is a semver-major upgrade of both apps — needs the client's decision. |
 
 ---
 
-**Last updated:** 25 September 2026. **Update this file at the end of every session.**
+**Last updated:** 26 September 2026. **Update this file at the end of every session.**

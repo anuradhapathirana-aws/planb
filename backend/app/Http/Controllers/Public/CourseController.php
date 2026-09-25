@@ -6,6 +6,9 @@ namespace App\Http\Controllers\Public;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Public\ListPublicCoursesRequest;
+use App\Http\Resources\Public\PublicCategoryDetailResource;
+use App\Http\Resources\Public\PublicCourseCategoryResource;
+use App\Http\Resources\Public\PublicCourseDetailResource;
 use App\Http\Resources\Public\PublicCourseSummaryResource;
 use App\Services\Course\PublicCourseService;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -33,5 +36,36 @@ class CourseController extends Controller
         return PublicCourseSummaryResource::collection(
             $this->courses->list($request->filters()),
         );
+    }
+
+    /**
+     * One course's public page. The id is a raw number rather than a bound
+     * model: `Route::bind()` is global, and a published-only binder on a
+     * parameter name would also hide drafts from the admin routes (see the note
+     * at the top of routes/api_student.php) — and a student binder named
+     * `course` already exists, which is why the route parameter is `{id}`.
+     * The Service's query is the scope.
+     */
+    public function show(int $id): PublicCourseDetailResource
+    {
+        return new PublicCourseDetailResource($this->courses->find($id));
+    }
+
+    /**
+     * One category's page — a course bundle's, on the website. Raw id, for the
+     * same global-binder reason as {@see show()}.
+     */
+    public function category(int $id): PublicCategoryDetailResource
+    {
+        return new PublicCategoryDetailResource($this->courses->category($id));
+    }
+
+    /**
+     * `GET api/v1/public/course-categories` — the catalogue page's filter.
+     * Only categories with at least one visible course; see the Service.
+     */
+    public function categories(): AnonymousResourceCollection
+    {
+        return PublicCourseCategoryResource::collection($this->courses->categories());
     }
 }

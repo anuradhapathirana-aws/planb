@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight, Clock, PlayCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { ArrowRight, CheckCircle2, Clock, PlayCircle } from 'lucide-react';
 
 import { formatCourseLength, formatMoney } from '@shared/lib/formatters';
 import { paths } from '@/routes/paths';
@@ -15,7 +16,19 @@ import type { ProgrammeCard as Programme } from '@/features/marketing/homeConten
  * Wrapping the card in an `<a>` and nesting a second one inside would be invalid
  * markup and reads terribly in a screen reader.
  */
-export function ProgrammeCard({ programme }: { programme: Programme }) {
+export function ProgrammeCard({
+  programme,
+  badge,
+}: {
+  programme: Programme;
+  /**
+   * A short label over the artwork — the catalogue passes "Enrolled" for a
+   * signed-in student's own courses. Presentation only: what a student may open
+   * is decided by the API, never by this.
+   */
+  badge?: string;
+}) {
+  const { t } = useTranslation();
   const { icon: Icon } = programme;
   const isFree = programme.priceCents === null;
   const href = paths.courseDetail(programme.slug);
@@ -29,9 +42,7 @@ export function ProgrammeCard({ programme }: { programme: Programme }) {
   const durationLabel =
     programme.durationSeconds > 0 ? formatCourseLength(programme.durationSeconds) : null;
   const lessonsLabel =
-    programme.lessonsCount > 0
-      ? `${programme.lessonsCount} ${programme.lessonsCount === 1 ? 'lesson' : 'lessons'}`
-      : null;
+    programme.lessonsCount > 0 ? t('courses.lessonCount', { count: programme.lessonsCount }) : null;
 
   return (
     <article className="group relative flex flex-col overflow-hidden rounded-xl border bg-card transition-shadow hover:shadow-lg">
@@ -51,6 +62,13 @@ export function ProgrammeCard({ programme }: { programme: Programme }) {
             <Icon className="size-14 text-primary/25" aria-hidden="true" strokeWidth={1.25} />
           </div>
         )}
+
+        {badge ? (
+          <span className="absolute top-3 left-3 inline-flex items-center gap-1 rounded-full bg-success px-2 py-0.5 text-[11px] font-semibold text-success-foreground shadow-sm">
+            <CheckCircle2 className="size-3" aria-hidden="true" />
+            {badge}
+          </span>
+        ) : null}
 
         {/*
           Badges sit on a dark scrim, not straight on the artwork: an
@@ -120,10 +138,10 @@ export function ProgrammeCard({ programme }: { programme: Programme }) {
           */}
           <p className="text-sm font-semibold text-primary">
             {isFree
-              ? 'Free'
+              ? t('courses.free')
               : programme.soldIndividually
                 ? formatMoney(programme.priceCents, programme.currency)
-                : 'In a bundle'}
+                : t('site.catalogue.inBundle')}
           </p>
 
           {/*
@@ -135,7 +153,7 @@ export function ProgrammeCard({ programme }: { programme: Programme }) {
             aria-hidden="true"
             className="inline-flex items-center gap-1 text-[13px] font-medium text-primary transition-colors group-hover:text-accent-strong"
           >
-            View details
+            {t('site.catalogue.viewDetails')}
             <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
           </span>
         </div>

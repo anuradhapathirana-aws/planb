@@ -67,14 +67,34 @@ class StudentAuthService
     }
 
     /**
-     * Exchange a code for an access token.
+     * Exchange a code for an access token (the mobile app).
      *
      * @throws ValidationException
      */
     public function verifyLoginCode(string $email, string $code, ?string $deviceName): array
     {
+        $result = $this->authenticateWithCode($email, $code);
+
+        return $this->issueSession($result['student'], $deviceName, isNew: $result['is_new_student']);
+    }
+
+    /**
+     * Check an emailed code and return the student it belongs to — without
+     * minting any credential.
+     *
+     * Split out so the two credential types share ONE verification path: the
+     * app turns the result into a bearer token, the website into a cookie
+     * session (`WebSessionController`). A second copy of these checks is where
+     * the two would eventually disagree about who may sign in.
+     *
+     * @return array{student: Student, is_new_student: bool}
+     *
+     * @throws ValidationException
+     */
+    public function authenticateWithCode(string $email, string $code): array
+    {
         if ($this->playReview->isReviewerEmail($email)) {
-            return $this->verifyReviewerCode($code, $deviceName);
+            return $this->verifyReviewerCode($code);
         }
 
         $student = $this->findByEmail($email);
@@ -90,7 +110,7 @@ class StudentAuthService
 
         $this->markVerified($student, verifiedEmail: true);
 
-        return $this->issueSession($student, $deviceName);
+        return ['student' => $student->fresh(['industry', 'profession']), 'is_new_student' => false];
     }
 
     /**
@@ -100,9 +120,11 @@ class StudentAuthService
      * learns nothing — not even whether the reviewer account is suspended. The
      * account is created here if a reviewer deleted it (see PlayReviewAccess).
      *
+     * @return array{student: Student, is_new_student: bool}
+     *
      * @throws ValidationException
      */
-    private function verifyReviewerCode(string $code, ?string $deviceName): array
+    private function verifyReviewerCode(string $code): array
     {
         if (! $this->playReview->checkCode($code)) {
             throw $this->codes->invalidCode();
@@ -114,15 +136,35 @@ class StudentAuthService
 
         $this->markVerified($student, verifiedEmail: true);
 
-        return $this->issueSession($student, $deviceName, isNew: $student->wasRecentlyCreated);
+        return [
+            'student' => $student->fresh(['industry', 'profession']),
+            'is_new_student' => $student->wasRecentlyCreated,
+        ];
     }
 
     /**
-     * Sign in with a Google ID token, registering the student if they are new.
+     * Sign in with a Google ID token, registering the student if they are new
+     * (the mobile app).
      *
      * @throws ValidationException
      */
     public function signInWithGoogle(string $idToken, ?string $deviceName): array
+    {
+        $result = $this->authenticateWithGoogle($idToken);
+
+        return $this->issueSession($result['student'], $deviceName, isNew: $result['is_new_student']);
+    }
+
+    /**
+     * Verify a Google ID token and return the student behind it, registering
+     * them if they are new — without minting any credential. See
+     * `authenticateWithCode()` for why this is split from the token.
+     *
+     * @return array{student: Student, is_new_student: bool}
+     *
+     * @throws ValidationException
+     */
+    public function authenticateWithGoogle(string $idToken): array
     {
         $payload = $this->google->verify($idToken);
 
@@ -157,7 +199,7 @@ class StudentAuthService
 
         $this->markVerified($student, verifiedEmail: true);
 
-        return $this->issueSession($student, $deviceName, isNew: $isNew);
+        return ['student' => $student->fresh(['industry', 'profession']), 'is_new_student' => $isNew];
     }
 
     /**

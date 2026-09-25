@@ -19,15 +19,27 @@ interface SessionState {
   student: StudentProfile | null;
   /** False until `/student/me` has answered once, so guards can wait instead of bouncing. */
   isResolved: boolean;
+  /**
+   * True only when the student pressed "Sign out". The portal guard then sends
+   * them home without offering to sign straight back in — as opposed to a
+   * session that EXPIRED mid-visit, where reopening sign-in and returning them
+   * to the page they were on is exactly right.
+   */
+  signedOutByStudent: boolean;
   setStudent: (student: StudentProfile) => void;
   setResolved: () => void;
+  /** The session is gone (a 401, an expiry). */
   clear: () => void;
+  /** The student chose to leave. */
+  signOut: () => void;
 }
 
 export const useSessionStore = create<SessionState>((set) => ({
   student: null,
   isResolved: false,
-  setStudent: (student) => set({ student, isResolved: true }),
+  signedOutByStudent: false,
+  setStudent: (student) => set({ student, isResolved: true, signedOutByStudent: false }),
   setResolved: () => set({ isResolved: true }),
   clear: () => set({ student: null, isResolved: true }),
+  signOut: () => set({ student: null, isResolved: true, signedOutByStudent: true }),
 }));

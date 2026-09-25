@@ -310,4 +310,69 @@ class PublicCourseCatalogueTest extends TestCase
             ->assertJsonPath('meta.total', 5)
             ->assertJsonPath('meta.per_page', 2);
     }
+
+    // ------------------------------------------------------------ price & sort
+
+    public function test_the_price_filter_separates_free_from_paid(): void
+    {
+        $category = $this->category();
+        $this->course($category, ['name' => 'Free intro', 'price_cents' => 0]);
+        $this->course($category, ['name' => 'Paid deep dive', 'price_cents' => 1_500_00]);
+
+        $this->getJson(self::URL.'?price=free')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.name', 'Free intro');
+
+        $this->getJson(self::URL.'?price=paid')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.name', 'Paid deep dive');
+    }
+
+    public function test_courses_can_be_sorted_by_price_and_by_newest(): void
+    {
+        $category = $this->category();
+        $cheap = $this->course($category, ['name' => 'Cheap', 'price_cents' => 500_00, 'sort_order' => 3]);
+        $dear = $this->course($category, ['name' => 'Dear', 'price_cents' => 9_000_00, 'sort_order' => 1]);
+        $middle = $this->course($category, ['name' => 'Middle', 'price_cents' => 2_000_00, 'sort_order' => 2]);
+
+        // `published_at` is not fillable — only the publish action sets it.
+        $cheap->forceFill(['published_at' => now()->subDays(1)])->save();
+        $dear->forceFill(['published_at' => now()->subDays(30)])->save();
+        $middle->forceFill(['published_at' => now()->subDays(10)])->save();
+
+        $names = fn (string $sort) => collect($this->getJson(self::URL."?sort={$sort}")->assertOk()->json('data'))
+            ->pluck('name')
+            ->all();
+
+        $this->assertSame(['Cheap', 'Middle', 'Dear'], $names('price_asc'));
+        $this->assertSame(['Dear', 'Middle', 'Cheap'], $names('price_desc'));
+        $this->assertSame(['Cheap', 'Middle', 'Dear'], $names('newest'));
+        // The default is still the admin's order.
+        $this->assertSame(['Dear', 'Middle', 'Cheap'], $names('recommended'));
+    }
+
+    /** `sort` is a closed list — a column name from the request never reaches ORDER BY. */
+    public function test_an_unknown_sort_or_price_is_refused(): void
+    {
+        $this->getJson(self::URL.'?sort=password')->assertStatus(422)->assertJsonValidationErrors('sort');
+        $this->getJson(self::URL.'?price=cheap')->assertStatus(422)->assertJsonValidationErrors('price');
+    }
+
+    /** Ties are broken by id, so paging through a sorted list never repeats or skips a course. */
+    public function test_sorting_by_an_equal_price_pages_without_repeats(): void
+    {
+        $category = $this->category();
+
+        foreach (range(1, 6) as $i) {
+            $this->course($category, ['name' => "Same price {$i}", 'price_cents' => 1_000_00]);
+        }
+
+        $seen = collect([1, 2, 3])
+            ->flatMap(fn (int $page) => $this->getJson(self::URL."?sort=price_asc&per_page=2&page={$page}")->json('data'))
+            ->pluck('id');
+
+        $this->assertCount(6, $seen->unique());
+    }
 }

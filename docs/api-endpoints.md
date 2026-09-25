@@ -180,6 +180,15 @@ Everything under `/api/v1/student/`. Consumed by `mobile/` now, and by the web s
 
 **Send `Accept-Language: en` or `si` on every request.** Admin-authored titles — a course's `name`, a topic's `title`, a lesson's `title` — are stored in both languages, and the server picks the column (`App\Http\Middleware\SetLocaleFromRequest`, student routes only; `si-LK` and q-values are understood, anything else is English). The response carries **one** title, already correct, never both — so no screen chooses, and an untranslated row falls back to English on its own. Responses echo `Vary: Accept-Language`. A client that lets the user switch language must refetch anything it cached under the old header. The admin API ignores this header entirely and always answers in English.
 
+## Public catalogue (`/public/*`, anonymous, `throttle:public-site`)
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/public/courses` | Paginated course cards. `search` (≤80, name or topic title, both scripts), `category_id` (a parent includes its sub-categories; an unknown id returns nothing, never a 422), `price` = `free`\|`paid`, `sort` = `recommended` (default — the admin's course order) \| `newest` \| `price_asc` \| `price_desc`, `per_page` (≤48), `page`. `price`/`sort` are closed lists: anything else is 422, and `sort` maps to a fixed ORDER BY — a request value never names a column. Every sort ends on `id`, so paging never repeats or skips a course. |
+| GET | `/public/courses/{id}` | One course's page: the card's fields (minus `topic_names`) plus `description` (**plain text**), `topics[] { id, title, lessons_count, duration_seconds, lessons[] { title, duration_seconds } }` — **no lesson id, file or URL** — `assessment` (`{ questions_count }` or null; never a question or answer) and `bundle` (`{ category_id, name, price_cents, currency }` — the bundle's **list** price — when sold only in a bundle, else null). Draft, deleted, hidden-category and unknown ids all answer one identical `404 "Course not found."`. **The parameter is `{id}`, never `{course}`** — `Route::bind('course')` in the student routes is global and would resolve it with the looser student rule. |
+| GET | `/public/course-categories/{id}` | One category's page (a bundle's, on the website): `{ id, name, icon, parent, courses_count, lessons_count, total_duration_seconds, courses[] (card shape), children[] { id, name, courses_count, own_bundle }, bundle }`. For a category that is its own bundle, `courses` is exactly what the bundle sells; `bundle` = `{ category_id (the owner's page), name, price_cents (LIST), currency }` or null when sold one by one. Personal price comes from `GET /student/course-categories/{id}`. Hidden/unknown → `404 "Category not found."`. |
+| GET | `/public/course-categories` | The catalogue's filter: visible top-level categories in admin order, each `{ id, name, icon, courses_count, children[] }`. **Only categories with at least one visible course**, counted with the same visibility rule as `/public/courses`. No selling mode, no bundle price. |
+
 ## Student Auth
 
 Students never register. An admin creates or CSV-imports the record first, and the student **claims** it by proving they control the email address on it. First successful sign-in sets `registered_at`.
@@ -189,9 +198,23 @@ Students never register. An admin creates or CSV-imports the record first, and t
 | POST | `/student/auth/request-code` | guest, throttled | `{ email }` → **always** `200 { data: { expires_in_seconds, resend_after_seconds } }` |
 | POST | `/student/auth/verify-code` | guest, throttled | `{ email, code, device_name? }` → `{ data: { token, expires_at, is_new_student, student } }`. Claims an existing record only — never registers, and `is_new_student` is always false here. |
 | POST | `/student/auth/google` | guest, throttled | `{ id_token, device_name? }` → same shape, plus `is_new_student`. **Signs up as well as in**: a verified Google account with no student record creates one (auto `PB-####`, `registered_at` and `email_verified_at` set, everything else null). Matches on `google_sub` first, then email. Set `STUDENT_GOOGLE_SIGNUP_ENABLED=false` to make it sign-in only. |
-| POST | `/student/auth/refresh` | bearer | → `{ data: { token, expires_at } }` |
-| POST | `/student/auth/logout` | bearer | Revokes the **current** token only; other devices stay signed in. |
-| GET | `/student/me` | bearer | `{ data: StudentProfile }` |
+| POST | `/student/auth/refresh` | **bearer only** | → `{ data: { token, expires_at } }`. Refuses a website session (401): minting a token from a cookie would hand JavaScript a 30-day credential that outlives signing out. |
+| POST | `/student/auth/logout` | **bearer only** | Revokes the **current** token only; other devices stay signed in. |
+| POST | `/student/auth/session/verify-code` | guest, throttled, **website only** | The website's sign-in. `{ email, code }` → `{ data: { is_new_student, student } }` — **no token**; the credential is an httpOnly session cookie on the `student-web` guard. Same checks as `verify-code`. |
+| POST | `/student/auth/session/google` | guest, throttled, **website only** | `{ id_token }` → same shape. Same checks, and same sign-up behaviour, as `auth/google`. |
+| POST | `/student/auth/session/logout` | none, throttled | Ends the website session (guard logout, session invalidated, CSRF token rotated). Idempotent — succeeds with no session. |
+| GET | `/student/me` | bearer **or** website session | `{ data: StudentProfile }` |
+
+**Every other `/student/*` route below accepts either credential** — `auth:student-web,student`. The
+website session is tried first; see the comment in `routes/api_student.php` for why that order
+matters when one browser holds both an admin and a student login.
+
+**"Website only"** means the request must come from an origin in `SANCTUM_STATEFUL_DOMAINS` (and be
+in CORS `FRONTEND_URLS`): that is what starts a session and enforces CSRF. From anywhere else the
+`session/*` sign-ins answer **400 before the code is checked**, so a script cannot burn a student's
+code on a session that could never be stored. A missing `X-XSRF-TOKEN` answers 419 — call
+`GET /sanctum/csrf-cookie` first. The session lasts `SESSION_LIFETIME` minutes, sliding; there is
+no "remember me", because `students` has no `remember_token` column by design.
 
 **`request-code` returns an identical body in every case** — email sent, no such student, student blocked, student deleted. This is deliberate and must not be "improved": student IDs are sequential and a distinguishable response turns the endpoint into an account-enumeration oracle. The UI copy carries the explanation ("If that email matches our records, we've sent you a code"). Resending is the same endpoint again; there is no separate resend route.
 

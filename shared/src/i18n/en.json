@@ -565,7 +565,23 @@
     "portal": {
       "title": "My learning",
       "backToSite": "Back to website",
-      "account": "Account"
+      "account": "Account",
+      "signedOut": "You've signed out.",
+      "home": {
+        "greeting": "Hello, {{name}} 👋",
+        "subtitle": "Here's where you are with Plan B.",
+        "statCourses": "Courses enrolled",
+        "announcements": "From Plan B",
+        "bannerLabel": "Plan B announcements"
+      },
+      "course": {
+        "progressTitle": "Your progress",
+        "upNext": "Up next",
+        "completeTitle": "Course complete",
+        "completeBody": "You've watched every lesson.",
+        "watchAgain": "Watch again",
+        "viewPage": "Course page"
+      }
     },
     "story": {
       "heading": "Real people, already there",
@@ -608,6 +624,115 @@
       "listLabel": "Our programmes",
       "emptyTitle": "No courses published yet",
       "emptyBody": "New programmes are added regularly. Check back soon, or get in touch and we will tell you when one opens."
+    },
+    "auth": {
+      "codeLabel": "Sign-in code",
+      "changeEmail": "Use a different email",
+      "checkInbox": "Can't find it? Check your spam folder. Codes only go to email addresses Plan B has on record.",
+      "googleFailed": "We couldn't sign you in with Google. Try again, or use an emailed code."
+    },
+    "catalogue": {
+      "metaTitle": "Courses — Plan B International",
+      "metaDescription": "Practical courses for Sri Lankans moving to the UAE for study or work. Learn at your own pace, in English or Sinhala.",
+      "heading": "Explore our **courses**",
+      "body": "Practical courses for Sri Lankans moving to the UAE — learn at your own pace, in English or Sinhala.",
+      "searchLabel": "Search courses",
+      "searchPlaceholder": "Search courses or topics, e.g. visa",
+      "categoriesLabel": "Filter by category",
+      "allCategories": "All courses",
+      "allInCategory": "All in {{name}}",
+      "priceLabel": "Price",
+      "priceAll": "Any price",
+      "priceFree": "Free",
+      "pricePaid": "Paid",
+      "sortLabel": "Sort by",
+      "sortRecommended": "Recommended order",
+      "sortNewest": "Newest",
+      "sortPriceAsc": "Price: low to high",
+      "sortPriceDesc": "Price: high to low",
+      "results_one": "{{count}} course",
+      "results_other": "{{count}} courses",
+      "clearFilters": "Clear filters",
+      "paginationLabel": "Course pages",
+      "previous": "Previous",
+      "next": "Next",
+      "pageOf": "Page {{page}} of {{total}}",
+      "inBundle": "In a bundle",
+      "viewDetails": "View details"
+    },
+    "course": {
+      "metaTitle": "{{name}} — Plan B International",
+      "aboutTitle": "About this course",
+      "contentTitle": "Course content",
+      "expandAll": "Expand all",
+      "collapseAll": "Collapse all",
+      "includesTitle": "This course includes",
+      "includesVideo": "{{length}} of video lessons",
+      "includesTopics_one": "{{count}} topic",
+      "includesTopics_other": "{{count}} topics",
+      "includesAssessment_one": "Final assessment · {{count}} question",
+      "includesAssessment_other": "Final assessment · {{count}} questions",
+      "includesDevices": "Learn on your phone or computer",
+      "goToCourse": "Go to course",
+      "enrolledNote": "You're enrolled in this course.",
+      "signInFirst": "You'll sign in first. It only takes a minute.",
+      "bundlePrice": "Bundle price {{price}}",
+      "relatedTitle": "More in {{category}}",
+      "notFoundTitle": "Course not found",
+      "notFoundBody": "This course may have been removed or is no longer available.",
+      "linkCopied": "Link copied",
+      "breadcrumbLabel": "Breadcrumb"
+    },
+    "bundle": {
+      "metaTitle": "{{name}} course bundle — Plan B International",
+      "metaDescription": "{{count}} courses in one bundle, bought together in a single payment. Learn at your own pace, in English or Sinhala.",
+      "body": "Every course below comes together in one payment.",
+      "listPrice": "Bundle price",
+      "yourPrice": "Your price",
+      "ownedNote": "Once you sign in, you only pay for the courses you don't own yet.",
+      "goToMyCourses": "Go to my courses",
+      "coursesTitle": "What's in this bundle",
+      "separateTitle": "Also sold as separate bundles",
+      "notFoundTitle": "Bundle not found",
+      "notFoundBody": "This bundle may have been removed or is no longer available."
+    },
+    "checkout": {
+      "metaTitle": "Checkout — Plan B International",
+      "signInTitle": "Sign in to see this order",
+      "signInBody": "Your checkout is linked to your Plan B account.",
+      "notFoundTitle": "Order not found",
+      "notFoundBody": "This order doesn't exist, or it belongs to another account.",
+      "methodTitle": "Pay by bank transfer",
+      "stepTransfer": "Transfer the amount",
+      "stepProof": "Send us your slip",
+      "amountToPay": "Amount to transfer",
+      "copy": "Copy",
+      "copyLabel": "Copy {{label}}",
+      "copied": "Copied",
+      "slipDrop": "Click to upload or drag and drop",
+      "slipChange": "Change file",
+      "slipRemove": "Remove file",
+      "summaryTitle": "Order summary",
+      "bankUnavailable": "Bank transfer isn't available right now. Please contact Plan B.",
+      "closedTitle": "This order can't be paid",
+      "closedBody": "It was cancelled or refunded. Start again from the course page if you still want it.",
+      "goToMyCourses": "Go to my courses",
+      "typeCourse": "Course",
+      "typeBundle": "Course bundle",
+      "typeService": "Service"
+    },
+    "player": {
+      "nowPlaying": "Now playing",
+      "nextLesson": "Next lesson",
+      "backToCourse": "Back to course",
+      "lessonComplete": "Lesson complete",
+      "lessonCompleteBody": "The next lesson is unlocked.",
+      "courseLessons": "Lessons in this course",
+      "noSkipHint": "You can rewind freely. Skipping ahead opens up as you watch.",
+      "videoLabel": "Lesson video: {{title}}"
+    },
+    "checklist": {
+      "phasesLabel": "Checklist phase"
     }
   }
 }

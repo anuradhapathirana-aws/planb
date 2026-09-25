@@ -10,7 +10,14 @@ There are two kinds of authenticated actor and they share nothing:
 | Actor | Model | Routes | Credential |
 |---|---|---|---|
 | Admin / staff | `App\Models\User` | `/api/v1/admin/*` | Sanctum SPA cookie session, from `web/` |
-| Student | `App\Models\Student` | `/api/v1/student/*` | Sanctum Bearer token, from `mobile/` |
+| Student | `App\Models\Student` | `/api/v1/student/*` | Sanctum Bearer token, from `mobile/` — **or** a `student-web` cookie session, from `site/` |
+
+**The `student-web` guard** (a plain `session` driver on the `students` provider) is the website's
+student sign-in, via `auth/session/*`. Student routes are `auth:student-web,student` — **in that
+order**, because the API is one host and one browser can hold an admin login and a student login in
+the same session; tried second, the Sanctum guard's stateful branch finds the admin first.
+`auth/refresh` and `auth/logout` are **token-only** (`auth:student`): `refresh` mints a token, and a
+cookie session must never be exchangeable for one. Details: `docs/WEBSITE_AND_PORTAL_GUIDE.md` §2.3.
 
 There is now a third route group with **no actor at all** — `/api/v1/public/*`, in
 `routes/api_public.php`, for the marketing website. It authenticates nobody and must stay that way:

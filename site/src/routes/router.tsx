@@ -35,6 +35,33 @@ const PortalLayout = lazy(() =>
 const HomePage = lazy(() =>
   import('@/features/marketing/pages/HomePage').then((m) => ({ default: m.HomePage })),
 );
+const CoursesPage = lazy(() =>
+  import('@/features/catalogue/pages/CoursesPage').then((m) => ({ default: m.CoursesPage })),
+);
+const CourseDetailPage = lazy(() =>
+  import('@/features/catalogue/pages/CourseDetailPage').then((m) => ({ default: m.CourseDetailPage })),
+);
+const BundlePage = lazy(() =>
+  import('@/features/catalogue/pages/BundlePage').then((m) => ({ default: m.BundlePage })),
+);
+const PortalCourseDetailPage = lazy(() =>
+  import('@/features/portal/pages/PortalCourseDetailPage').then((m) => ({ default: m.PortalCourseDetailPage })),
+);
+const LessonPage = lazy(() =>
+  import('@/features/player/pages/LessonPage').then((m) => ({ default: m.LessonPage })),
+);
+const CheckoutPage = lazy(() =>
+  import('@/features/checkout/pages/CheckoutPage').then((m) => ({ default: m.CheckoutPage })),
+);
+const PortalHomePage = lazy(() =>
+  import('@/features/portal/pages/PortalHomePage').then((m) => ({ default: m.PortalHomePage })),
+);
+const MyCoursesPage = lazy(() =>
+  import('@/features/portal/pages/MyCoursesPage').then((m) => ({ default: m.MyCoursesPage })),
+);
+const ChecklistPage = lazy(() =>
+  import('@/features/checklist/pages/ChecklistPage').then((m) => ({ default: m.ChecklistPage })),
+);
 
 export const router = createBrowserRouter([
   {
@@ -49,11 +76,11 @@ export const router = createBrowserRouter([
         ),
         children: [
           { path: paths.home, element: <HomePage /> },
-          { path: paths.courses, element: <PlaceholderPage title="Courses" task="PUB-3" /> },
-          { path: '/courses/:slug', element: <PlaceholderPage title="Course" task="PUB-4" /> },
-          { path: '/bundles/:slug', element: <PlaceholderPage title="Bundle" task="PUB-5" /> },
+          { path: paths.courses, element: <CoursesPage /> },
+          { path: '/courses/:slug', element: <CourseDetailPage /> },
+          { path: '/bundles/:slug', element: <BundlePage /> },
           { path: paths.services, element: <PlaceholderPage title="Services" task="PUB-6" /> },
-          { path: '/checkout/:orderId', element: <PlaceholderPage title="Checkout" task="PUB-8" /> },
+          { path: '/checkout/:orderId', element: <CheckoutPage /> },
           { path: '/payment/:status', element: <PlaceholderPage title="Payment" task="PUB-9" /> },
           { path: paths.privacy, element: <PlaceholderPage title="Privacy policy" task="PUB-2" /> },
           { path: paths.terms, element: <PlaceholderPage title="Terms of service" task="PUB-2" /> },
@@ -71,14 +98,14 @@ export const router = createBrowserRouter([
           </RequireStudent>
         ),
         children: [
-          { index: true, element: <PlaceholderPage title="My learning" task="POR-2" /> },
-          { path: 'courses', element: <PlaceholderPage title="My courses" task="POR-3" /> },
-          { path: 'courses/:id', element: <PlaceholderPage title="Course" task="POR-3" /> },
+          { index: true, element: <PortalHomePage /> },
+          { path: 'courses', element: <MyCoursesPage /> },
+          { path: 'courses/:id', element: <PortalCourseDetailPage /> },
           { path: 'courses/:id/paper', element: <PlaceholderPage title="Assessment" task="POR-5" /> },
-          { path: 'lessons/:id', element: <PlaceholderPage title="Lesson" task="POR-4" /> },
+          { path: 'lessons/:id', element: <LessonPage /> },
           { path: 'paper-attempts/:attemptId', element: <PlaceholderPage title="Result" task="POR-5" /> },
           { path: 'services', element: <PlaceholderPage title="Services" task="POR-6" /> },
-          { path: 'checklist', element: <PlaceholderPage title="Checklist" task="POR-7" /> },
+          { path: 'checklist', element: <ChecklistPage /> },
           { path: 'orders', element: <PlaceholderPage title="Orders" task="POR-8" /> },
           { path: 'wishlist', element: <PlaceholderPage title="Saved courses" task="POR-10" /> },
           { path: 'profile', element: <PlaceholderPage title="Profile" task="POR-9" /> },

@@ -56,7 +56,7 @@ export function useHomePageCourses() {
 
 /* -------------------------------------------------------------------------- */
 
-function toProgrammeCard(course: PublicCourseSummary): ProgrammeCard {
+export function toProgrammeCard(course: PublicCourseSummary): ProgrammeCard {
   return {
     id: course.id,
     /*
