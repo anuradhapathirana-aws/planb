@@ -272,6 +272,18 @@ export const TESTIMONIAL_CARD_WIDTH = 9.9
  * Cards are uniform: same width, same 4:5 ratio, no rotation, no scaling. The
  * only thing that varies is position. The wall is packed tight on purpose — the
  * gap is under 1% of the field width — so it reads as a crowd.
+ *
+ * **The faces are PLACEHOLDERS**, seven files in `site/public/images/
+ * testimonials/` cycled across the thirteen cards (client instruction,
+ * 2026-09-26: keep the sample photographs on the wall for now). They are static
+ * assets on purpose — the wall briefly read its photographs out of the live team
+ * data, and once the real staff portraits are uploaded that would have shown
+ * Plan B's own employees as migrated students beside quotes they never gave.
+ * Nothing here touches the team any more.
+ *
+ * Copies at 320×400, which is comfortably above the ~120px a card renders at, so
+ * all seven together are 86KB. `CMS-4` replaces them with real photographs on a
+ * testimonial record; the quotes and names are placeholder copy until then.
  */
 export const testimonials: Testimonial[] = [
   // col 1, upper
@@ -279,7 +291,7 @@ export const testimonials: Testimonial[] = [
     id: 1,
     name: 'Dinesh Fernando',
     role: 'Welder · Abu Dhabi',
-    photoUrl: null,
+    photoUrl: '/images/testimonials/01.jpg',
     x: 1.0,
     y: 7.4,
     quote:
@@ -290,7 +302,7 @@ export const testimonials: Testimonial[] = [
     id: 2,
     name: 'Shalini Jayawardena',
     role: 'Accountant · Dubai',
-    photoUrl: null,
+    photoUrl: '/images/testimonials/02.jpg',
     x: 1.2,
     y: 20.8,
     quote:
@@ -301,7 +313,7 @@ export const testimonials: Testimonial[] = [
     id: 3,
     name: 'Kasun Silva',
     role: 'IT Support · Sharjah',
-    photoUrl: null,
+    photoUrl: '/images/testimonials/03.jpg',
     x: 11.85,
     y: 3.5,
     quote:
@@ -312,7 +324,7 @@ export const testimonials: Testimonial[] = [
     id: 4,
     name: 'Anushka Rajapaksa',
     role: 'Hotel Manager · Dubai',
-    photoUrl: null,
+    photoUrl: '/images/testimonials/04.jpg',
     x: 12.25,
     y: 16.7,
     quote:
@@ -323,7 +335,7 @@ export const testimonials: Testimonial[] = [
     id: 5,
     name: 'Tharindu Bandara',
     role: 'Electrician · Al Ain',
-    photoUrl: null,
+    photoUrl: '/images/testimonials/05.jpg',
     x: 22.7,
     y: 8.4,
     quote:
@@ -334,7 +346,7 @@ export const testimonials: Testimonial[] = [
     id: 6,
     name: 'Ishara Gunasekara',
     role: 'Pharmacist · Dubai',
-    photoUrl: null,
+    photoUrl: '/images/testimonials/06.jpg',
     x: 33.55,
     y: 3.1,
     quote:
@@ -345,7 +357,7 @@ export const testimonials: Testimonial[] = [
     id: 7,
     name: 'Ruwan Perera',
     role: 'Logistics · Jebel Ali',
-    photoUrl: null,
+    photoUrl: '/images/testimonials/07.jpg',
     x: 44.4,
     y: 6.8,
     quote:
@@ -356,7 +368,7 @@ export const testimonials: Testimonial[] = [
     id: 8,
     name: 'Malsha Wickramasinghe',
     role: 'Teacher · Sharjah',
-    photoUrl: null,
+    photoUrl: '/images/testimonials/01.jpg',
     x: 55.25,
     y: 2.7,
     quote:
@@ -367,7 +379,7 @@ export const testimonials: Testimonial[] = [
     id: 9,
     name: 'Chamara Dissanayake',
     role: 'Driver · Dubai',
-    photoUrl: null,
+    photoUrl: '/images/testimonials/02.jpg',
     x: 66.1,
     y: 7.7,
     quote:
@@ -378,7 +390,7 @@ export const testimonials: Testimonial[] = [
     id: 10,
     name: 'Nadeesha Kumari',
     role: 'Beautician · Dubai',
-    photoUrl: null,
+    photoUrl: '/images/testimonials/03.jpg',
     x: 76.95,
     y: 2.5,
     quote:
@@ -389,7 +401,7 @@ export const testimonials: Testimonial[] = [
     id: 11,
     name: 'Sahan Weerasinghe',
     role: 'Chef · Ras Al Khaimah',
-    photoUrl: null,
+    photoUrl: '/images/testimonials/04.jpg',
     x: 76.65,
     y: 16.3,
     quote:
@@ -400,7 +412,7 @@ export const testimonials: Testimonial[] = [
     id: 12,
     name: 'Hiruni Abeysekara',
     role: 'Nurse · Abu Dhabi',
-    photoUrl: null,
+    photoUrl: '/images/testimonials/05.jpg',
     x: 87.8,
     y: 7.2,
     quote:
@@ -411,7 +423,7 @@ export const testimonials: Testimonial[] = [
     id: 13,
     name: 'Lakmal Ratnayake',
     role: 'Safety Officer · Dubai',
-    photoUrl: null,
+    photoUrl: '/images/testimonials/06.jpg',
     x: 88.0,
     y: 20.4,
     quote:
