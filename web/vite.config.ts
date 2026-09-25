@@ -41,6 +41,22 @@ export default defineConfig({
       // Vite compiles it from source, so there is nothing to install or build.
       '@shared': path.resolve(import.meta.dirname, '../shared/src'),
     },
+    /*
+     * `shared/` imports these three by bare name and has no `node_modules` of
+     * its own — it declares them as OPTIONAL peer dependencies (root CLAUDE.md
+     * §2). The dev server resolves them by walking up into this app's
+     * `node_modules`; the production bundler does not walk, decides the optional
+     * peer is simply absent, and substitutes an empty stub module. The build
+     * then fails with `"z" is not exported by __vite-optional-peer-dep:zod`,
+     * which names the stub rather than the cause.
+     *
+     * `dedupe` pins each one to this app's copy, which fixes the build and also
+     * guarantees a single instance of zod — two copies produce schemas that fail
+     * each other's `instanceof` checks in ways that are very hard to read.
+     *
+     * Keep this list in step with `shared/package.json`'s `peerDependencies`.
+     */
+    dedupe: ['zod', 'axios', 'react-hook-form'],
   },
   server: {
     port: 5183,

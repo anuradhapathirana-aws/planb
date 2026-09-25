@@ -25,6 +25,17 @@ export default defineConfig({
       // Vite compiles it from source, so there is nothing to install or build.
       '@shared': path.resolve(import.meta.dirname, '../shared/src'),
     },
+    /*
+     * The same pin as `web/vite.config.ts`, and for the same reason — the long
+     * explanation is there. `shared/` imports these by bare name and owns no
+     * `node_modules`, so the production bundler would replace an absent optional
+     * peer with an empty stub. This app happens to build without it today
+     * because nothing it imports from `shared/` has reached a zod schema yet;
+     * the first Zod form in the portal would break the build otherwise.
+     *
+     * Keep in step with `shared/package.json`'s `peerDependencies`.
+     */
+    dedupe: ['zod', 'axios', 'react-hook-form'],
   },
   build: {
     rollupOptions: {
