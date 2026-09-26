@@ -1176,8 +1176,44 @@ written and worth reusing rather than re-deriving.
   (`@radix-ui/react-tabs` was already a dependency). Verified live: tick, repeated tick (idempotent),
   untick, 404, 422, 401.
 - [ ] **POR-8 — Orders & payments history.**
-- [ ] **POR-9 — Profile.** Edit, photo, language switch (**must refetch** anything cached under the old
-  `Accept-Language`), account deletion.
+- [x] **POR-9 — Profile.** Edit, photo, language switch (**must refetch** anything cached under the old
+  `Accept-Language`), account deletion. — built 2026-09-26.
+  **Site:** `features/profile/`, `/app/profile` — the app's Profile tab, Edit Profile and Delete
+  Account screens on one page. Laptop: identity + settings in a narrow column, the form beside it;
+  phone: identity → form → settings (grid placement, so source order is the phone's order).
+  - **One cache for the student.** `useProfile` reads `sessionQueryKey` — the same entry the header
+    uses — with `refetchOnMount: 'always'` so admin edits since sign-in appear; saves and photo
+    changes `setQueryData` into it and the bootstrap copies it to the store. Never a second copy.
+  - `ProfileIdentityCard`: avatar you click or drop a picture on (JPG/PNG ≤ 2 MB checked first,
+    mirroring `UploadProfilePhotoRequest`), saved on its own so it never waits on or discards
+    form edits; remove behind a confirm. Name, student ID, email + verified tick, member since.
+  - `ProfileForm`: RHF + the shared `studentProfileSchema`, on blur. About you (name*, date of birth
+    with an 18-years `max`, visa status as a `SegmentedToggle`, bio), Contact (address; email and
+    phone shown **locked** with why), Academic & career (qualification, industry → profession, the
+    profession cleared on an industry change). Server 422s land on the field. `values` +
+    `keepDirtyValues`, so a refetch or language switch never wipes typing. Save/Cancel enabled only
+    when dirty; sticky above the tab bar on a phone. Leaving with edits asks (`useBlocker`) or the
+    browser asks (`beforeunload`) — **except** after sign-out/deletion, which clear the session first.
+  - `AccountSettingsCard`: language as a segmented control → `changeLanguage`, which already
+    invalidates the whole cache (the refetch rule); Payments and wishlist rows (still `POR-8`/`POR-10`
+    placeholders); privacy, terms, support mailto; Sign out; a quiet red "Delete account".
+  - `DeleteAccountDialog`: what goes / what stays → "Email me a code" → one `one-time-code` input
+    (auto-submits, no double send), resend countdown from the server. The server's own 422 message is
+    shown (the caller is the account holder — nothing to enumerate). On success: store + whole cache
+    cleared, home, toast.
+  - New shared-in-app pieces: `components/shared/ConfirmDialog.tsx` (bottom sheet on a phone),
+    `components/shared/SegmentedToggle.tsx` (the admin's, 44px), `components/ui/textarea.tsx`.
+  - **`shared/src/schemas/studentProfile.ts` rewritten** — it was unused and stale (accepted
+    `contact_number`, which the server refuses; lacked `full_name`/`visa_status`, which it allows).
+    Now mirrors `UpdateStudentProfileRequest`.
+  **Backend:** `AccountController::destroy` now **ends the website session** (logout, invalidate,
+  new CSRF token — as `WebSessionController::logout`). Before, the session was only orphaned: it 401'd
+  because the provider skips deleted rows, and **restoring the record would have signed that
+  browser straight back in**. 2 tests over a real session; the restore one fails without the fix.
+  719 passing. 9 i18n keys EN+SI.
+  **Verified live** over a real cookie session (CSRF, Origin): sign in, industries/professions, save,
+  under-18 → 422 on the field, photo upload + remove, deletion code, wrong code → 422, delete → 204,
+  `/me` → 401. **Not verified in a browser.**
 - [ ] **POR-10 — Wishlist.**
 
 ### PHASE SEC — Security
@@ -1230,6 +1266,7 @@ Append one line per completed task: date · task ID · what landed · files touc
 | 2026-09-25 | CMS-0 (fix) | **`site/` was never able to read the API.** Its origin (`:5184`) was in `SANCTUM_STATEFUL_DOMAINS` but not in CORS `allowed_origins`, so every request was answered `200` and then discarded by the browser — invisible server-side. Surfaced as "the About video is not showing", because the website's designed fallback has no video by design. `allowed_origins` is now a comma-separated `FRONTEND_URLS` list, and `tests/Feature/CorsTest.php` asserts the **value** of `Access-Control-Allow-Origin` per origin, which is the only assertion that would have caught it. |
 | 2026-09-26 | API-5 · SEC-1 | **Student web session.** `student-web` guard, three `auth/session/*` endpoints, `StudentAuthService` split so token and session share one verification path. Two findings recorded in §2.3: the API session cookie is **shared** by both front ends in one browser (the old "never travel together" claim was wrong), and `auth/refresh` would have let a web session mint a JS-readable token — now token-only. 18 new tests over real sessions; mutation-checked; 684 passing. |
 | 2026-09-26 | PUB-7 · POR-1 · POR-2 | **Sign in on the website → the portal.** Sign-in dialog (email code + Google Identity Services), lazy-loaded; sign-out; guard bounce opens sign-in and returns to the deep link; portal home (continue learning, stats, my courses, checklist, announcements). 10 new i18n keys EN+SI, appended to the review sheet. |
+| 2026-09-26 | POR-9 | **Profile** — edit details (on blur, server errors on the field, leave-with-edits guard), photo (click or drop), language (refetches everything), help & legal, sign out, two-step account deletion. Backend: deleting from the website now ends the session instead of orphaning it (+2 tests). Stale shared profile schema corrected. 9 i18n keys. |
 | 2026-09-26 | POR-6 | **Services** — `/app/services` (my purchases + the rest of the catalogue, one search) and `/app/services/:id` (description, price, buy → checkout, how-it-works / delivery tracker). Backend fix: purchases always reported `is_available: false`; now tested. 1 new i18n key. |
 | 2026-09-26 | POR-7 | **Checklists page** — both phases as tabs, progress card, steps with inline instructions, optimistic ticks with per-item rollback (mobile's rules), shared cache with the portal home. No backend change; 1 new i18n key. |
 | 2026-09-26 | POR-4 · SEC-7 (player) | **Lesson player** — video.js no-skip player, progress flushes incl. keepalive on tab close, link refresh, lesson page with Next lesson and the course's lesson list. Not live-ready until `DEP-4`; browser playback still to be checked with a real uploaded lesson. |

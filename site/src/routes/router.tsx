@@ -65,6 +65,9 @@ const ServicesPage = lazy(() =>
 const ServiceDetailPage = lazy(() =>
   import('@/features/services/pages/ServiceDetailPage').then((m) => ({ default: m.ServiceDetailPage })),
 );
+const ProfilePage = lazy(() =>
+  import('@/features/profile/pages/ProfilePage').then((m) => ({ default: m.ProfilePage })),
+);
 const ChecklistPage = lazy(() =>
   import('@/features/checklist/pages/ChecklistPage').then((m) => ({ default: m.ChecklistPage })),
 );
@@ -115,7 +118,7 @@ export const router = createBrowserRouter([
           { path: 'checklist', element: <ChecklistPage /> },
           { path: 'orders', element: <PlaceholderPage title="Orders" task="POR-8" /> },
           { path: 'wishlist', element: <PlaceholderPage title="Saved courses" task="POR-10" /> },
-          { path: 'profile', element: <PlaceholderPage title="Profile" task="POR-9" /> },
+          { path: 'profile', element: <ProfilePage /> },
         ],
       },
 

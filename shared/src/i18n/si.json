@@ -585,6 +585,17 @@
       },
       "services": {
         "comingSoonBody": "සේවා මිලදී ගැනීම ළඟදීම ආරම්භ වේ. කරුණාකර පසුව නැවත පරීක්ෂා කරන්න."
+      },
+      "profile": {
+        "photoHint": "JPG හෝ PNG, 2 MB දක්වා.",
+        "photoWrongType": "එම ගොනු වර්ගය පිළිගනු නොලැබේ. JPG හෝ PNG ඡායාරූපයක් තෝරන්න.",
+        "photoTooLarge": "එම ඡායාරූපය විශාල වැඩියි. 2 MB ට අඩු එකක් තෝරන්න.",
+        "memberSince": "{{date}} සිට සාමාජික",
+        "unsavedHint": "ඔබට සුරකින ලද නැති වෙනස්කම් ඇත.",
+        "phoneLocked": "ඔබගේ දුරකථන අංකය වෙනස් කිරීමට Plan B සහාය අමතන්න.",
+        "codeLabel": "තහවුරු කිරීමේ කේතය",
+        "supportSubject": "Plan B වෙබ් අඩවි සහාය",
+        "loadFailedTitle": "ඔබගේ පැතිකඩ පූරණය කළ නොහැකි විය"
       }
     },
     "story": {

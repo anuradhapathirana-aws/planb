@@ -584,6 +584,17 @@
       },
       "services": {
         "comingSoonBody": "Buying services opens soon. Please check back later."
+      },
+      "profile": {
+        "photoHint": "JPG or PNG, up to 2 MB.",
+        "photoWrongType": "That file type isn't accepted. Choose a JPG or PNG photo.",
+        "photoTooLarge": "That photo is too large. Choose one under 2 MB.",
+        "memberSince": "Member since {{date}}",
+        "unsavedHint": "You have unsaved changes.",
+        "phoneLocked": "Contact Plan B support to change your phone number.",
+        "codeLabel": "Confirmation code",
+        "supportSubject": "Plan B website support",
+        "loadFailedTitle": "Couldn't load your profile"
       }
     },
     "story": {

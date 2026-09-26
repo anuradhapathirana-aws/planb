@@ -5,6 +5,17 @@ All notable changes to this project are documented here. Format loosely follows 
 ## Unreleased
 
 ### Added
+- **Profile in the student portal** (`/app/profile`, task POR-9). Everything from the app's Profile tab, on one page.
+  - **Your photo:** click it or drag a picture onto it (JPG or PNG, up to 2 MB). It saves straight away; there's also a Remove button.
+  - **Your details:** name, date of birth, visa status, a short bio, address, qualification, industry and profession. Mistakes show under the field when you leave it, and Save only lights up once something has changed. Leaving the page with unsaved changes asks first. Email and phone are shown but locked, with a note on how to change them.
+  - **Language:** English / සිංහල. Switching reloads course names and other content in the new language.
+  - Links to Payments, the wishlist, the privacy policy, terms and support, plus **Sign out**.
+  - **Delete account:** shows what will be deleted and what Plan B must keep, emails a code, and deletes the account once the code is entered.
+
+### Fixed
+- **Deleting an account from the website now signs that browser out properly.** Before, the browser was only locked out indirectly and would have been signed back in if the account were ever restored.
+
+### Added
 - **Services in the student portal** (`/app/services`, task POR-6). The same premium services as the app, on one page.
   - **My Services** at the top: each service the student has bought, with where it has got to (Waiting to start, In progress, Completed, Cancelled) and the date they paid. Hidden when they haven't bought anything.
   - **All Services** underneath: everything they can still buy, with the picture, price and usual delivery time. Services they have already bought are left out, so the list reads as "what else can I get".

@@ -31,11 +31,13 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
+use Tests\Concerns\SignsInOnTheWebsite;
 use Tests\TestCase;
 
 class StudentAccountDeletionTest extends TestCase
 {
     use RefreshDatabase;
+    use SignsInOnTheWebsite;
 
     private Student $student;
 
@@ -316,6 +318,50 @@ class StudentAccountDeletionTest extends TestCase
 
         // The token is gone too, so a replay cannot even authenticate.
         $this->deleteAccount()->assertUnauthorized();
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | From the website (a cookie session, not a token)
+    |--------------------------------------------------------------------------
+    */
+
+    public function test_a_website_session_can_delete_its_own_account(): void
+    {
+        $this->useWebsiteOrigin();
+        $cookie = $this->signInOnTheWebsite($this->student);
+
+        $this->fromWebsite($cookie)->postJson('/api/v1/student/account/deletion-code')->assertOk();
+
+        $this->deletionCode();
+        $this->fromWebsite($cookie)
+            ->deleteJson('/api/v1/student/account', ['code' => StudentLoginCodeFactory::PLAIN_CODE])
+            ->assertNoContent();
+
+        $this->assertSoftDeleted($this->student);
+        $this->fromWebsite($cookie)->getJson('/api/v1/student/me')->assertUnauthorized();
+    }
+
+    /**
+     * The session itself is ended, not just orphaned. Without that, the only
+     * thing stopping the old cookie is that the provider skips deleted rows —
+     * so restoring the record would bring the browser's sign-in straight back.
+     */
+    public function test_deleting_from_the_website_ends_the_session_itself(): void
+    {
+        $this->useWebsiteOrigin();
+        $cookie = $this->signInOnTheWebsite($this->student);
+
+        $this->deletionCode();
+        $this->fromWebsite($cookie)
+            ->deleteJson('/api/v1/student/account', ['code' => StudentLoginCodeFactory::PLAIN_CODE])
+            ->assertNoContent();
+
+        Student::withTrashed()->findOrFail($this->student->id)
+            ->forceFill(['is_blocked' => false])
+            ->restore();
+
+        $this->fromWebsite($cookie)->getJson('/api/v1/student/me')->assertUnauthorized();
     }
 
     /** The address is freed, so the same person can come back as a brand-new student. */
