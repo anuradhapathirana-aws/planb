@@ -157,7 +157,7 @@ function OrderState({ order, onCheck }: { order: StudentOrder; onCheck: () => Pr
       type === 'course'
         ? { to: paths.app.courseDetail(id), label: t('payment.startLearning') }
         : type === 'service'
-          ? { to: paths.app.services, label: t('payment.viewService') }
+          ? { to: paths.app.serviceDetail(id), label: t('payment.viewService') }
           : { to: paths.app.courses, label: t('site.checkout.goToMyCourses') };
 
     return (

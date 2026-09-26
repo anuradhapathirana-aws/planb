@@ -1136,7 +1136,32 @@ written and worth reusing rather than re-deriving.
   watch it through once before calling this done. video.js stays in the `player` chunk (205 kB gzip),
   loaded by the lesson page only.
 - [ ] **POR-5 — Assessments.** Take, submit, result. Score only until passed or attempts exhausted.
-- [ ] **POR-6 — Services.** Catalog + my purchases.
+- [x] **POR-6 — Services.** Catalog + my purchases. — built 2026-09-26.
+  **Site:** `features/services/`. `/app/services` (`ServicesPage`) puts mobile's two screens — the
+  My Services tab and `/browse/services` — on one page, because there is no public services
+  catalogue to send a student to (services are a signed-in feature, see "Header nav"): **My
+  Services** first (`PurchasedServiceCard`: art, frozen `title`, status badge, paid date; linked only
+  while `service.is_available`; the section is omitted when nothing is bought), then **All
+  Services** (`ServiceCard` grid, 1/2/3 columns) **minus anything bought and not cancelled** —
+  nothing is hidden if the purchases list fails. One client-side search over both lists. Loading
+  skeletons; error, empty-catalogue, all-bought and no-match states.
+  `/app/services/:id` (`ServiceDetailPage`, **the only place a service is bought**, as on mobile):
+  breadcrumb, art, name, delivery estimate; "What you get" through `RichText`; a sticky side card
+  with the price and one action — open purchase → a note, no button; payments off → "Coming soon ·
+  price"; else Buy now / Buy again → `POST student/services/{id}/purchase` (no body) →
+  `/checkout/:orderId`. A 422 (still being delivered) toasts our translated `services.alreadyOpen`
+  rather than the server's English message and refetches the page. Before purchase
+  `ServiceHowItWorks`; after, `DeliveryTracker` (mobile's `DeliveryStepper` rules: cancelled
+  replaces the last step, estimate only while open). Checkout's paid-service button now opens the
+  service's own page. Query keys under `student` so sign-out clears them. 1 new i18n key EN+SI.
+  **Backend fix found on the way:** `student/service-purchases` returned `is_available: false` for
+  every purchase — `listForStudent()` eager-loaded the service without `price_cents`, which
+  `isPurchasable()` reads. Mobile's rows were never tappable either. Fixed, plus the missing
+  "live service → true" test (fails before the fix). 717 passing.
+  **Verified** the three endpoints against local data (shapes match `@shared/types/studentService`,
+  unknown id 404s). **Not verified in a browser** — no signed-in session was driven here. Local
+  `delivery_time` values are bare numbers ("3-5"), so the copy reads "Usually 3-5"; the admin field
+  expects "3-5 working days".
 - [x] **POR-7 — Checklists.** Both phases, optimistic ticks, PUT-the-state (not a toggle). — built
   2026-09-26. **No backend change** — `GET student/checklists` and `PUT student/checklist-items/{id}`
   already existed for mobile. `/app/checklist`: the two phases as tabs (`?phase=after` in the URL,
@@ -1205,6 +1230,7 @@ Append one line per completed task: date · task ID · what landed · files touc
 | 2026-09-25 | CMS-0 (fix) | **`site/` was never able to read the API.** Its origin (`:5184`) was in `SANCTUM_STATEFUL_DOMAINS` but not in CORS `allowed_origins`, so every request was answered `200` and then discarded by the browser — invisible server-side. Surfaced as "the About video is not showing", because the website's designed fallback has no video by design. `allowed_origins` is now a comma-separated `FRONTEND_URLS` list, and `tests/Feature/CorsTest.php` asserts the **value** of `Access-Control-Allow-Origin` per origin, which is the only assertion that would have caught it. |
 | 2026-09-26 | API-5 · SEC-1 | **Student web session.** `student-web` guard, three `auth/session/*` endpoints, `StudentAuthService` split so token and session share one verification path. Two findings recorded in §2.3: the API session cookie is **shared** by both front ends in one browser (the old "never travel together" claim was wrong), and `auth/refresh` would have let a web session mint a JS-readable token — now token-only. 18 new tests over real sessions; mutation-checked; 684 passing. |
 | 2026-09-26 | PUB-7 · POR-1 · POR-2 | **Sign in on the website → the portal.** Sign-in dialog (email code + Google Identity Services), lazy-loaded; sign-out; guard bounce opens sign-in and returns to the deep link; portal home (continue learning, stats, my courses, checklist, announcements). 10 new i18n keys EN+SI, appended to the review sheet. |
+| 2026-09-26 | POR-6 | **Services** — `/app/services` (my purchases + the rest of the catalogue, one search) and `/app/services/:id` (description, price, buy → checkout, how-it-works / delivery tracker). Backend fix: purchases always reported `is_available: false`; now tested. 1 new i18n key. |
 | 2026-09-26 | POR-7 | **Checklists page** — both phases as tabs, progress card, steps with inline instructions, optimistic ticks with per-item rollback (mobile's rules), shared cache with the portal home. No backend change; 1 new i18n key. |
 | 2026-09-26 | POR-4 · SEC-7 (player) | **Lesson player** — video.js no-skip player, progress flushes incl. keepalive on tab close, link refresh, lesson page with Next lesson and the course's lesson list. Not live-ready until `DEP-4`; browser playback still to be checked with a real uploaded lesson. |
 | 2026-09-26 | POR-3 | **Portal course page** — progress, next lesson, syllabus with ticks and locks, assessment card. `RichText` (DOMPurify, server allowlist) added. Non-owners redirect to the public page. POR-3 complete. |

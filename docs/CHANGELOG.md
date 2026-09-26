@@ -5,6 +5,17 @@ All notable changes to this project are documented here. Format loosely follows 
 ## Unreleased
 
 ### Added
+- **Services in the student portal** (`/app/services`, task POR-6). The same premium services as the app, on one page.
+  - **My Services** at the top: each service the student has bought, with where it has got to (Waiting to start, In progress, Completed, Cancelled) and the date they paid. Hidden when they haven't bought anything.
+  - **All Services** underneath: everything they can still buy, with the picture, price and usual delivery time. Services they have already bought are left out, so the list reads as "what else can I get".
+  - **A search box** that looks through both lists.
+  - **A page for each service** (`/app/services/3`): what you get (Plan B's description), the price and the **Buy now** button, which opens checkout. Before buying it shows the three steps (You pay → We work on it → Delivered); after buying, a tracker with the date of each step. A service still being worked on can't be bought twice. While payments are switched off, the button reads "Coming soon · price".
+  - After paying, checkout's "View my service" button now opens that service's page.
+
+### Fixed
+- **Bought services were never clickable in My Services** (app and website). The server reported every purchased service as unavailable, even ones still on sale, because it didn't load the service's price when checking. Now fixed, with a test.
+
+### Added
 - **Checklists in the student portal** (`/app/checklist`, task POR-7). The same Before arrival / After arrival checklists as the app, with the same ticks, since both read the student's one saved list.
   - **Two tabs**, each showing how far along it is ("3/10"). The chosen tab is kept in the address, so a refresh or a shared link opens the same one.
   - **A progress card** with a bar, how many steps are left and a one-line hint for the phase. When every step is done it changes to "All done".

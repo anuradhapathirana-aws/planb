@@ -213,7 +213,13 @@ class ServicePurchaseService
     {
         return ServicePurchase::where('student_id', $student->id)
             ->with([
-                'service' => fn ($service) => $service->withTrashed()->select(['id', 'name', 'status', 'deleted_at']),
+                /*
+                 * `price_cents` is not displayed, but `is_available` runs
+                 * `Service::isPurchasable()`, which reads it — left out, every
+                 * purchase reported its live service as unavailable.
+                 */
+                'service' => fn ($service) => $service->withTrashed()
+                    ->select(['id', 'name', 'status', 'price_cents', 'deleted_at']),
                 'service.media',
                 'order:id,order_number,amount_cents,currency,status,paid_at',
             ])

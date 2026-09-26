@@ -35,6 +35,7 @@ export const paths = {
     paper: (courseId: number | string) => `/app/courses/${courseId}/paper`,
     paperResult: (attemptId: number | string) => `/app/paper-attempts/${attemptId}`,
     services: '/app/services',
+    serviceDetail: (id: number | string) => `/app/services/${id}`,
     checklist: '/app/checklist',
     orders: '/app/orders',
     wishlist: '/app/wishlist',

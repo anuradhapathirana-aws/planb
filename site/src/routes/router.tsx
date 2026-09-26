@@ -59,6 +59,12 @@ const PortalHomePage = lazy(() =>
 const MyCoursesPage = lazy(() =>
   import('@/features/portal/pages/MyCoursesPage').then((m) => ({ default: m.MyCoursesPage })),
 );
+const ServicesPage = lazy(() =>
+  import('@/features/services/pages/ServicesPage').then((m) => ({ default: m.ServicesPage })),
+);
+const ServiceDetailPage = lazy(() =>
+  import('@/features/services/pages/ServiceDetailPage').then((m) => ({ default: m.ServiceDetailPage })),
+);
 const ChecklistPage = lazy(() =>
   import('@/features/checklist/pages/ChecklistPage').then((m) => ({ default: m.ChecklistPage })),
 );
@@ -104,7 +110,8 @@ export const router = createBrowserRouter([
           { path: 'courses/:id/paper', element: <PlaceholderPage title="Assessment" task="POR-5" /> },
           { path: 'lessons/:id', element: <LessonPage /> },
           { path: 'paper-attempts/:attemptId', element: <PlaceholderPage title="Result" task="POR-5" /> },
-          { path: 'services', element: <PlaceholderPage title="Services" task="POR-6" /> },
+          { path: 'services', element: <ServicesPage /> },
+          { path: 'services/:id', element: <ServiceDetailPage /> },
           { path: 'checklist', element: <ChecklistPage /> },
           { path: 'orders', element: <PlaceholderPage title="Orders" task="POR-8" /> },
           { path: 'wishlist', element: <PlaceholderPage title="Saved courses" task="POR-10" /> },

@@ -581,6 +581,9 @@
         "completeBody": "You've watched every lesson.",
         "watchAgain": "Watch again",
         "viewPage": "Course page"
+      },
+      "services": {
+        "comingSoonBody": "Buying services opens soon. Please check back later."
       }
     },
     "story": {

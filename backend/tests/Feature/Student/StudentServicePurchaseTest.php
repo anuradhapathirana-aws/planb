@@ -154,6 +154,20 @@ class StudentServicePurchaseTest extends TestCase
             ->assertJsonPath('data.latest_purchase', null);
     }
 
+    /** The other half: a live service must stay linkable from the purchase. */
+    public function test_a_purchase_of_a_live_service_is_available(): void
+    {
+        ServicePurchase::factory()->create([
+            'student_id' => $this->student->id,
+            'service_id' => $this->service->id,
+        ]);
+
+        $this->getJson('/api/v1/student/service-purchases')
+            ->assertOk()
+            ->assertJsonPath('data.0.service.id', $this->service->id)
+            ->assertJsonPath('data.0.service.is_available', true);
+    }
+
     /** A withdrawn service still has to show up: it was paid for and is still owed. */
     public function test_a_purchase_survives_its_service_being_withdrawn(): void
     {
