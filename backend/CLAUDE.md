@@ -102,6 +102,11 @@ many remain.
 `verify-code` may return 403 for a blocked student even with a valid code — that covers a block
 landing between request and verify, and is deliberate.
 
+The same rule covers **`auth/register/request-code`** (the sign-up form). A taken address gets the
+same 200 as a new one — its owner is emailed a "you already have an account" notice instead of a
+code — so never add a `unique:students,email` rule to `RequestRegistrationCodeRequest`. The student
+row is written only when the code comes back (`StudentRegistrationService`).
+
 ## 5. The no-skip rule lives here
 
 `app/Services/Course/CourseProgressService.php` is the enforcement point. Client-side clamping in the

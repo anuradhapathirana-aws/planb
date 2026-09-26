@@ -655,3 +655,45 @@ site.portal.profile.phoneLocked,Contact Plan B support to change your phone numb
 site.portal.profile.codeLabel,Confirmation code,තහවුරු කිරීමේ කේතය,,
 site.portal.profile.supportSubject,Plan B website support,Plan B වෙබ් අඩවි සහාය,,
 site.portal.profile.loadFailedTitle,Couldn't load your profile,ඔබගේ පැතිකඩ පූරණය කළ නොහැකි විය,,
+auth.newToPlanB,New to Plan B?,Plan B වෙත අලුත්ද?,,New: sign-up form
+auth.createAccount,Create an account,ගිණුමක් සාදන්න,,New: sign-up form
+site.nav.signUp,Sign up,ලියාපදිංචි වන්න,,New: sign-up form
+register.eyebrow,Join Plan B,Plan B හා එක්වන්න,,New: sign-up form
+register.title,Create your account,ඔබේ ගිණුම සාදන්න,,New: sign-up form
+register.subtitle,Start getting ready for study and work in the UAE. It takes less than a minute.,UAE හි අධ්‍යාපනය සහ රැකියාව සඳහා සූදානම් වීම අරඹන්න. මිනිත්තුවකටත් අඩු කාලයක් ගතවේ.,,New: sign-up form
+register.stepDetails,Your details,ඔබේ විස්තර,,New: sign-up form
+register.stepVerify,Verify email,ඊමේල් තහවුරු කිරීම,,New: sign-up form
+register.stepStart,Start learning,ඉගෙනීම අරඹන්න,,New: sign-up form
+register.stepOf,Step {{current}} of {{total}},පියවර {{total}}න් {{current}},,New: sign-up form
+register.orEmail,or sign up with email,නැතහොත් ඊමේල් මගින් ලියාපදිංචි වන්න,,New: sign-up form
+register.fullName,Full name,සම්පූර්ණ නම,,New: sign-up form
+register.fullNamePlaceholder,e.g. Nimal Perera,උදා: නිමල් පෙරේරා,,New: sign-up form
+register.fullNameHint,As it appears on your passport.,ඔබේ ගමන් බලපත්‍රයේ ඇති පරිදි.,,New: sign-up form
+register.email,Email address,ඊමේල් ලිපිනය,,New: sign-up form
+register.emailPlaceholder,you@example.com,you@example.com,,New: sign-up form
+register.contactNumber,Mobile number,ජංගම දුරකථන අංකය,,New: sign-up form
+register.contactNumberPlaceholder,+94 77 123 4567,+94 77 123 4567,,New: sign-up form
+register.contactNumberHint,"Include your country code, e.g. +94 or +971.","රටේ කේතය ඇතුළත් කරන්න, උදා: +94 හෝ +971.",,New: sign-up form
+register.dateOfBirth,Date of birth,උපන් දිනය,,New: sign-up form
+register.dateOfBirthPlaceholder,Select your date of birth,ඔබේ උපන් දිනය තෝරන්න,,New: sign-up form
+register.dateOfBirthHint,You must be 18 or older.,ඔබේ වයස අවුරුදු 18 හෝ ඊට වැඩි විය යුතුය.,,New: sign-up form
+register.acceptTerms,I agree to the <terms>Terms of Use</terms> and <privacy>Privacy Policy</privacy>.,මම <terms>භාවිත නියම</terms> සහ <privacy>පෞද්ගලිකත්ව ප්‍රතිපත්තිය</privacy> පිළිගනිමි.,,New: sign-up form
+register.noPassword,No password needed. We'll email you a code to confirm it's you.,මුරපදයක් අවශ්‍ය නැත. එය ඔබ බව තහවුරු කිරීමට අපි ඔබට කේතයක් ඊමේල් කරන්නෙමු.,,New: sign-up form
+register.submit,Create account,ගිණුම සාදන්න,,New: sign-up form
+register.haveAccount,Already have an account?,දැනටමත් ගිණුමක් තිබේද?,,New: sign-up form
+register.signIn,Sign in,පිවිසෙන්න,,New: sign-up form
+register.codeTitle,Check your email,ඔබේ ඊමේල් පරීක්ෂා කරන්න,,New: sign-up form
+register.codeSubtitle,We sent a {{length}}-digit code to {{email}}. Enter it below to create your account. It expires in {{minutes}} minutes.,අපි {{email}} වෙත ඉලක්කම් {{length}}ක කේතයක් එවූවෙමු. ඔබේ ගිණුම සෑදීමට එය පහතින් ඇතුළත් කරන්න. එය මිනිත්තු {{minutes}}කින් කල් ඉකුත් වේ.,,New: sign-up form
+register.codeLabel,Confirmation code,තහවුරු කිරීමේ කේතය,,New: sign-up form
+register.codeSent,Check your email for your code.,ඔබේ කේතය සඳහා ඊමේල් පරීක්ෂා කරන්න.,,New: sign-up form
+register.codeHint,"Can't find it? Check your spam folder. If you already have a Plan B account with this email, we sent you a sign-in reminder instead.","සොයාගත නොහැකිද? ඔබේ spam ෆෝල්ඩරය පරීක්ෂා කරන්න. මෙම ඊමේල් සමඟ ඔබට දැනටමත් Plan B ගිණුමක් ඇත්නම්, ඒ වෙනුවට අපි ඔබට පිවිසීමේ සිහිකැඳවීමක් එවූවෙමු.",,New: sign-up form
+register.verify,Create my account,මගේ ගිණුම සාදන්න,,New: sign-up form
+register.editDetails,Edit my details,මගේ විස්තර වෙනස් කරන්න,,New: sign-up form
+register.fixErrors,Please check the highlighted fields.,කරුණාකර සලකුණු කළ ක්ෂේත්‍ර පරීක්ෂා කරන්න.,,New: sign-up form
+register.perkCourses,Practical courses in English and Sinhala,ඉංග්‍රීසි සහ සිංහල භාෂාවෙන් ප්‍රායෝගික පාඨමාලා,,New: sign-up form
+register.perkChecklists,Step-by-step checklists for your arrival,ඔබ පැමිණීම සඳහා පියවරෙන් පියවර පරීක්ෂණ ලැයිස්තු,,New: sign-up form
+register.perkServices,CV writing and visa consultation when you need it,ඔබට අවශ්‍ය විට CV ලිවීම සහ වීසා උපදේශනය,,New: sign-up form
+register.panelHeading,Your path to the **UAE** starts here,**UAE** වෙත ඔබේ ගමන මෙතැනින් අරඹන්න,,New: sign-up form
+register.panelBody,Join students across Sri Lanka preparing for their next step abroad.,විදේශයේ ඊළඟ පියවරට සූදානම් වන ශ්‍රී ලංකාව පුරා සිසුන් සමඟ එක්වන්න.,,New: sign-up form
+register.journeyFrom,Sri Lanka,ශ්‍රී ලංකාව,,New: sign-up form
+register.journeyTo,UAE,UAE,,New: sign-up form

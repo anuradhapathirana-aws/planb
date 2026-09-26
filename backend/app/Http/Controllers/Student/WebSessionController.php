@@ -43,6 +43,19 @@ class WebSessionController extends Controller
         return $this->startSession($request, $result['student'], $result['is_new_student']);
     }
 
+    /** The sign-up form's second step. Step one, `auth/register/request-code`, is shared with the app. */
+    public function verifyRegistration(VerifyLoginCodeRequest $request): JsonResponse
+    {
+        $this->assertStateful($request);
+
+        $result = $this->auth->authenticateRegistration(
+            $request->validated('email'),
+            $request->validated('code'),
+        );
+
+        return $this->startSession($request, $result['student'], $result['is_new_student']);
+    }
+
     public function google(GoogleSignInRequest $request): JsonResponse
     {
         $this->assertStateful($request);

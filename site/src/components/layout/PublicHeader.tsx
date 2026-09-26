@@ -73,7 +73,40 @@ export function PublicHeader({ onSignIn }: { onSignIn: () => void }) {
           instruction, 2026-09-25). It stays one height at every width — a bar
           that changes height between breakpoints moves the whole page with it. */}
       <Container className="flex h-20 items-center gap-3">
-        <Logo size="lg" />
+        {/*
+          The logo is TALLER THAN THE BAR and hangs below it (client
+          instruction, 2026-09-26). Three things hold that up:
+
+           - the bar's `h-20` is fixed, so an oversized child overflows rather
+             than stretching it — the menu row's height never changes;
+           - `self-start` from `sm` up sends the whole overhang downwards. With
+             the row's own `items-center` the mark would be centred instead and
+             half of it would vanish off the top of the window, since the header
+             is stuck to `top-0`;
+           - nothing in the header or `Container` sets `overflow-hidden`, which
+             would clip the overhang back to the bar. Don't add one.
+
+          The part that hangs over the hero is a transparent PNG and only its
+          own box takes clicks, so it covers nothing interactive.
+
+          **The lift is `drop-shadow`, not `box-shadow`** (client instruction,
+          2026-09-26). The mark is a shield with a transparent background, and
+          `box-shadow` would trace the image's rectangle — drawing exactly the
+          plate around the badge that was removed a day earlier. `drop-shadow`
+          follows the artwork's own alpha, so the shadow has the shield's shape.
+          Two stacked layers, because one cannot do both jobs: a tight dark one
+          reads as contact with the bar, a wide soft one as height above it.
+          Both are pure black at low opacity so they stay honest on the navy.
+        */}
+        <Logo
+          size="overhang"
+          className={cn(
+            'self-center transition-transform duration-300 sm:self-start',
+            '[filter:drop-shadow(0_1px_1px_rgba(0,0,0,0.55))_drop-shadow(0_8px_12px_rgba(0,0,0,0.45))]',
+            // Only the hover lift is motion; the shadow is always there.
+            'motion-safe:hover:-translate-y-0.5',
+          )}
+        />
 
         <nav className="ml-6 hidden flex-1 items-center gap-1 lg:flex" aria-label={t('site.nav.home')}>
           {publicNav.map((item) => (
@@ -107,9 +140,17 @@ export function PublicHeader({ onSignIn }: { onSignIn: () => void }) {
               </Link>
             </Button>
           ) : (
-            <Button variant="accent" size="sm" onClick={onSignIn}>
-              {t('site.nav.signIn')}
-            </Button>
+            <>
+              {/* Sign up is the gold action for a newcomer; Sign in steps back to
+                  the outlined style so the bar still has one loudest button. Under
+                  `sm` there is room for one, so Sign up moves into the menu. */}
+              <Button variant="onSurface" size="sm" onClick={onSignIn}>
+                {t('site.nav.signIn')}
+              </Button>
+              <Button asChild variant="accent" size="sm" className="hidden sm:inline-flex">
+                <Link to={paths.register}>{t('site.nav.signUp')}</Link>
+              </Button>
+            </>
           )}
 
           {/* Mobile nav. `lg` rather than `md`: five links plus the language
@@ -143,7 +184,14 @@ export function PublicHeader({ onSignIn }: { onSignIn: () => void }) {
                 </NavLink>
               ))}
 
-              <div className="mt-auto border-t pt-3">
+              <div className="mt-auto space-y-3 border-t pt-3">
+                {student ? null : (
+                  <Button asChild variant="accent" className="h-11 w-full">
+                    <Link to={paths.register} onClick={() => setMenuOpen(false)}>
+                      {t('site.nav.signUp')}
+                    </Link>
+                  </Button>
+                )}
                 <LanguageSwitcher className="w-full justify-start" />
               </div>
             </SheetContent>

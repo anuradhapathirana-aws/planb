@@ -18,15 +18,19 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * Student sign-in and sign-up: an emailed one-time code, or Google.
  *
- * Two ways in, and they are deliberately NOT symmetric:
+ * Three ways in, and they are deliberately NOT symmetric:
  *
- * - **Emailed code** only ever *claims* an existing record. An admin creates or
- *   imports the student first, and a missing record is a silent no-op, because
- *   this path answers identically whether or not the address is one of ours.
+ * - **Emailed sign-in code** only ever *claims* an existing record. An admin
+ *   creates or imports the student first, and a missing record is a silent
+ *   no-op, because this path answers identically whether or not the address is
+ *   one of ours.
  * - **Google** may also *register*. A Google ID token proves the caller owns a
  *   verified mailbox before we write anything, so there is no address to guess
  *   at and no mail for us to send — which is what makes creating a record here
  *   safe when creating one from a typed-in address would not be.
+ * - **Sign-up form** registers too, but only after the same proof: the details
+ *   wait in StudentRegistrationService until the code emailed to that address
+ *   comes back, and only then is a record written.
  */
 class StudentAuthService
 {
@@ -35,6 +39,7 @@ class StudentAuthService
         private readonly StudentIdGenerator $studentIds,
         private readonly StudentLoginCodeService $codes,
         private readonly PlayReviewAccess $playReview,
+        private readonly StudentRegistrationService $registrations,
     ) {}
 
     /**
@@ -243,6 +248,102 @@ class StudentAuthService
 
             return $student;
         }
+    }
+
+    /**
+     * Finish signing up with the emailed code and mint a token (the mobile app).
+     *
+     * @throws ValidationException
+     */
+    public function verifyRegistration(string $email, string $code, ?string $deviceName): array
+    {
+        $result = $this->authenticateRegistration($email, $code);
+
+        return $this->issueSession($result['student'], $deviceName, isNew: $result['is_new_student']);
+    }
+
+    /**
+     * Check a sign-up code and create the student it was issued for — without
+     * minting any credential. The app turns the result into a token, the
+     * website into a cookie session, as `authenticateWithCode()` does.
+     *
+     * @return array{student: Student, is_new_student: bool}
+     *
+     * @throws ValidationException
+     */
+    public function authenticateRegistration(string $email, string $code): array
+    {
+        $details = $this->registrations->consume($email, $code);
+
+        $student = $this->registerFromDetails($details);
+        $isNew = $student->wasRecentlyCreated;
+
+        $this->assertCanSignIn($student);
+
+        $this->markVerified($student, verifiedEmail: true);
+
+        return ['student' => $student->fresh(['industry', 'profession']), 'is_new_student' => $isNew];
+    }
+
+    /**
+     * Create a student from the sign-up form, once the address is proved.
+     *
+     * The address was free when the code was sent, but an admin may have added
+     * the same student in the ten minutes since. The caller has just proved
+     * they own that mailbox, so they claim that record rather than failing —
+     * and it only gains the details it was missing; an admin's values stand.
+     *
+     * @param  array{full_name: string, email: string, contact_number: string, date_of_birth: string}  $details
+     */
+    private function registerFromDetails(array $details): Student
+    {
+        $existing = $this->findByEmailIncludingDeleted($details['email']);
+
+        if ($existing !== null) {
+            return $this->fillBlanks($existing, $details);
+        }
+
+        try {
+            return DB::transaction(fn (): Student => Student::create([
+                // Allocated inside the transaction, as in register() above.
+                'student_id' => $this->studentIds->next(),
+                'full_name' => $details['full_name'],
+                'email' => $details['email'],
+                'contact_number' => $details['contact_number'],
+                'date_of_birth' => $details['date_of_birth'],
+                'registered_at' => now(),
+            ]));
+        } catch (QueryException $exception) {
+            // Lost a race on the unique email index; read back the winner.
+            $student = $this->findByEmailIncludingDeleted($details['email']);
+
+            if ($student === null) {
+                throw $exception;
+            }
+
+            return $student;
+        }
+    }
+
+    /** @param  array{full_name: string, contact_number: string, date_of_birth: string}  $details */
+    private function fillBlanks(Student $student, array $details): Student
+    {
+        foreach (['full_name', 'contact_number', 'date_of_birth'] as $column) {
+            if ($student->{$column} === null || $student->{$column} === '') {
+                $student->{$column} = $details[$column];
+            }
+        }
+
+        $student->save();
+
+        return $student;
+    }
+
+    private function findByEmailIncludingDeleted(string $email): ?Student
+    {
+        return Student::withTrashed()
+            ->whereRaw('LOWER(email) = ?', [mb_strtolower(trim($email))])
+            ->first();
     }
 
     /**

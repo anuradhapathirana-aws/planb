@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
 import { useMutation } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { Mail } from '@/components/icons';
@@ -175,9 +175,19 @@ export default function SignInScreen() {
             onPress={handleSubmit}
           />
 
-          <Text variant="caption" className="mt-6 text-center leading-5">
-            {GOOGLE_SIGN_IN_AVAILABLE ? t('auth.signUpHint') : t('auth.noAccount')}
-          </Text>
+          {/* New students have their own screen now; Google above still signs up too. */}
+          <View className="mt-4 flex-row flex-wrap items-center justify-center gap-x-1">
+            <Text variant="caption">{t('auth.newToPlanB')}</Text>
+            <Pressable
+              accessibilityRole="link"
+              hitSlop={10}
+              onPress={() => router.push('/register')}
+              disabled={mutation.isPending}
+              className="min-h-[44px] justify-center px-1"
+            >
+              <Text className="text-[13px] font-semibold text-primary">{t('auth.createAccount')}</Text>
+            </Pressable>
+          </View>
 
           {/*
             Signing in with Google creates an account, so this is where a new

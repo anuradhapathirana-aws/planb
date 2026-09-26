@@ -1,6 +1,7 @@
 import { apiClient, ensureCsrfCookie } from '@/api/client';
 import type { ApiResource } from '@shared/types/api';
 import type {
+  RegisterPayload,
   RequestCodeResponse,
   StudentProfile,
   StudentWebSession,
@@ -50,6 +51,34 @@ export async function verifyLoginCode(email: string, code: string): Promise<Stud
 
   const { data } = await apiClient.post<ApiResource<StudentWebSession>>(
     '/student/auth/session/verify-code',
+    { email, code },
+  );
+
+  return data.data;
+}
+
+/**
+ * Step one of signing up. Like `requestLoginCode`, the answer is identical
+ * whether or not the address already has an account — the owner of a taken
+ * address is emailed a sign-in reminder instead of a code. Never branch on it.
+ */
+export async function requestRegistrationCode(payload: RegisterPayload): Promise<RequestCodeResponse> {
+  await ensureCsrfCookie();
+
+  const { data } = await apiClient.post<ApiResource<RequestCodeResponse>>(
+    '/student/auth/register/request-code',
+    payload,
+  );
+
+  return data.data;
+}
+
+/** Step two: the emailed code creates the account and starts the cookie session. */
+export async function verifyRegistration(email: string, code: string): Promise<StudentWebSession> {
+  await ensureCsrfCookie();
+
+  const { data } = await apiClient.post<ApiResource<StudentWebSession>>(
+    '/student/auth/session/register/verify',
     { email, code },
   );
 

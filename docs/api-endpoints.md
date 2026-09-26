@@ -191,17 +191,20 @@ Everything under `/api/v1/student/`. Consumed by `mobile/` now, and by the web s
 
 ## Student Auth
 
-Students never register. An admin creates or CSV-imports the record first, and the student **claims** it by proving they control the email address on it. First successful sign-in sets `registered_at`.
+Three intakes. An admin creates or CSV-imports the record and the student **claims** it by proving they control the email on it (first successful sign-in sets `registered_at`); or the student signs up with **Google**; or with the **sign-up form**, where the record is only created once the emailed code comes back.
 
 | Method | Path | Auth | Notes |
 |---|---|---|---|
 | POST | `/student/auth/request-code` | guest, throttled | `{ email }` → **always** `200 { data: { expires_in_seconds, resend_after_seconds } }` |
 | POST | `/student/auth/verify-code` | guest, throttled | `{ email, code, device_name? }` → `{ data: { token, expires_at, is_new_student, student } }`. Claims an existing record only — never registers, and `is_new_student` is always false here. |
 | POST | `/student/auth/google` | guest, throttled | `{ id_token, device_name? }` → same shape, plus `is_new_student`. **Signs up as well as in**: a verified Google account with no student record creates one (auto `PB-####`, `registered_at` and `email_verified_at` set, everything else null). Matches on `google_sub` first, then email. Set `STUDENT_GOOGLE_SIGNUP_ENABLED=false` to make it sign-in only. |
+| POST | `/student/auth/register/request-code` | guest, throttled (shares the `request-code` limiter) | `{ full_name, email, contact_number, date_of_birth, accept_terms }` → **always** the same `200` as `request-code`. A new address is emailed a code and the details wait in the cache for its lifetime — **no row yet**. A registered address gets a "you already have an account" email instead; a blocked/deleted one gets nothing. Field errors are a normal 422 (no `unique` rule — that would be an enumeration oracle). `contact_number` is stored stripped (`+94771234567`). 403 when `STUDENT_EMAIL_SIGNUP_ENABLED=false`. |
+| POST | `/student/auth/register/verify` | guest, throttled | `{ email, code, device_name? }` → `{ data: { token, expires_at, is_new_student, student } }`. Creates the student (auto `PB-####`, `registered_at` and `email_verified_at` set). If an admin added the same address meanwhile, that record is claimed instead and only its blank name/phone/date of birth are filled. Same generic 422 as `verify-code` on a wrong code; 5 wrong guesses burn it. |
 | POST | `/student/auth/refresh` | **bearer only** | → `{ data: { token, expires_at } }`. Refuses a website session (401): minting a token from a cookie would hand JavaScript a 30-day credential that outlives signing out. |
 | POST | `/student/auth/logout` | **bearer only** | Revokes the **current** token only; other devices stay signed in. |
 | POST | `/student/auth/session/verify-code` | guest, throttled, **website only** | The website's sign-in. `{ email, code }` → `{ data: { is_new_student, student } }` — **no token**; the credential is an httpOnly session cookie on the `student-web` guard. Same checks as `verify-code`. |
 | POST | `/student/auth/session/google` | guest, throttled, **website only** | `{ id_token }` → same shape. Same checks, and same sign-up behaviour, as `auth/google`. |
+| POST | `/student/auth/session/register/verify` | guest, throttled, **website only** | `{ email, code }` → `{ data: { is_new_student, student } }`, no token. Same checks as `register/verify`; step one is the shared `register/request-code`. |
 | POST | `/student/auth/session/logout` | none, throttled | Ends the website session (guard logout, session invalidated, CSRF token rotated). Idempotent — succeeds with no session. |
 | GET | `/student/me` | bearer **or** website session | `{ data: StudentProfile }` |
 

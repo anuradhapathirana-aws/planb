@@ -4,6 +4,17 @@ All notable changes to this project are documented here. Format loosely follows 
 
 ## Unreleased
 
+### Added
+- **New students can sign up on their own**, on the website (`/register`, with a gold "Sign up" button in the header) and in the app (a "Create an account" link on the Sign in screen).
+  - **Two ways to sign up:** "Continue with Google" at the top (one tap, as before), or a short form: full name, email, mobile number and date of birth, plus agreeing to the Terms and Privacy Policy.
+  - **The account is only created once the student types in the 6-digit code we email them.** Until then nothing is saved, so a mistyped or fake address never leaves an account behind.
+  - **Nobody can use the form to find out who is already a Plan B student.** If the email already has an account, the screen looks exactly the same, and the owner gets an email saying "you already have an account, just sign in" instead of a code.
+  - Every field is checked in the browser/app when you leave it, and checked again on the server, which has the final say: letters only in the name, a real email, a 9–15 digit mobile number (country code allowed), and 18 or older.
+  - If an admin adds the same student while they are signing up, the student gets that record instead of a duplicate.
+  - `STUDENT_EMAIL_SIGNUP_ENABLED=false` closes the form without a deploy, like the existing Google switch.
+  - New endpoints: `POST /student/auth/register/request-code`, `/register/verify` (app) and `/session/register/verify` (website). No new tables. Eleven new backend tests.
+  - Sinhala for the new screens is drafted and waiting for review in `docs/translations/si-review.csv`.
+
 ### Changed
 - **"The people behind Plan B" now rotates on its own.** Every 3 seconds the row moves along by one person and loops round without stopping. It stops while the mouse is over it, while someone is using the keyboard in it, or after a card is tapped on a phone, and it doesn't move at all for visitors who have turned off animations on their device. Visitors can still swipe or scroll it themselves.
   - **Only whole cards are shown:** 5 on a laptop, 3 on a tablet, 2 on a phone. No more half card at the edge.

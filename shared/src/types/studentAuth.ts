@@ -65,6 +65,20 @@ export interface RequestCodeResponse {
   resend_after_seconds: number;
 }
 
+/**
+ * `POST /student/auth/register/request-code` — step one of the sign-up form.
+ * Answered with a `RequestCodeResponse` that is identical whether or not the
+ * address is already registered; never branch on it.
+ */
+export interface RegisterPayload {
+  full_name: string;
+  email: string;
+  contact_number: string;
+  /** `YYYY-MM-DD`. */
+  date_of_birth: string;
+  accept_terms: boolean;
+}
+
 export interface VerifyCodePayload {
   email: string;
   code: string;
@@ -83,7 +97,7 @@ export interface StudentSession {
   expires_at: string;
   /**
    * True when this sign-in also created the record — only ever possible on the
-   * Google path, which is the only one that registers anyone.
+   * Google path or the sign-up form, the two that register anyone.
    *
    * Presentation only: it picks the greeting and decides whether to nudge the
    * student towards their profile. Nothing is authorised by it, and the record

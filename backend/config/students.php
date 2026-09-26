@@ -34,6 +34,30 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Sign-up with an email address
+    |--------------------------------------------------------------------------
+    |
+    | A new student types their details, is emailed a code, and the record is
+    | only created once they enter it. Until then the pending sign-up lives in
+    | the cache for the code's lifetime and nowhere else, so an abandoned or
+    | junk sign-up leaves no row behind. Codes follow `login_code` above.
+    |
+    | An address that already belongs to a student gets a "you already have an
+    | account" email instead, behind an identical response — see
+    | StudentRegistrationService.
+    |
+    */
+
+    'registration' => [
+        // The same "close it without a deploy" switch Google sign-up has.
+        'enabled' => (bool) env('STUDENT_EMAIL_SIGNUP_ENABLED', true),
+
+        // Nobody using this platform was born before this.
+        'earliest_birth_date' => '1930-01-01',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Access tokens
     |--------------------------------------------------------------------------
     |

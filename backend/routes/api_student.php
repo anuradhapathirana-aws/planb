@@ -68,6 +68,17 @@ Route::post('auth/google', [AuthController::class, 'google'])
     ->middleware('throttle:student-login-verify');
 
 /*
+ * The sign-up form. On the SAME named limiters as sign-in, deliberately: a
+ * limiter's buckets are keyed by its name, so signing in and signing up share
+ * one budget per address and per IP rather than doubling it.
+ */
+Route::post('auth/register/request-code', [AuthController::class, 'requestRegistrationCode'])
+    ->middleware('throttle:student-login-request');
+
+Route::post('auth/register/verify', [AuthController::class, 'verifyRegistration'])
+    ->middleware('throttle:student-login-verify');
+
+/*
  * The website's sign-in: the same checks, on the same limiters, ending in an
  * httpOnly cookie session on the `student-web` guard instead of a token. They
  * only work for a request from a SANCTUM_STATEFUL_DOMAINS origin, which is also
@@ -78,6 +89,9 @@ Route::post('auth/session/verify-code', [WebSessionController::class, 'verifyCod
     ->middleware('throttle:student-login-verify');
 
 Route::post('auth/session/google', [WebSessionController::class, 'google'])
+    ->middleware('throttle:student-login-verify');
+
+Route::post('auth/session/register/verify', [WebSessionController::class, 'verifyRegistration'])
     ->middleware('throttle:student-login-verify');
 
 Route::post('auth/session/logout', [WebSessionController::class, 'logout'])

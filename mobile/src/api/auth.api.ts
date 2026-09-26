@@ -1,5 +1,6 @@
 import type {
   RefreshedToken,
+  RegisterPayload,
   RequestCodeResponse,
   StudentProfile,
   StudentSession,
@@ -33,6 +34,36 @@ export async function verifyLoginCode(
 ): Promise<StudentSession> {
   const { data } = await apiClient.post<ApiResource<StudentSession>>(
     '/student/auth/verify-code',
+    { email, code, device_name: deviceName },
+  );
+
+  return data.data;
+}
+
+/**
+ * Step one of signing up. Identical answer whether or not the address already
+ * has an account — its owner is emailed a sign-in reminder instead of a code.
+ * Never branch on the response.
+ */
+export async function requestRegistrationCode(
+  payload: RegisterPayload,
+): Promise<RequestCodeResponse> {
+  const { data } = await apiClient.post<ApiResource<RequestCodeResponse>>(
+    '/student/auth/register/request-code',
+    payload,
+  );
+
+  return data.data;
+}
+
+/** Step two: the emailed code creates the account and returns a token. */
+export async function verifyRegistration(
+  email: string,
+  code: string,
+  deviceName?: string,
+): Promise<StudentSession> {
+  const { data } = await apiClient.post<ApiResource<StudentSession>>(
+    '/student/auth/register/verify',
     { email, code, device_name: deviceName },
   );
 

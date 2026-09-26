@@ -1,10 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Trans, useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import axios from 'axios';
 import { ArrowLeft, KeyRound, Loader2, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -19,6 +18,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { requestLoginCode, signInWithGoogle, verifyLoginCode } from '@/api/auth.api';
+import { fieldError, isHandledByClient, signInErrorMessage, useSecondsUntil } from '@/features/auth/authHelpers';
 import { GoogleSignInButton } from '@/features/auth/components/GoogleSignInButton';
 import { GOOGLE_SIGN_IN_AVAILABLE } from '@/features/auth/googleIdentity';
 import { sessionQueryKey } from '@/features/auth/hooks/useSession';
@@ -157,8 +157,15 @@ export function SignInDialog({
               }}
             />
 
-            <p className="text-center text-xs leading-5 text-muted-foreground">
-              {GOOGLE_SIGN_IN_AVAILABLE ? t('auth.signUpHint') : t('auth.noAccount')}
+            <p className="text-center text-sm text-muted-foreground">
+              {t('auth.newToPlanB')}{' '}
+              <Link
+                to={paths.register}
+                onClick={() => handleOpenChange(false)}
+                className="font-semibold text-primary underline-offset-2 hover:underline"
+              >
+                {t('auth.createAccount')}
+              </Link>
             </p>
 
             {/*
@@ -430,54 +437,4 @@ function CodeStep({
       </p>
     </form>
   );
-}
-
-/** Seconds until `timestamp`, ticking once a second. Never negative. */
-function useSecondsUntil(timestamp: number): number {
-  // The clock is the state; the countdown is derived from it, so a new
-  // `timestamp` shows the right number on the very render it arrives.
-  const [now, setNow] = useState(() => Date.now());
-
-  /*
-   * Ticks for as long as the code step is open, even at zero: stopping would
-   * leave `now` stale, and a resend minutes later would then flash a countdown
-   * several minutes too long before the next tick corrected it.
-   */
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 1000);
-
-    return () => window.clearInterval(timer);
-  }, []);
-
-  return Math.max(0, Math.ceil((timestamp - now) / 1000));
-}
-
-/*
- * 429 and 5xx already raise a toast from `api/client.ts`'s interceptor, and a
- * 419 re-bootstraps there too; showing a second message here would double up.
- */
-function isHandledByClient(error: unknown): boolean {
-  if (!axios.isAxiosError(error)) return false;
-  const status = error.response?.status ?? 0;
-
-  return status === 419 || status === 429 || status >= 500;
-}
-
-function fieldError(error: unknown, field: string): string | undefined {
-  if (!axios.isAxiosError(error) || error.response?.status !== 422) return undefined;
-
-  const errors = (error.response.data as { errors?: Record<string, string[]> } | undefined)?.errors;
-
-  return errors?.[field]?.[0];
-}
-
-/**
- * The one sign-in failure worth a specific message is a suspended account (403)
- * — by then the caller has proved they hold the code or the Google account, so
- * telling them is safe (backend/CLAUDE.md §4). Everything else is `fallback`.
- */
-function signInErrorMessage(error: unknown, fallback: string, t: (key: string) => string): string {
-  if (axios.isAxiosError(error) && error.response?.status === 403) return t('auth.blocked');
-
-  return fallback;
 }

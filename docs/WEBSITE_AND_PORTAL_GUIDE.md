@@ -1026,6 +1026,19 @@ ticked there too.
   144.6 → **117 kB gzip**.
   **Not yet:** a course page's "Enrol" button opening the dialog with its own `returnTo` — that is
   `PUB-4`'s, and the `returnTo` prop is already there for it.
+- [x] **Sign-up page (`/register`)** — done 2026-09-27 (client request via Anuradha). A **page**, not
+  a dialog: it is a real form, and where an advert or WhatsApp link should land. Header gets a gold
+  "Sign up" (Sign in drops to `onSurface`); under `sm` Sign up moves into the menu sheet. The sign-in
+  dialog links to it.
+  **Built:** `features/auth/pages/RegisterPage.tsx` owns the RHF form (shared `registerSchema`, on
+  blur) and the step, so "Edit my details" finds every field still filled; `RegisterBrandPanel`
+  (navy, Sri Lanka → UAE flight path, perks, 3-step tracker — collapses to headline + tracker on a
+  phone); `RegisterDetailsStep` (Google first, then name / email / phone / date of birth / terms);
+  `RegisterCodeStep`. Shared failure handling moved out of `SignInDialog` into
+  `features/auth/authHelpers.ts`. Own lazy chunk, ~5.6 kB gzip.
+  **SEC-12 holds:** `register/request-code` answers identically for a taken address (the owner is
+  emailed a reminder instead), so the code step's hint — not the API — tells a student who never
+  gets a code where to look. Backend: `StudentRegistrationService`; see `docs/api-endpoints.md`.
 - [~] **PUB-8 — Checkout.** Card (hosted redirect) + bank transfer with receipt upload. Respects
   `payments_enabled`. See §5 and §6.
   - [x] **Bank transfer — DONE 2026-09-26.** Card is out of scope for now (client instruction,

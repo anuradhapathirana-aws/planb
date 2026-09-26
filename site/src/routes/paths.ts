@@ -3,10 +3,12 @@
  *
  * Public pages sit at the root; the student portal lives under `/app`. There is
  * no `/login` route — sign-in is a dialog from the header, so a visitor keeps
- * their place on the page (docs/WEBSITE_AND_PORTAL_GUIDE.md §4).
+ * their place on the page (docs/WEBSITE_AND_PORTAL_GUIDE.md §4). Sign-UP is a
+ * page: it is a real form a new visitor may arrive at from a link or an ad.
  */
 export const paths = {
   home: '/',
+  register: '/register',
   courses: '/courses',
   courseDetail: (slug: string | number) => `/courses/${slug}`,
   bundles: '/bundles',

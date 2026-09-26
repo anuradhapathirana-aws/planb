@@ -34,7 +34,10 @@ function remember(url: string | null): void {
 }
 
 /**
- * `md` is the portal header, `lg` the public header, `xl` the site footer.
+ * `md` is the portal header, `overhang` the public header, `xl` the site footer.
+ * `lg` is the largest size that still fits inside its own row — nothing uses it
+ * since the public header's mark started overhanging, and it is kept for the
+ * next header that wants a big mark without the overhang.
  *
  * Height only — the width is always `auto`, because the mark is not square and a
  * fixed width would squash it. The `width`/`height` attributes on the `<img>`
@@ -43,6 +46,23 @@ function remember(url: string | null): void {
 const SIZES = {
   md: 'h-9 sm:h-10',
   lg: 'h-12 sm:h-14',
+  /**
+   * The public header, **taller than the bar it sits in** (client instruction,
+   * 2026-09-26): 96px at `sm`, 112px at `lg`, against a bar that stays `h-20`
+   * (80px). The overhang is the point — it is what gives the mark presence
+   * without making every page start 30px lower.
+   *
+   * Two things make that safe, and both live at the call site in
+   * `PublicHeader`: the bar's height is fixed, so a taller child overflows
+   * instead of stretching it, and the logo is `self-start` from `sm` up so the
+   * whole overhang falls *below* the bar rather than half of it disappearing
+   * off the top of the window.
+   *
+   * On a phone it is 56px and sits inside the bar like any other header logo —
+   * a 112px mark on a 360px screen would take a third of the width and hang
+   * over the hero's first line of copy.
+   */
+  overhang: 'h-14 sm:h-24 lg:h-28',
   /** The footer: its own column with room to spare, so the mark can be read there. */
   xl: 'h-20 sm:h-24',
 } as const;

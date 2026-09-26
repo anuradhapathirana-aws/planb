@@ -68,6 +68,9 @@ const ServiceDetailPage = lazy(() =>
 const ProfilePage = lazy(() =>
   import('@/features/profile/pages/ProfilePage').then((m) => ({ default: m.ProfilePage })),
 );
+const RegisterPage = lazy(() =>
+  import('@/features/auth/pages/RegisterPage').then((m) => ({ default: m.RegisterPage })),
+);
 const ChecklistPage = lazy(() =>
   import('@/features/checklist/pages/ChecklistPage').then((m) => ({ default: m.ChecklistPage })),
 );
@@ -85,6 +88,7 @@ export const router = createBrowserRouter([
         ),
         children: [
           { path: paths.home, element: <HomePage /> },
+          { path: paths.register, element: <RegisterPage /> },
           { path: paths.courses, element: <CoursesPage /> },
           { path: '/courses/:slug', element: <CourseDetailPage /> },
           { path: '/bundles/:slug', element: <BundlePage /> },

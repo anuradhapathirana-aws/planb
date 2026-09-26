@@ -426,6 +426,7 @@ export default function RootLayout() {
               <Stack.Screen name="update-required" options={{ gestureEnabled: false }} />
               <Stack.Screen name="sign-in" />
               <Stack.Screen name="verify" />
+              <Stack.Screen name="register" />
               <Stack.Screen name="(tabs)" />
             </Stack>
           </ToastProvider>
