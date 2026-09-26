@@ -32,7 +32,7 @@ export function PublicFooter() {
               badge with its own cream field, so the plate only drew a rectangle
               around a round logo. Shared with the header, which had the same
               problem. */}
-          <Logo />
+          <Logo size="xl" />
 
           <p className="mt-3 max-w-xs text-sm leading-relaxed text-surface-muted">{t('site.footer.tagline')}</p>
 

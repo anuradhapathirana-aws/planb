@@ -136,14 +136,22 @@ const ITEM_BASE =
   'shrink-0 snap-start basis-[calc((100%-1rem)/1.5)] sm:basis-[calc((100%-2rem)/2.5)] md:basis-[calc((100%-3rem)/3.5)]';
 
 /**
- * Keyed by how many cards show on a laptop. Only the `lg` step differs — below
- * that every carousel is too narrow for the choice to mean anything.
+ * Keyed by how many cards show on a laptop.
  */
 export const CAROUSEL_ITEM_CLASSES = {
-  /** Course tiles: a picture, a heading, an excerpt and three bullets need room. */
+  /**
+   * Course tiles: a picture, a heading, an excerpt and three bullets need room.
+   * Only the `lg` step differs from the shared base.
+   */
   '4.5': `${ITEM_BASE} lg:basis-[calc((100%-4rem)/4.5)]`,
-  /** Portrait cards: a face and a name plate stay readable narrower. */
-  '5.5': `${ITEM_BASE} lg:basis-[calc((100%-5rem)/5.5)]`,
+  /**
+   * **Whole cards, no half-card peek** — 2 on a phone, 3 on a tablet, 5 on a
+   * laptop (client instruction, 2026-09-26, for the team row). The peek above
+   * exists to say "there is more"; a row that moves on its own says that
+   * already, so it can end flush. N whole cards means N-1 gaps:
+   * `(100% - (N-1)×gap) / N`.
+   */
+  '5': 'shrink-0 snap-start basis-[calc((100%-1rem)/2)] sm:basis-[calc((100%-2rem)/3)] lg:basis-[calc((100%-4rem)/5)]',
 } as const;
 
 /**

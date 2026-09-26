@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { fetchSiteContent } from '@/api/siteContent.api';
+import { SITE_CONTENT_STALE_TIME, siteContentKeys } from '@/features/marketing/siteContentQuery';
 import { SITE_HERO_ICON_GLYPHS } from '@/features/marketing/heroIcons';
 import { resolveSiteCta } from '@/features/marketing/siteLinks';
 import {
@@ -15,10 +16,6 @@ import type {
   PublicHeroSlide,
   PublicTeamMember,
 } from '@shared/types/siteContent';
-
-export const siteContentKeys = {
-  all: ['site-content'] as const,
-};
 
 /**
  * The home page's admin-managed content, adapted to what the sections render.
@@ -46,12 +43,7 @@ export function useSiteContent() {
   const query = useQuery({
     queryKey: siteContentKeys.all,
     queryFn: fetchSiteContent,
-    /*
-     * Content changes when an admin edits it, which is rare. Five minutes keeps
-     * a visitor clicking around the site from refetching the same payload on
-     * every navigation back to the home page.
-     */
-    staleTime: 5 * 60 * 1000,
+    staleTime: SITE_CONTENT_STALE_TIME,
     retry: 1,
   });
 

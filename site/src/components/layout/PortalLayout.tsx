@@ -59,7 +59,7 @@ export function PortalLayout() {
                   cn(
                     'flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors',
                     isActive
-                      ? 'bg-primary-soft text-primary'
+                      ? 'bg-surface text-white'
                       : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
                   )
                 }
@@ -163,7 +163,7 @@ export function PortalLayout() {
                 cn(
                   // min-h-14 comfortably clears the 44px tap-target minimum.
                   'flex min-h-14 flex-col items-center justify-center gap-0.5 px-1 text-[11px] font-medium transition-colors',
-                  isActive ? 'text-primary' : 'text-muted-foreground',
+                  isActive ? 'bg-surface text-white' : 'text-muted-foreground',
                 )
               }
             >

@@ -4,6 +4,14 @@ All notable changes to this project are documented here. Format loosely follows 
 
 ## Unreleased
 
+### Changed
+- **"The people behind Plan B" now rotates on its own.** Every 3 seconds the row moves along by one person and loops round without stopping. It stops while the mouse is over it, while someone is using the keyboard in it, or after a card is tapped on a phone, and it doesn't move at all for visitors who have turned off animations on their device. Visitors can still swipe or scroll it themselves.
+  - **Only whole cards are shown:** 5 on a laptop, 3 on a tablet, 2 on a phone. No more half card at the edge.
+  - **Facebook and LinkedIn icons appear over the photo when you hover a card** (or tap it on a phone). The white name plate now shows just the name and job title.
+
+- **The website uses the logo uploaded in the admin panel.** The "Plan B logo" under Settings › App Intro now appears in the website's header, the student portal's header and the footer, the same logo the app and the admin sign-in page already use. Changing it in the admin panel changes it on the website. The built-in logo still shows for a moment on a first visit and whenever no logo is uploaded, so the header is never empty.
+  - **To look right on the navy header, the uploaded logo needs a transparent background** (a PNG). The logo uploaded now sits on a solid off-white square, which shows as a light box on the header.
+
 ### Added
 - **Profile in the student portal** (`/app/profile`, task POR-9). Everything from the app's Profile tab, on one page.
   - **Your photo:** click it or drag a picture onto it (JPG or PNG, up to 2 MB). It saves straight away; there's also a Remove button.

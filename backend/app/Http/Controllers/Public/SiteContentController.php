@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Public;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\Public\PublicBrandingResource;
 use App\Http\Resources\Public\PublicCommunityResource;
 use App\Http\Resources\Public\PublicHeroSlideResource;
 use App\Http\Resources\Public\PublicTeamMemberResource;
@@ -44,8 +45,12 @@ class SiteContentController extends Controller
 
     public function __invoke(): JsonResponse
     {
+        $settings = $this->settings->current();
+
         return response()->json([
             'data' => [
+                // The header's logo. Null keeps the website's bundled mark.
+                'branding' => new PublicBrandingResource($settings),
                 /*
                  * An empty list is a normal answer, not an error. The website
                  * falls back to its own designed slides, so the hero is never
@@ -53,7 +58,7 @@ class SiteContentController extends Controller
                  * supplied artwork.
                  */
                 'hero_slides' => PublicHeroSlideResource::collection($this->slides->live()),
-                'community' => new PublicCommunityResource($this->settings->current()),
+                'community' => new PublicCommunityResource($settings),
                 // Empty hides the section rather than drawing an empty carousel.
                 'team' => PublicTeamMemberResource::collection($this->team->live()),
             ],

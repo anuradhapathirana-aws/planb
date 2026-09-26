@@ -253,8 +253,18 @@ export interface PublicTeamMember {
   linkedin_url: string | null;
 }
 
+/**
+ * The "Plan B logo" uploaded under Settings > App Intro, for the website's
+ * header and footer. Null when none is uploaded — the site keeps its bundled
+ * mark. `PublicBrandingResource` sends this field and nothing else.
+ */
+export interface PublicBranding {
+  logo_url: string | null;
+}
+
 /** Everything `GET public/site-content` returns, in one payload. */
 export interface PublicSiteContent {
+  branding: PublicBranding;
   hero_slides: PublicHeroSlide[];
   community: PublicCommunity;
   team: PublicTeamMember[];

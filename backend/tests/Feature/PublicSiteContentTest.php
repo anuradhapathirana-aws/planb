@@ -9,6 +9,8 @@ use App\Models\CompanySetting;
 use App\Models\SiteHeroSlide;
 use App\Models\TeamMember;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
@@ -27,7 +29,7 @@ class PublicSiteContentTest extends TestCase
     {
         $this->getJson(self::URL)
             ->assertOk()
-            ->assertJsonStructure(['data' => ['hero_slides', 'community', 'team']]);
+            ->assertJsonStructure(['data' => ['branding', 'hero_slides', 'community', 'team']]);
     }
 
     public function test_an_empty_site_is_a_valid_answer_not_an_error(): void
@@ -93,6 +95,32 @@ class PublicSiteContentTest extends TestCase
         }
 
         $response->assertJsonPath('data.community.heading', 'Join **500+ Sri Lankans**');
+    }
+
+    /** The header draws the admin's "Plan B logo" (Settings > App Intro). */
+    public function test_it_carries_the_uploaded_logo(): void
+    {
+        Storage::fake('public');
+
+        CompanySetting::query()->firstOrFail()
+            ->addMedia(UploadedFile::fake()->image('logo.png', 400, 400))
+            ->toMediaCollection(CompanySetting::LOGO_COLLECTION);
+
+        $url = $this->getJson(self::URL)->assertOk()->json('data.branding.logo_url');
+
+        $this->assertIsString($url);
+        $this->assertStringEndsWith('logo.png', $url);
+    }
+
+    /**
+     * No logo uploaded: null, and the website keeps its own bundled mark. The
+     * whole block is compared, so a second field slipping in fails here too.
+     */
+    public function test_no_uploaded_logo_is_null_not_an_error(): void
+    {
+        $this->getJson(self::URL)
+            ->assertOk()
+            ->assertJsonPath('data.branding', ['logo_url' => null]);
     }
 
     public function test_it_never_publishes_editorial_state(): void
