@@ -2,14 +2,15 @@
  * How to reach Plan B. One source, because the footer and the floating
  * WhatsApp button would otherwise drift apart the first time a number changes.
  *
- * Placeholder values until `CMS-5` puts these on the `company_settings` record,
+ * Real contact details as of 9 Oct 2026; the address is still a placeholder.
+ * They move onto the `company_settings` record in `CMS-5`,
  * at which point this module is replaced by whatever `GET public/site-content`
  * returns. Nothing here is secret — it is printed on the page.
  */
 export const siteContact = {
-  email: 'info@planbinternational.lk',
+  email: 'planbinternationalpvt@gmail.com',
   /** Display form, with spaces. Never use this to build a link. */
-  phone: '+94 11 000 0000',
+  phone: '+94 71 999 6997',
   address: 'Colombo, Sri Lanka',
 
   /**
@@ -18,7 +19,7 @@ export const siteContact = {
    * rather than a malformed URL, so it is stored pre-normalised rather than
    * stripped at the call site.
    */
-  whatsappNumber: '94110000000',
+  whatsappNumber: '94719996997',
 } as const;
 
 /** `tel:` needs the digits and the `+`, but no spaces. */

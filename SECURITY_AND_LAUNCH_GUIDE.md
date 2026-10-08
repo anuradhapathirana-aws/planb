@@ -1107,6 +1107,33 @@ device model name we send labels the student's own session list and is not a dev
 **Keep in step:** Sentry (P3-11) ⇒ add Crash logs + Diagnostics. Payments on ⇒ add Financial info
 (Purchase history, and payment info for bank slips).
 
+**Financial info stays unticked for this release even though the bank-slip screens exist in the
+app.** `payments_enabled` is false in production, the app gates every buy/enrol button on it
+(`src/features/enrolment/usePaymentsEnabled.ts`) and the server 403s checkout and slip submission
+(P1-9), so nothing financial can be collected. Data safety describes the release as shipped.
+
+**Before payments are ever switched on — settle the Play Billing question first.** Google requires
+digital content bought inside an Android app to go through **Google Play Billing** (15–30%), not an
+outside gateway. Course access delivered as in-app video is digital content, so PayHere or a bank
+transfer taken inside the app risks removal. Exceptions exist (some countries allow alternative or
+user-choice billing; services delivered in person are treated differently), so check the current
+Payments policy against how Plan B actually delivers courses **before** resuming P3-10 and the
+payment UI. The "Financial features" declaration in App content is a different thing — it covers
+banking, loans and crypto, so it stays "none of these" either way.
+
+**Data usage and handling** — Play asks this per type. Every type: *collected* **Yes**, *processed
+ephemerally* **No**. `User IDs` (the PB-##### student ID) is ticked too: collected, not shared,
+required, App functionality + Account management. For each **Shared** row, the second question
+("why is it shared?") is also **App functionality** — passing a student to an employer so they can
+be considered for a job. Never tick Analytics, Advertising or marketing, Personalization, Fraud
+prevention or Developer communications: there is no analytics SDK, no ads, and the only emails are
+transactional.
+
+**Security practices** (last screen): encrypted in transit **Yes** · deletion requests **Yes** with
+`https://api.theplanbs.com/account-deletion` · partial deletion without closing the account **Yes**
+(photo and optional profile fields in the app, anything else by emailing support — the page says so,
+so support must honour it) · Families Policy **No** (18+) · independent security review **No**.
+
 ### 10.4 Closed testing (R-4) — the 14-day clock
 
 1. Testing → **Closed testing** → create a track (or use Alpha) → **Promote** the build already on
