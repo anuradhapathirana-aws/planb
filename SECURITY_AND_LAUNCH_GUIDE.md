@@ -937,15 +937,11 @@ git pull && composer install --no-dev -o && php artisan migrate --force \
 - [ ] **G-3** Store listing: short description (≤80 chars), full description (≤4000), app icon
   512×512 PNG, feature graphic 1024×500, ≥2 phone screenshots (ideally 4–8, 1080×1920+), support
   email, privacy policy URL, category Education.
-- [ ] **G-4** App content:
-  - Privacy policy URL → `https://api.<domain>/privacy`
-  - App access → "Restricted": reviewer email + code (P1-7) with instructions
-  - Ads → No
-  - Content rating questionnaire (Education, no user-generated public content)
-  - Target audience → **18 and over**
-  - Data safety → answers from §8
-  - Account deletion URL → `https://api.<domain>/account-deletion`
-  - Government apps → No; Financial features → none at launch (update when payments go live)
+- [ ] **G-4** App content. **The exact answers are in §10 below** — work down that section form by
+  form. Summary: privacy `https://api.theplanbs.com/privacy`, deletion
+  `https://api.theplanbs.com/account-deletion`, App access restricted (reviewer login from P1-7),
+  no ads, target audience 18+, Data safety per §10.3, Financial features "none" while
+  `PAYMENTS_ENABLED=false`.
 - [ ] **G-5** Play Console → Setup → API access → service account with release permission →
   JSON key saved as `mobile/play-service-account.json` (gitignored) for `eas submit`.
 
@@ -1010,6 +1006,148 @@ Keep this in sync whenever the app starts collecting something new.
 - Users can request deletion: **Yes** (in-app + `/account-deletion`).
 - Retained after deletion: order/payment records for accounting (state period in privacy policy —
   **ASK client**, commonly 7 years in Sri Lanka for tax records).
+
+---
+
+## 10. Play Console answers (G-3, G-4, R-4, R-5)
+
+Written 2026-10-08, when the app was in Internal testing and the backend was live at
+`https://api.theplanbs.com`. **Re-check §10.3 whenever the app collects something new** — Sentry
+(P3-11) adds crash logs, and switching payments on adds financial info.
+
+### 10.0 Before any of it — one `.env` fix on the server
+
+`MAIL_SUPPORT_ADDRESS` is **empty in production**, so `/privacy` and `/account-deletion` print
+"Plan B support email (coming soon)" and the app hides its Contact support row. A reviewer checking
+the deletion page sees a dead end. Set it, then `php artisan config:cache`. The same address goes in
+the store listing's support email. Check `PLAY_REVIEW_EMAIL` / `PLAY_REVIEW_CODE` are set too, and
+that the reviewer student exists and is enrolled in one free course.
+
+### 10.1 Store listing (Grow → Store presence → Main store listing)
+
+| Field | Value |
+|---|---|
+| App name (30) | `Plan B Academy` |
+| Short description (80) | `Courses, checklists and services that prepare you for work in the UAE.` |
+| Category | Education |
+| Tags | Education, Career |
+| Email address | the support inbox from 10.0 |
+| Privacy policy | `https://api.theplanbs.com/privacy` |
+
+Full description (under 4000 characters, edit freely):
+
+> Plan B Academy prepares Sri Lankan students for study and work in the United Arab Emirates.
+>
+> **Learn at your own pace.** Work through video lessons built by Plan B's own team. Each lesson
+> plays in order, so nothing is missed, and your progress is saved as you go.
+>
+> **Check what you know.** Finish a course and take its assessment. You see your score straight
+> away, and you can try again when a course allows it.
+>
+> **Get ready to travel.** Follow the Before Arrival and After Arrival checklists, and tick off each
+> step as you complete it.
+>
+> **Premium services.** Request help from the Plan B team, such as CV writing and visa guidance, and
+> follow the progress of each request in the app.
+>
+> **Sign in simply.** Use your email address or your Google account. There is no password to
+> remember.
+>
+> Plan B Academy is for students aged 18 and over. Plan B International Private Limited helps you
+> prepare — it does not guarantee a job, a visa or any immigration result.
+
+Assets: icon 512×512 (from `mobile/assets/icon.png`), feature graphic 1024×500 (needs making), and
+4–8 phone screenshots at 1080×1920 or larger — Home, Course details, a lesson playing, Checklists,
+Profile. Take them on a real device from the release build, not the emulator.
+
+### 10.2 App content — the short forms
+
+| Form | Answer |
+|---|---|
+| Privacy policy | `https://api.theplanbs.com/privacy` |
+| App access | **All functionality is restricted.** Add one instruction: name "Student sign-in", username = `PLAY_REVIEW_EMAIL`, password = `PLAY_REVIEW_CODE`, notes: "Open the app, tap *Email me a sign-in code*, enter this email, then type the code above on the next screen. No email is sent for this account." |
+| Ads | **No**, the app contains no ads |
+| Content rating | Category **Education**. No violence, sexuality, language, drugs, gambling. Users **cannot** communicate with each other. No user-generated content is shared publicly. No location sharing. Expect "Rated for 3+" / PEGI 3 — that is fine; the target-audience form is what sets 18+. |
+| Target audience | **18 and over only.** "Does your app appeal to children?" → No |
+| News app | No |
+| COVID-19 contact tracing | No |
+| Data safety | §10.3 |
+| Government apps | No |
+| Financial features | **None of these** while `PAYMENTS_ENABLED=false`. Revisit when payments ship. |
+| Health apps | No |
+| Advertising ID | **Not used** (`android.blockedPermissions` keeps it out — P1-5) |
+| Account deletion | `https://api.theplanbs.com/account-deletion`, and tick "users can request deletion in the app" |
+
+### 10.3 Data safety (the long one)
+
+Answer "Yes, our app collects or shares user data", "Yes, data is encrypted in transit", "Yes, users
+can request that their data be deleted", and the deletion URL above.
+
+| Category → type | Collected | Shared | Required? | Purpose |
+|---|---|---|---|---|
+| Personal info → Name | Yes | **Yes** | Optional | App functionality, Account management |
+| Personal info → Email address | Yes | No | Required | App functionality, Account management |
+| Personal info → Address | Yes | **Yes** | Optional | App functionality |
+| Personal info → Phone number | Yes | **Yes** | Optional | App functionality |
+| Personal info → Other info (date of birth, visa status, qualification, bio) | Yes | **Yes** | Optional | App functionality |
+| Photos and videos → Photos | Yes | No | Optional | App functionality |
+| Photos and videos → Videos | Yes | **Yes** | Optional | App functionality |
+| Files and docs (CV) | Yes | **Yes** | Optional | App functionality |
+| App activity → App interactions (lesson progress, assessment answers, checklist, wishlist) | Yes | No | Required | App functionality |
+
+**Why "Shared" on those rows:** Plan B may pass a student's details, CV and profile video to UAE
+employers and recruitment agencies, with the student's agreement (privacy policy §4). Play counts
+that as sharing. Everything else stays with Plan B and its service providers, which Play does not
+count as sharing.
+
+**Answer "No" to**: Location, Financial info, Health and fitness, Messages, Audio, Calendar,
+Contacts, Search history, Installed apps, Device or other IDs, Crash logs and Diagnostics. The
+device model name we send labels the student's own session list and is not a device identifier.
+
+**Keep in step:** Sentry (P3-11) ⇒ add Crash logs + Diagnostics. Payments on ⇒ add Financial info
+(Purchase history, and payment info for bank slips).
+
+### 10.4 Closed testing (R-4) — the 14-day clock
+
+1. Testing → **Closed testing** → create a track (or use Alpha) → **Promote** the build already on
+   Internal testing. No rebuild.
+2. **Testers** tab → create an email list of **15–20** Gmail addresses → save → copy the **opt-in
+   link**.
+3. Send the invitation (text in the chat of 2026-10-08, or rewrite it). Every tester must: open the
+   link, tap **Become a tester**, then install **from Google Play** — a sideloaded APK does not count.
+4. Google needs **≥12 opted-in testers on every one of 14 consecutive days**. Check the count weekly;
+   if it drops below 12 the count restarts. Nobody may leave the programme.
+5. Ship P3/P4 fixes as updates to this track during the fortnight — updates do not reset the clock.
+
+### 10.5 Applying for production (R-5)
+
+After 14 full days: Dashboard → **Apply for production access**. Write real answers, roughly:
+
+- *How did you recruit testers?* Plan B staff and enrolled students from our own intake, invited by
+  email.
+- *How did you gather feedback?* WhatsApp group and email, plus direct conversations with staff who
+  used the app daily; crashes watched in Play Console vitals.
+- *What did you learn / change?* Name the actual fixes you shipped during the test.
+
+Expect up to ~7 days for that decision, then a few days for the production release review.
+
+### 10.6 What actually gets an app rejected
+
+Run **`php artisan check:play-readiness` on the server** first — it covers items 2, 3 and 6 below
+mechanically, plus the queue worker, the mail driver and `APP_DEBUG`. Then check the rest by hand.
+
+| # | Risk | Where this app stands (8 Oct 2026) |
+|---|---|---|
+| 1 | **Data safety form doesn't match the app** — the usual cause of a later suspension, not a first rejection | Must mark name, address, phone, other info, CV and profile video as **Shared** (UAE employers, with consent). Table in §10.3. Re-check after Sentry (P3-11) and when payments go live. |
+| 2 | **Reviewer can't sign in** — the single most common rejection | `play-review@theplanbs.com` + the fixed 6-digit code from `PLAY_REVIEW_CODE`. The student record is created on first sign-in. Re-verify after every `.env` change, since `config:cache` is easy to forget. |
+| 3 | **Nothing to see** — reviewer lands on locked, paid content | One published **free** course must exist. Payments are off, so no buy button leads to a dead end. |
+| 4 | **Account deletion missing or broken** | In-app (Profile → Delete account) and the public page. A reviewer may delete the reviewer account itself; it is recreated on the next sign-in. |
+| 5 | **Backend unreachable during review** | Review can land days after upload. Keep the API up, the certificate renewing, and the queue worker running, or the app looks broken. |
+| 6 | **Broken or missing links** | Privacy policy, support email and deletion URL must all resolve, and the pages must show a real contact address. |
+| 7 | **Permissions that aren't justified** | Blocked in `app.config.ts` (P1-5). Re-check the merged manifest after adding any native package. |
+| 8 | **Target API level below Play's floor** | Expo SDK 54 targets API 35. Confirm in the uploaded AAB's details page. |
+| 9 | **Content rating vs target audience** | Education, 18+, no user-to-user communication, no public user content. |
+| 10 | **Branding / IP** | Listing art and icon are Plan B's own. The name must not suggest a Google partnership. |
 
 ---
 

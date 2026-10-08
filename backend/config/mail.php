@@ -124,11 +124,12 @@ return [
     |--------------------------------------------------------------------------
     |
     | Shown in the footer of every Plan B email, so a student who did not ask
-    | for a code knows who to tell. Blank hides the line — the From address is
-    | usually a no-reply mailbox nobody reads.
+    | for a code knows who to tell. The From address is usually a no-reply
+    | mailbox nobody reads, so it is no use here. Shares its default with
+    | config/legal.php, which publishes the same address on the public pages.
     |
     */
 
-    'support_address' => env('MAIL_SUPPORT_ADDRESS'),
+    'support_address' => env('MAIL_SUPPORT_ADDRESS', 'planbinternationalpvt@gmail.com'),
 
 ];

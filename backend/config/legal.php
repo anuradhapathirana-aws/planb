@@ -38,8 +38,13 @@ return [
     /*
      * Where students write for help or to ask for deletion without the app.
      * The same inbox as the email footer, so there is one address to change.
+     *
+     * Defaulted rather than left blank: Google Play requires a working contact
+     * on the deletion page, and an unset variable on one server would otherwise
+     * publish "support email coming soon" to the reviewer. Override per
+     * environment with MAIL_SUPPORT_ADDRESS.
      */
-    'support_address' => env('MAIL_SUPPORT_ADDRESS'),
+    'support_address' => env('MAIL_SUPPORT_ADDRESS', 'planbinternationalpvt@gmail.com'),
 
     /*
      * How long payment records and bank slips are kept after an account is

@@ -5,6 +5,8 @@ All notable changes to this project are documented here. Format loosely follows 
 ## Unreleased
 
 ### Added
+- **`php artisan check:play-readiness`** — a read-only pre-flight for a Play release, to run on the server after every deploy. Checks `APP_DEBUG`/`APP_URL`, that mail is not the `log` driver, that a support address is set, that reviewer sign-in is on with a non-guessable code, that payments are off, that a published free course exists for the reviewer to open, that the legal pages render with the contact on them, that student photos, CVs, videos and payment receipts are all on private disks, and that the queue worker is draining jobs (a dead worker means no sign-in codes and no error). Exits non-zero on any failure; server-only checks report as skipped locally. 6 feature tests.
+- **A support address that cannot go missing.** `MAIL_SUPPORT_ADDRESS` now defaults to `planbinternationalpvt@gmail.com` in `config/legal.php` and `config/mail.php`, so an unset variable on one server can no longer publish "support email coming soon" on the account-deletion page Google reviews, or hide *Contact support* in the app. `.env.production.example` carries the real support and reviewer addresses.
 - **New students can sign up on their own**, on the website (`/register`, with a gold "Sign up" button in the header) and in the app (a "Create an account" link on the Sign in screen).
   - **Two ways to sign up:** "Continue with Google" at the top (one tap, as before), or a short form: full name, email, mobile number and date of birth, plus agreeing to the Terms and Privacy Policy.
   - **The account is only created once the student types in the 6-digit code we email them.** Until then nothing is saved, so a mistyped or fake address never leaves an account behind.
