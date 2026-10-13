@@ -29,6 +29,7 @@ import { useProfileCompletion } from '@/features/home/useProfileCompletion';
 import { UpdateAvailableBanner } from '@/features/update/UpdateAvailableBanner';
 import { useAppUpdate } from '@/features/update/useAppUpdate';
 import { useWishlistToggle } from '@/features/wishlist/useWishlist';
+import { IS_PRODUCTION } from '@/lib/env';
 import { useAuthStore } from '@/stores/authStore';
 
 /**
@@ -221,9 +222,18 @@ export default function HomeScreen() {
    * `useFocusEffect`, not `useEffect`: Home is a tab, so it stays MOUNTED while
    * the student is on Courses or Profile. Mount is not the question — being the
    * screen in front of someone is.
+   *
+   * **Production only, like the root block it mirrors.** Without this guard the
+   * blur branch *introduces* a block the root never applied in a dev build: step
+   * off Home once and FLAG_SECURE is set for the rest of the session, so every
+   * screen but Home refuses to screenshot — exactly the screens the Play listing
+   * needs. The two checks have to agree; a release that blocks must have a
+   * release that can be captured.
    */
   useFocusEffect(
     useCallback(() => {
+      if (!IS_PRODUCTION) return;
+
       void ScreenCapture.allowScreenCaptureAsync();
 
       return () => {

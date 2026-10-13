@@ -219,12 +219,21 @@ const config: ExpoConfig = {
      *   pattern silently does nothing without it. Blocking it now buys nothing
      *   — it is a normal permission Play does not surface — and would cost an
      *   afternoon to diagnose later.
+     *
+     * AD_ID — nothing declares it today, and the Play Console declaration filed
+     * on 12 Oct 2026 says this app does not use the advertising ID. Blocked so
+     * that stays true: Firebase Analytics, AdMob and most attribution SDKs add
+     * the permission transitively, which would contradict a signed declaration
+     * — a policy violation Play can suspend the app for, found long after the
+     * dependency was added. Push (FCM) does NOT need it; Analytics does. Unblock
+     * it only together with updating that declaration.
      */
     blockedPermissions: [
       'android.permission.RECORD_AUDIO',
       'android.permission.READ_MEDIA_IMAGES',
       'android.permission.READ_MEDIA_VIDEO',
       'android.permission.SYSTEM_ALERT_WINDOW',
+      'com.google.android.gms.permission.AD_ID',
     ],
   },
 

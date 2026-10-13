@@ -1075,7 +1075,7 @@ Profile. Take them on a real device from the release build, not the emulator.
 | Government apps | No |
 | Financial features | **None of these** while `PAYMENTS_ENABLED=false`. Revisit when payments ship. |
 | Health apps | No |
-| Advertising ID | **Not used** (`android.blockedPermissions` keeps it out — P1-5) |
+| Advertising ID | **Not used.** No ads or analytics SDK is installed, and `com.google.android.gms.permission.AD_ID` is in `android.blockedPermissions` (added 12 Oct 2026) so a later Firebase Analytics or AdMob dependency cannot add it back and silently contradict this declaration. Unblock it only in the same change as re-answering this form. |
 | Account deletion | `https://api.theplanbs.com/account-deletion`, and tick "users can request deletion in the app" |
 
 ### 10.3 Data safety (the long one)

@@ -37,6 +37,7 @@ import { NotoSansSinhala_500Medium } from '@expo-google-fonts/noto-sans-sinhala/
 import { NotoSansSinhala_600SemiBold } from '@expo-google-fonts/noto-sans-sinhala/600SemiBold';
 import { NotoSansSinhala_700Bold } from '@expo-google-fonts/noto-sans-sinhala/700Bold';
 
+import { IS_PRODUCTION } from '@/lib/env';
 import i18n, { initLanguage } from '@/lib/i18n';
 import { registerUnauthenticatedHandler } from '@/api/client';
 import { ToastProvider } from '@/components/ui/Toast';
@@ -243,8 +244,15 @@ export default function RootLayout() {
    * it on blur. Anything that lifts the block belongs there, on the screen that
    * wants it — leaving this call as the default means a screen added later is
    * protected without having to remember to ask.
+   *
+   * **Production only.** The block applies to the OS, not to our UI, so it also
+   * stops US capturing anything — and the Play listing needs screenshots of the
+   * very screens it protects. Development and preview builds therefore leave
+   * capture alone: they carry no real student content and never reach a store.
    */
   useEffect(() => {
+    if (!IS_PRODUCTION) return;
+
     void ScreenCapture.preventScreenCaptureAsync();
 
     return () => {
