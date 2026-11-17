@@ -37,3 +37,21 @@ export async function setChecklistItemCompletion(
 
   return data.data;
 }
+
+/**
+ * Tick one checking point on or off. Answers with the point's whole parent
+ * step (ticking the last point is what finishes it) plus the phase progress —
+ * the same shape as a step tick.
+ */
+export async function setChecklistPointCompletion(
+  pointId: number,
+  isCompleted: boolean,
+): Promise<ToggleChecklistItemResult> {
+  const payload: ToggleChecklistItemPayload = { is_completed: isCompleted };
+  const { data } = await apiClient.put<ApiResource<ToggleChecklistItemResult>>(
+    `/student/checklist-points/${pointId}`,
+    payload,
+  );
+
+  return data.data;
+}

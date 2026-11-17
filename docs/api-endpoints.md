@@ -155,7 +155,7 @@ Two rules the array validation can't express are enforced in `SaveCoursePaperReq
 
 ## Arrival Checklists
 
-Two fixed checklists — `before_arrival` and `after_arrival` (`App\Enums\ChecklistPhase`). `{phase}` resolves by **implicit enum binding**, so any other value is a 404 before the controller runs.
+Three fixed checklists — `before_arrival`, `baggage` and `after_arrival` (`App\Enums\ChecklistPhase`). `{phase}` resolves by **implicit enum binding**, so any other value is a 404 before the controller runs.
 
 Each phase is **one document, not a paginated resource**: the admin edits the whole list in a tab, reorders it and saves once, so `update` replaces the phase entirely. Items carrying an `id` are updated in place, ones without are created, and anything missing from the payload is deleted — all in one transaction. Position in `items` becomes the stored `sort_order`; there is no order field to send.
 
@@ -166,7 +166,7 @@ An item `id` belonging to the *other* phase is a **422**, not a silent move acro
 | Method | Path | Auth / role | Notes |
 |---|---|---|---|
 | GET | `/admin/checklists/{phase}` | any admin role | Full list for the phase, already in `sort_order`. `{ data: [...] }`, empty array when nothing is set up. |
-| PUT | `/admin/checklists/{phase}` | Super Admin, Content Manager | `{ items: [{ id?, title, description }] }`. Max 200 items; `title` required, max 255; `description` is rich-text HTML (max 20 000 chars), sanitized server-side and stored as `null` when empty. Responds with the saved list, so the client can re-seed its form with the new ids. |
+| PUT | `/admin/checklists/{phase}` | Super Admin, Content Manager | `{ items: [{ id?, title, description, points: [{ id?, title, description }] }] }`. Max 200 items; `title` required, max 255; `description` is rich-text HTML (max 20 000 chars), sanitized server-side and stored as `null` when empty. `points` is optional (max 50 per item, `title` required, max 255; `description` optional rich-text HTML, max 5 000 chars, sanitized like the item's) and follows the same keep/create/delete rules one level down; a point `id` that isn't that item's is a **422** on `items.N.points.M.id`. Responds with the saved list (each item with its `points`), so the client can re-seed its form with the new ids. |
 
 Writes are gated by `ChecklistItemPolicy::manage` — a class-level ability rather than per-row `create`/`update`/`delete`, since one request does all three.
 
@@ -414,14 +414,17 @@ Writes are gated by `HomeBannerPolicy::manage`, a class-level ability (there is 
 
 The student's side of the two arrival checklists. Its own resources, never the admin ones (root `CLAUDE.md` §16.5): `StudentChecklistItemResource` adds the student's own tick and drops the authoring timestamps.
 
-**No entitlement check, deliberately.** The checklists are Plan B's migration guidance, not purchased content, so every signed-in student sees both phases. What *is* scoped per student is the ticks — every read and write goes through the authenticated `Student`, never an id from the request.
+**No entitlement check, deliberately.** The checklists are Plan B's migration guidance, not purchased content, so every signed-in student sees every phase. What *is* scoped per student is the ticks — every read and write goes through the authenticated `Student`, never an id from the request.
 
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/student/checklists` | **Both phases in one response**, in enum order, items already in `sort_order`. Each phase carries `progress: { completed, total, percent_complete }`. |
-| PUT | `/student/checklist-items/{checklistItem}` | `{ is_completed: bool }` → `{ item, progress }`, where `progress` also carries `phase`. Throttled 120/min. |
+| GET | `/student/checklists` | **Every phase in one response**, in enum order (`before_arrival`, `baggage`, `after_arrival`), items already in `sort_order`. Clients must look a phase up by its `phase` value, never by position. Each phase carries `progress: { completed, total, percent_complete }`. |
+| PUT | `/student/checklist-items/{checklistItem}` | `{ is_completed: bool }` → `{ item, progress }`, where `progress` also carries `phase`. On a step **with checking points**, ticks (or clears) every point. Throttled 120/min. |
+| PUT | `/student/checklist-points/{checklistItemPoint}` | One checking point. `{ is_completed: bool }` → the same `{ item, progress }`, where `item` is the point's whole parent step (ticking the last point is what finishes it). Throttled 120/min. |
 
-- **Both phases come down together** because the app renders them as two tabs over a few dozen short rows. A request per tab would buy a spinner on every switch and save nothing on a connection where the round trip is the expensive part.
+- **Checking points.** Every item carries `points: [{ id, title, description, sort_order, is_completed, completed_at }]` (`description` is sanitized HTML or null — render it with DOMPurify), empty when the step is ticked directly. A step with points is done when **all** of them are ticked — derived on read in `ChecklistItem::completedAt()`, never stored, so an admin adding a point to a finished step reopens it. Phase progress still counts **steps**, not points.
+
+- **All phases come down together** because the app renders them as tabs over a few dozen short rows. A request per tab would buy a spinner on every switch and save nothing on a connection where the round trip is the expensive part.
 - **The tick sends the state the student wants, not "flip it".** A retry after a dropped response then lands on the same answer instead of undoing the tick. The service upserts, and the unique index turns a genuine double tap into a caught duplicate rather than two rows.
 - **Progress is recomputed server-side on every write** and returned with the item. The app's ring re-seeds from it rather than adjusting a local counter — the same reasoning as the player's progress flush.
 - **An empty phase is `percent_complete: 0`, never 100 and never a 404.** "Plan B hasn't published this list yet" is a real state.

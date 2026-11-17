@@ -61,7 +61,7 @@ export const HOME_BANNER_LINKS: readonly HomeBannerLinkOption[] = [
   { value: 'none', label: 'Nothing', hint: 'The banner is signage only — tapping it does nothing.' },
   { value: 'courses', label: 'Courses tab', hint: 'Opens the student’s Courses tab.' },
   { value: 'services', label: 'Services tab', hint: 'Opens the premium services the student can buy.' },
-  { value: 'checklists', label: 'Checklists tab', hint: 'Opens the Before / After Arrival checklists.' },
+  { value: 'checklists', label: 'Checklists tab', hint: 'Opens the Before Arrival, Baggage and After Arrival checklists.' },
   { value: 'course', label: 'A specific course', hint: 'Opens one course. It must be published.' },
   { value: 'url', label: 'A web page', hint: 'Opens the page inside the app’s browser.' },
 ];

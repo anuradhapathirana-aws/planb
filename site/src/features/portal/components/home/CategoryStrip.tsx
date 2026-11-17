@@ -38,10 +38,10 @@ export function CategoryStrip({ categories }: { categories: StudentCourseCategor
           <li key={category.id} className={cn('shrink-0 snap-start', TILE_WIDTH)}>
             <Link
               to={paths.app.browse(category.id)}
-              className="relative flex h-full flex-col items-center rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-ring/50 active:opacity-80"
+              className="relative flex h-full flex-col items-center rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring/50 active:opacity-80"
             >
               {/* The tile, starting 18px down so the disc overhangs its top edge. */}
-              <span aria-hidden="true" className={cn('absolute inset-x-0 top-[18px] bottom-0 rounded-2xl border', tint.card)} />
+              <span aria-hidden="true" className={cn('absolute inset-x-0 top-[18px] bottom-0 rounded-lg border', tint.card)} />
 
               <span
                 aria-hidden="true"
@@ -70,9 +70,9 @@ export function CategoryStripSkeleton() {
   return (
     <div className="flex h-[94px] gap-2.5">
       {[0, 1, 2].map((slot) => (
-        <Skeleton key={slot} className="h-full flex-1 rounded-2xl" />
+        <Skeleton key={slot} className="h-full flex-1 rounded-lg" />
       ))}
-      <Skeleton className="h-full flex-[0.5] rounded-2xl" />
+      <Skeleton className="h-full flex-[0.5] rounded-lg" />
     </div>
   );
 }

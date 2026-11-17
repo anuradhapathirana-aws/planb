@@ -141,6 +141,12 @@ class StudentAccountDeletionTest extends TestCase
             'completed_at' => now(),
         ]);
 
+        $this->student->checklistPointProgress()->create([
+            'checklist_item_point_id' => ChecklistItem::factory()->create()
+                ->points()->create(['title' => 'Passport copy'])->id,
+            'completed_at' => now(),
+        ]);
+
         CourseWishlist::create([
             'student_id' => $this->student->id,
             'course_programme_id' => $programme->id,
@@ -281,6 +287,7 @@ class StudentAccountDeletionTest extends TestCase
         $this->assertSame(0, $student->paperAttempts()->count());
         $this->assertSame(0, CoursePaperAnswer::count());
         $this->assertSame(0, $student->checklistProgress()->count());
+        $this->assertSame(0, $student->checklistPointProgress()->count());
         $this->assertSame(0, $student->wishlist()->count());
 
         // Files are gone.

@@ -5,6 +5,17 @@ All notable changes to this project are documented here. Format loosely follows 
 ## Unreleased
 
 ### Added
+- **Checklist tabs in the portal now look and move like the app's.** Before arrival, Baggage and After arrival sit in one rounded navy bar, and the open tab is a white bubble. Tapping another tab makes the bubble stretch across to it and settle, with no bounce. Visitors who turn on reduced motion see it jump straight there. The same design is used on phones and laptops. The small "3/10" counts on the tabs are gone, as in the app; the progress card under the tabs shows the numbers.
+- **New "Baggage" checklist**, for everything a student should pack in their travel bag. It is a third tab, between Before arrival and After arrival, and works exactly like them: items, checking points, descriptions and progress.
+  - **Admin:** Checklists (renamed from "Arrival checklists") now has three tabs. Each tab is saved separately, as before.
+  - **Student portal:** the Checklist page has a Baggage tab, and the Home checklist summary shows its progress once Plan B adds items. On phones the three tabs share the width, so the "3/10" counts on the tabs show from tablet size up. The progress card under the tabs still shows the numbers on phones.
+  - **Mobile app:** the Baggage tab comes with the next app update. Until then the app shows its two tabs as before, but the checklist total on its Profile screen already includes baggage items.
+  - Tab names, order and hints now come from one shared list (`shared/src/lib/checklistPhases.ts`), so the admin panel, portal and app can't disagree.
+- **Checklist items can now have checking points** (a small sub-list under an item).
+  - **Admin** (Arrival checklists): open an item and use "Add checking point" to build its list. Points can be reordered and removed, and pressing Enter in a point adds the next one. Each point can also have an optional description (same text editor as items, so it can hold bold text, lists and links), opened with the small page button next to the point. A collapsed item shows how many points it has. Points are optional: an item without any works exactly as before.
+  - **Student portal**: an item with points shows "2 of 4 points done" and opens to a list of points to tick one by one, each with its description (if any) underneath. The item ticks itself once every point is done. Ticking the item's own box ticks (or clears) all its points in one go. The phase progress still counts items, not points.
+  - If Plan B adds a new point to an item a student has already finished, that item opens again for them.
+  - The mobile app keeps working unchanged (ticking an item with points ticks all of them). Showing the points in the app comes in a later update.
 - **Profile page on phones: Cancel and Save now sit directly under the edit form**, instead of floating over the page above the tab bar. On phones the two buttons share the width evenly, with the "unsaved changes" note on its own line above them. Leaving the page with unsaved edits still asks first.
 - **Smaller, tidier text on the portal's lesson (video) page.** The lesson title is 17px (18px on laptops) instead of 20–24px; the "Lesson complete" box, its buttons, the no-skip note and the "Course lessons" heading are all a size smaller. The topic and lesson list (shared with the course page) now uses 14px topic names, 13px lesson names and 11px details, so more of the course fits on screen.
 - **Signed-in students now stay inside the portal for every course and category.**

@@ -16,7 +16,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * (root CLAUDE.md §16.5): this one carries the student's own tick and drops the
  * authoring timestamps, which tell a student nothing.
  *
- * `completions` must be eager loaded and scoped to the requesting student —
+ * `completions` and `points.completions` must be eager loaded and scoped to the requesting student —
  * {@see StudentChecklistService} is the only thing that
  * builds these, and it always does.
  *
@@ -26,9 +26,8 @@ class StudentChecklistItemResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        $progress = $this->relationLoaded('completions')
-            ? $this->completions->first()
-            : null;
+        // Derived for a step with checking points — see ChecklistItem::completedAt().
+        $completedAt = $this->completedAt();
 
         return [
             'id' => $this->id,
@@ -42,8 +41,10 @@ class StudentChecklistItemResource extends JsonResource
              */
             'description' => $this->description,
             'sort_order' => $this->sort_order,
-            'is_completed' => $progress?->isCompleted() ?? false,
-            'completed_at' => $progress?->completed_at?->toIso8601String(),
+            'is_completed' => $completedAt !== null,
+            'completed_at' => $completedAt?->toIso8601String(),
+            // Empty for a step the student ticks directly.
+            'points' => StudentChecklistItemPointResource::collection($this->points),
         ];
     }
 }

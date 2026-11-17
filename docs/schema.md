@@ -236,16 +236,16 @@ FR-ADM-008c. One selectable answer. Exactly one option per question carries `is_
 
 ## `checklist_items`
 
-The **arrival checklists** a student works through in the app — one row per step, split across two fixed phases.
+The **arrival checklists** a student works through in the app — one row per step, split across three fixed phases (tabs): Before Arrival, Baggage, After Arrival.
 
-**The phase is a PHP enum (`App\Enums\ChecklistPhase`), not a table.** The client's process has exactly two stages, and the student app renders them as two fixed tabs, so an admin-managed "checklist groups" table would have been a second CRUD screen maintaining data that never changes. Adding a third phase later is a migration plus one enum case.
+**The phase is a PHP enum (`App\Enums\ChecklistPhase`), not a table.** The client's process has a fixed set of stages, and the apps render them as fixed tabs, so an admin-managed "checklist groups" table would have been a second CRUD screen maintaining data that never changes. Adding a phase is one enum case (no migration — the column is a string) plus one entry in `shared/src/lib/checklistPhases.ts`, which every client builds its tabs from. Baggage was added this way.
 
 There is **no `is_active` flag and no soft delete**: a phase is saved as one document (the admin edits the whole list, reorders it and saves once), and an item dropped from that list is deleted. A student's tick-off progress lives in `student_checklist_items` and **cascades away with the item** — a step the admin has removed is no longer part of the process, so a record of having done it is noise, not history.
 
 | Column | Type | Notes |
 |---|---|---|
 | id | bigIncrements | |
-| phase | string(32), indexed with `sort_order` | PHP enum `App\Enums\ChecklistPhase`: `before_arrival`, `after_arrival`. |
+| phase | string(32), indexed with `sort_order` | PHP enum `App\Enums\ChecklistPhase`: `before_arrival`, `baggage`, `after_arrival` (case order = tab order). |
 | title | string | What the student must do, e.g. "Valid passport with 6+ months left". Plain text. |
 | description | text, nullable | **Sanitized HTML** from the same rich-text editor as topic descriptions, so a step can carry sub-steps and links. Cleaned by `App\Support\HtmlSanitizer` on write. Null when the admin wrote nothing. |
 | sort_order | unsignedInteger, default 0 | Position within the phase. Set from the submitted array's index — the admin never types an order. |
@@ -270,6 +270,39 @@ There is deliberately **no `phase` column**: the phase belongs to the step, and 
 `unique(student_id, checklist_item_id)` — also the index every read uses, and what makes a double tap a caught duplicate rather than two rows. `index(student_id, completed_at)`.
 
 Progress percentages are **computed, never stored**: `COUNT(completed) / COUNT(items in phase)`, the same reasoning as the deliberately-absent `student_topic_progress`. A stored counter would go stale the moment an admin adds a step.
+
+For a step **with checking points**, this table's row is ignored: the step is done when every point is ticked in `student_checklist_item_points` (see below).
+
+## `checklist_item_points`
+
+The optional **checking points** under a checklist step — a short sub-list the student ticks through. A step with none is ticked directly, as before. Saved as part of its phase (`ChecklistItemService::sync`), with the same keep-by-id / create / delete rules one level down.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | bigIncrements | |
+| checklist_item_id | FK → checklist_items, cascadeOnDelete | |
+| title | string | Plain text, one line. |
+| description | text, nullable | Optional **sanitized HTML** from the same editor as the step's description (`App\Support\HtmlSanitizer` on write). Null when empty. |
+| sort_order | unsignedInteger, default 0 | Position under the step, from the submitted array's index. |
+| created_at / updated_at | timestamps | |
+
+`index(checklist_item_id, sort_order)`.
+
+## `student_checklist_item_points`
+
+A student's tick on one checking point — the point-level twin of `student_checklist_items`, with the same keep-the-row-on-untick rule. Written only by `StudentChecklistService`.
+
+| Column | Type | Notes |
+|---|---|---|
+| id | bigIncrements | |
+| student_id | FK → students, cascadeOnDelete | |
+| checklist_item_point_id | FK → checklist_item_points, cascadeOnDelete | A point the admin removes takes its ticks with it. |
+| completed_at | timestamp, nullable | Null = un-ticked. |
+| created_at / updated_at | timestamps | |
+
+`unique(student_id, checklist_item_point_id)`, named `student_checklist_points_unique` (the generated name exceeds MySQL's 64-character limit).
+
+**A step's "done" state is derived, never stored**, in `ChecklistItem::completedAt()`: all points ticked → done, dated by the last tick. Storing it would go stale the moment an admin adds a point to a finished step; deriving it reopens that step with nothing to repair. Phase progress still counts steps, not points.
 
 ## `home_banners`
 
@@ -567,6 +600,8 @@ The logo is a **Media Library collection** (`logo`, single file, public disk), r
 
 | Date | Change |
 |---|---|
+| 2026-11-17 | **Baggage checklist.** New `checklist_items.phase` value `baggage` (enum case only — no migration). |
+| 2026-11-17 | **Checklist checking points.** Added `checklist_item_points` (optional sub-list under a step, each point with a title and optional rich-text description) and `student_checklist_item_points` (a student's tick per point). A step with points is done when all are ticked — derived on read, not stored. Account deletion removes point ticks too. |
 | 2026-11-17 | **Full-screen website hero.** Added `company_settings.hero_figures` (json, nullable) — the figures strip shared by every slide. Hero slide images are now stored at 1920×1080 (16:9) instead of 1200×900. The per-slide `site_hero_slides.stat_*` columns and `icon` are kept but no longer edited or shown, so no stored data is dropped. |
 | 2026-09-16 | **Student account deletion** (Google Play policy). Added `students.anonymised_at` (nullable) and `student_login_codes.purpose` (string, default `sign_in`, `App\Enums\LoginCodePurpose`) with index `login_codes_student_purpose_live_index`. Existing codes become `sign_in`. Deletion anonymises the row rather than deleting it, so finance records survive. |
 | 2026-09-21 | Added `course_programmes.name_si`, `course_topics.title_si` and `course_videos.title_si` — the Sinhala half of a course's titles. All nullable, no unique index, English is the record and the fallback. The student API picks between the two columns from `Accept-Language`; the admin panel always reads English. See the bilingual-titles note under `course_programmes`. The migration guards each column with `hasColumn` because the development database already had all three, added by hand. |

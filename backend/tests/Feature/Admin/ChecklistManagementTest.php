@@ -78,6 +78,19 @@ class ChecklistManagementTest extends TestCase
             ->assertJsonCount(0, 'data');
     }
 
+    public function test_the_baggage_checklist_saves_on_its_own(): void
+    {
+        $this->actingAs($this->contentManager)
+            ->putJson($this->url(ChecklistPhase::Baggage), ['items' => [
+                ['title' => 'Phone charger', 'points' => [['title' => 'UK-style plug adapter']]],
+            ]])
+            ->assertOk()
+            ->assertJsonPath('data.0.phase', 'baggage')
+            ->assertJsonPath('data.0.points.0.title', 'UK-style plug adapter');
+
+        $this->actingAs($this->superAdmin)->getJson($this->url())->assertJsonCount(0, 'data');
+    }
+
     public function test_an_unknown_phase_is_not_found(): void
     {
         $this->actingAs($this->superAdmin)
@@ -236,6 +249,102 @@ class ChecklistManagementTest extends TestCase
         $this->assertStringNotContainsString('<script', $description);
         $this->assertStringNotContainsString('javascript:', $description);
         $this->assertStringContainsString('<strong>early</strong>', $description);
+    }
+
+    public function test_checking_points_are_saved_in_order_and_kept_by_id(): void
+    {
+        $response = $this->actingAs($this->superAdmin)
+            ->putJson($this->url(), ['items' => [[
+                'title' => 'Gather documents',
+                'description' => null,
+                'points' => [['title' => 'Passport copy'], ['title' => 'Birth certificate']],
+            ]]])
+            ->assertOk()
+            ->assertJsonPath('data.0.points.0.title', 'Passport copy')
+            ->assertJsonPath('data.0.points.1.title', 'Birth certificate');
+
+        $itemId = $response->json('data.0.id');
+        $passport = $response->json('data.0.points.0.id');
+        $birth = $response->json('data.0.points.1.id');
+
+        // Reorder, rename one, drop none — ids survive, so students' ticks do too.
+        $this->actingAs($this->superAdmin)
+            ->putJson($this->url(), ['items' => [[
+                'id' => $itemId,
+                'title' => 'Gather documents',
+                'description' => null,
+                'points' => [
+                    ['id' => $birth, 'title' => 'Birth certificate (original)'],
+                    ['id' => $passport, 'title' => 'Passport copy'],
+                ],
+            ]]])
+            ->assertOk()
+            ->assertJsonPath('data.0.points.0.id', $birth)
+            ->assertJsonPath('data.0.points.0.title', 'Birth certificate (original)')
+            ->assertJsonPath('data.0.points.1.id', $passport);
+
+        $this->assertDatabaseCount('checklist_item_points', 2);
+    }
+
+    public function test_points_dropped_from_an_item_are_deleted(): void
+    {
+        $response = $this->actingAs($this->superAdmin)
+            ->putJson($this->url(), ['items' => [[
+                'title' => 'Gather documents',
+                'points' => [['title' => 'Passport copy'], ['title' => 'Birth certificate']],
+            ]]]);
+
+        $this->actingAs($this->superAdmin)
+            ->putJson($this->url(), ['items' => [[
+                'id' => $response->json('data.0.id'),
+                'title' => 'Gather documents',
+                'points' => [],
+            ]]])
+            ->assertOk()
+            ->assertJsonCount(0, 'data.0.points');
+
+        $this->assertDatabaseCount('checklist_item_points', 0);
+    }
+
+    /** A point id belonging to another item is a 422, never a silent move. */
+    public function test_a_point_id_from_another_item_is_rejected(): void
+    {
+        $other = ChecklistItem::factory()->create();
+        $stolen = $other->points()->create(['title' => 'Passport copy']);
+        $mine = ChecklistItem::factory()->create();
+
+        $this->actingAs($this->superAdmin)
+            ->putJson($this->url(), ['items' => [
+                ['id' => $mine->id, 'title' => 'Mine', 'points' => [['id' => $stolen->id, 'title' => 'Moved']]],
+                ['id' => $other->id, 'title' => 'Other', 'points' => [['id' => $stolen->id, 'title' => 'Passport copy']]],
+            ]])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('items.0.points.0.id')
+            ->assertJsonMissingValidationErrors('items.1.points.0.id');
+    }
+
+    /** A point's description is admin HTML too: sanitized, and empty editor → null. */
+    public function test_a_point_description_is_sanitized_and_empty_becomes_null(): void
+    {
+        $this->actingAs($this->superAdmin)
+            ->putJson($this->url(), ['items' => [[
+                'title' => 'Gather documents',
+                'points' => [
+                    ['title' => 'Passport copy', 'description' => '<p>Both <strong>pages</strong>.</p><script>alert(1)</script>'],
+                    ['title' => 'Birth certificate', 'description' => '<p></p>'],
+                ],
+            ]]])
+            ->assertOk()
+            ->assertJsonPath('data.0.points.0.description', '<p>Both <strong>pages</strong>.</p>')
+            ->assertJsonPath('data.0.points.1.description', null);
+    }
+
+    public function test_a_point_without_a_title_fails_validation(): void
+    {
+        $this->actingAs($this->superAdmin)
+            ->putJson($this->url(), ['items' => [['title' => 'Gather documents', 'points' => [['title' => '']]]]])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('items.0.points.0.title');
     }
 
     /** An editor emptied of content still emits an empty paragraph — not a description. */

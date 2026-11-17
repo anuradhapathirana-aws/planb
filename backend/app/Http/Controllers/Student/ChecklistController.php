@@ -9,6 +9,7 @@ use App\Http\Requests\Student\ToggleChecklistItemRequest;
 use App\Http\Resources\Student\StudentChecklistItemResource;
 use App\Http\Resources\Student\StudentChecklistPhaseResource;
 use App\Models\ChecklistItem;
+use App\Models\ChecklistItemPoint;
 use App\Models\Student;
 use App\Services\Checklist\StudentChecklistService;
 use Illuminate\Http\JsonResponse;
@@ -51,18 +52,43 @@ class ChecklistController extends Controller
     ): JsonResponse {
         $student = $this->student($request);
 
-        $this->checklists->setCompletion(
+        $item = $this->checklists->setCompletion(
             $student,
             $checklistItem,
             $request->boolean('is_completed'),
         );
 
+        return $this->tickResponse($student, $item);
+    }
+
+    /**
+     * Tick one checking point on or off. Answers with the whole parent step —
+     * ticking the last point is what finishes it — in the same shape as
+     * `update`, so a client handles both with one code path.
+     */
+    public function updatePoint(
+        ToggleChecklistItemRequest $request,
+        ChecklistItemPoint $checklistItemPoint,
+    ): JsonResponse {
+        $student = $this->student($request);
+
+        $item = $this->checklists->setPointCompletion(
+            $student,
+            $checklistItemPoint,
+            $request->boolean('is_completed'),
+        );
+
+        return $this->tickResponse($student, $item);
+    }
+
+    private function tickResponse(Student $student, ChecklistItem $item): JsonResponse
+    {
         return response()->json([
             'data' => [
-                'item' => new StudentChecklistItemResource($checklistItem),
+                'item' => new StudentChecklistItemResource($item),
                 'progress' => [
-                    'phase' => $checklistItem->phase->value,
-                    ...$this->checklists->progressFor($student, $checklistItem->phase),
+                    'phase' => $item->phase->value,
+                    ...$this->checklists->progressFor($student, $item->phase),
                 ],
             ],
         ]);

@@ -22,8 +22,24 @@ export interface StudentChecklistItem {
    */
   description: string | null;
   sort_order: number;
+  /**
+   * Derived by the server for a step with checking points: true once every
+   * point is ticked. Ticking such a step ticks (or clears) all its points.
+   */
   is_completed: boolean;
   /** ISO 8601, or null when the step has never been ticked (or was un-ticked). */
+  completed_at: string | null;
+  /** The checking points under this step, in order. Empty = ticked directly. */
+  points: StudentChecklistItemPoint[];
+}
+
+export interface StudentChecklistItemPoint {
+  id: number;
+  title: string;
+  /** Optional sanitized HTML — same tag set as the step's `description`. */
+  description: string | null;
+  sort_order: number;
+  is_completed: boolean;
   completed_at: string | null;
 }
 
@@ -41,12 +57,18 @@ export interface StudentChecklistPhase {
   items: StudentChecklistItem[];
 }
 
-/** `PUT /student/checklist-items/{id}` — the state the student wants, not a flip. */
+/**
+ * `PUT /student/checklist-items/{id}` and `PUT /student/checklist-points/{id}`
+ * — the state the student wants, not a flip.
+ */
 export interface ToggleChecklistItemPayload {
   is_completed: boolean;
 }
 
-/** What that PUT answers with: the step, and the phase's re-counted progress. */
+/**
+ * What either PUT answers with: the whole step (for a point tick, its parent),
+ * and the phase's re-counted progress.
+ */
 export interface ToggleChecklistItemResult {
   item: StudentChecklistItem;
   progress: ChecklistProgress & { phase: ChecklistPhase };
