@@ -7,6 +7,7 @@ import { ArrowLeftRight, ChevronLeft, Info, WifiOff } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { convertAmount } from '@shared/lib/currencyConversion';
 import { formatDate } from '@shared/lib/formatters';
 import { colors } from '@shared/theme/tokens';
 import { fetchExchangeRate } from '@/api/home.api';
@@ -16,9 +17,6 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Input } from '@/components/ui/Input';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Text } from '@/components/ui/Text';
-
-/** Converted amounts are currency, so two decimals. */
-const DECIMALS = 2;
 
 /**
  * The LKR/AED converter.
@@ -60,22 +58,11 @@ export default function CurrencyConverterScreen() {
   const from = inverted ? data?.quote : data?.base;
   const to = inverted ? data?.base : data?.quote;
 
-  const converted = useMemo(() => {
-    if (data === null) return '';
-
-    // Commas and spaces are what a student types into an amount; strip them
-    // rather than refusing the input.
-    const parsed = Number.parseFloat(amount.replace(/[,\s]/g, ''));
-
-    if (!Number.isFinite(parsed)) return '';
-
-    const result = inverted ? parsed / data.rate : parsed * data.rate;
-
-    return result.toLocaleString(undefined, {
-      minimumFractionDigits: DECIMALS,
-      maximumFractionDigits: DECIMALS,
-    });
-  }, [amount, inverted, data]);
+  // The arithmetic is shared with the website's converter — see `@shared/lib/currencyConversion`.
+  const converted = useMemo(
+    () => (data === null ? '' : convertAmount(amount, data.rate, inverted)),
+    [amount, inverted, data],
+  );
 
   return (
     <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>

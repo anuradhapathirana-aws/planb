@@ -36,7 +36,7 @@ export function ContinueLearningCard({ courses }: { courses: StudentCourseSummar
           </div>
         </div>
         <Button asChild variant="accent" size="lg" className="mt-5 w-full sm:w-auto">
-          <Link to={paths.courses}>{t('home.browseCourses')}</Link>
+          <Link to={paths.app.browse()}>{t('home.browseCourses')}</Link>
         </Button>
       </HeroShell>
     );

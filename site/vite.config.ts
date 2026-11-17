@@ -37,6 +37,16 @@ export default defineConfig({
      */
     dedupe: ['zod', 'axios', 'react-hook-form'],
   },
+  /*
+   * Pre-bundle the form stack up front. The sign-in dialog and the portal forms
+   * are lazy, and their imports also arrive via `shared/` (outside this root), so
+   * Vite's startup scan misses them. It then discovers them on the first click,
+   * re-optimizes, and the open tab's import 504s with "Outdated Optimize Dep" —
+   * surfacing as "Failed to fetch dynamically imported module".
+   */
+  optimizeDeps: {
+    include: ['react-hook-form', '@hookform/resolvers/zod', 'zod'],
+  },
   build: {
     rollupOptions: {
       output: {

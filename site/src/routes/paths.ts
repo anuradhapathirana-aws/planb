@@ -26,7 +26,12 @@ export const paths = {
     root: '/app',
     home: '/app',
     courses: '/app/courses',
+    /** All Courses — the portal's own catalogue. `category` opens it filtered. */
+    browse: (categoryId?: number) =>
+      categoryId === undefined ? '/app/browse' : `/app/browse?category=${categoryId}`,
     courseDetail: (id: number | string) => `/app/courses/${id}`,
+    /** A category inside the portal — its courses, and its bundle when sold as one. */
+    category: (id: number | string) => `/app/categories/${id}`,
     /**
      * `course` rides along so the player can show the lesson's title, the rest
      * of the course and a "Next lesson" button from the course the student just
@@ -37,8 +42,12 @@ export const paths = {
     paper: (courseId: number | string) => `/app/courses/${courseId}/paper`,
     paperResult: (attemptId: number | string) => `/app/paper-attempts/${attemptId}`,
     services: '/app/services',
+    /** All Services — what the student has not bought yet. */
+    browseServices: '/app/services/browse',
     serviceDetail: (id: number | string) => `/app/services/${id}`,
     checklist: '/app/checklist',
+    /** The AED/LKR converter, opened from Home's rate card. */
+    currency: '/app/tools/currency',
     orders: '/app/orders',
     wishlist: '/app/wishlist',
     profile: '/app/profile',

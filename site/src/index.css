@@ -112,6 +112,21 @@
    */
   --whatsapp: #25d366;
   --whatsapp-dark: #1da851;
+
+  /*
+   * The pastel tints behind the portal's "Top Categories" tiles, copied from
+   * `shared/src/theme/tokens.json` (`category-*`), which is what the mobile app
+   * draws them with. Decorative grounds, not semantic colours: each pairs a
+   * near-white fill with its own foreground for the glyph only.
+   */
+  --category-1: #e9f7ef;
+  --category-1-foreground: #288a5b;
+  --category-2: #e8f1fd;
+  --category-2-foreground: #2f6fcc;
+  --category-3: #fdefe6;
+  --category-3-foreground: #c9631f;
+  --category-4: #f2ecfd;
+  --category-4-foreground: #6d4cc9;
 }
 
 @theme inline {
@@ -149,6 +164,15 @@
   --color-surface-foreground: var(--surface-foreground);
   --color-surface-muted: var(--surface-muted);
   --color-surface-border: var(--surface-border);
+
+  --color-category-1: var(--category-1);
+  --color-category-1-foreground: var(--category-1-foreground);
+  --color-category-2: var(--category-2);
+  --color-category-2-foreground: var(--category-2-foreground);
+  --color-category-3: var(--category-3);
+  --color-category-3-foreground: var(--category-3-foreground);
+  --color-category-4: var(--category-4);
+  --color-category-4-foreground: var(--category-4-foreground);
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -306,5 +330,18 @@
   .video-js .vjs-big-play-button {
     border-color: var(--accent);
     background-color: rgb(15 30 69 / 0.8);
+  }
+}
+
+/*
+ * Bottom toasts clear the portal's floating tab bar on a phone. Scoped by the
+ * attribute PortalLayout puts on <html> while it is mounted, so public-site
+ * toasts are untouched; `md` is where the bar hides. Sonner positions its own
+ * mobile toaster with `bottom: var(--mobile-offset-bottom)` below 600px and
+ * `--offset-bottom` above it — the extra `:root[...]` outranks both.
+ */
+@media (width < 48rem) {
+  :root[data-portal-tabbar] [data-sonner-toaster][data-y-position='bottom'] {
+    bottom: calc(var(--portal-tabbar-clearance) + 0.5rem);
   }
 }

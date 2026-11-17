@@ -1,15 +1,14 @@
-import type { ReactNode } from 'react';
-import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Megaphone } from 'lucide-react';
 
-import { paths } from '@/routes/paths';
-import type { StudentHomeBanner, StudentHomeBannerLink } from '@shared/types/homeBanner';
+import { BannerLink } from '@/features/portal/components/BannerLink';
+import type { StudentHomeBanner } from '@shared/types/homeBanner';
 
 /**
  * The admin's Home slides — the same ones the app's carousel shows — as a
- * swipeable strip. Native scroll-snap: the browser supplies touch, trackpad and
- * keyboard scrolling, and there is nothing to autoplay while someone reads.
+ * swipeable strip on the desktop Home. Native scroll-snap: the browser supplies
+ * touch, trackpad and keyboard scrolling, and there is nothing to autoplay while
+ * someone reads. (A phone gets `HomeBannerCarousel`, the app's carousel.)
  *
  * Renders nothing when no slide is live: an empty "From Plan B" box on the
  * page a student opens most is noise, not information.
@@ -52,70 +51,4 @@ function BannerBody({ banner }: { banner: StudentHomeBanner }) {
       )}
     </div>
   );
-}
-
-const linkClass =
-  'block rounded-xl outline-none transition-opacity hover:opacity-95 focus-visible:ring-2 focus-visible:ring-ring/50';
-
-/**
- * Where a slide goes. An exhaustive `switch` over the server's resolved link
- * union: a destination is chosen from a fixed list, never a path an admin
- * typed. `url` is the one free-text case — restricted to http/https here as
- * well as on the server, and rendered as a real external `<a>` (a router `Link`
- * given an absolute URL would navigate to `/https://…`).
- */
-function BannerLink({ link, children }: { link: StudentHomeBannerLink; children: ReactNode }) {
-  switch (link.type) {
-    case 'none':
-      return <div>{children}</div>;
-    case 'courses':
-      return (
-        <Link to={paths.courses} className={linkClass}>
-          {children}
-        </Link>
-      );
-    case 'services':
-      return (
-        <Link to={paths.app.services} className={linkClass}>
-          {children}
-        </Link>
-      );
-    case 'checklists':
-      return (
-        <Link to={paths.app.checklist} className={linkClass}>
-          {children}
-        </Link>
-      );
-    case 'course':
-      return (
-        <Link to={paths.app.courseDetail(link.course_id)} className={linkClass}>
-          {children}
-        </Link>
-      );
-    case 'url':
-      return isWebUrl(link.url) ? (
-        <a href={link.url} target="_blank" rel="noreferrer noopener" className={linkClass}>
-          {children}
-        </a>
-      ) : (
-        <div>{children}</div>
-      );
-    default: {
-      // A link type this build does not know yet renders unlinked, never guessed at.
-      const unknown: never = link;
-      void unknown;
-
-      return <div>{children}</div>;
-    }
-  }
-}
-
-function isWebUrl(value: string): boolean {
-  try {
-    const { protocol } = new URL(value);
-
-    return protocol === 'https:' || protocol === 'http:';
-  } catch {
-    return false;
-  }
 }
