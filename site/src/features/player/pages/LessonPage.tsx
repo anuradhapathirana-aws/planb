@@ -136,39 +136,44 @@ export function LessonPage() {
           )}
 
           <div>
-            {topicTitle ? <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">{topicTitle}</p> : null}
+            {topicTitle ? (
+              <p className="truncate text-[11px] font-medium tracking-wide text-muted-foreground uppercase">{topicTitle}</p>
+            ) : null}
             {lesson ? (
-              <h1 className="mt-1 text-xl font-semibold text-foreground sm:text-2xl">{lesson.title}</h1>
+              // 17px / 18px, the app's screen-title scale — the video is the hero here, not the heading.
+              <h1 className="mt-0.5 text-[17px] font-semibold leading-6 text-primary md:text-lg">{lesson.title}</h1>
             ) : course.isPending && courseId !== null ? (
-              <Skeleton className="mt-1 h-7 w-2/3" />
+              <Skeleton className="mt-1 h-6 w-2/3" />
             ) : null}
           </div>
 
           {current?.is_watched ? (
-            <div className="flex flex-col gap-3 rounded-xl border border-success/30 bg-success/5 p-4 sm:flex-row sm:items-center">
-              <CheckCircle2 className="size-6 shrink-0 text-success" aria-hidden="true" />
-              <div className="flex-1">
-                <p className="font-semibold text-foreground">{t('site.player.lessonComplete')}</p>
-                {nextLesson && !nextLesson.is_locked ? (
-                  <p className="text-sm text-muted-foreground">{t('site.player.lessonCompleteBody')}</p>
-                ) : null}
+            <div className="flex flex-col gap-3 rounded-xl border border-success/30 bg-success/5 p-3 sm:flex-row sm:items-center">
+              <div className="flex flex-1 items-start gap-2.5">
+                <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-success" aria-hidden="true" />
+                <div className="min-w-0">
+                  <p className="text-[14px] font-semibold leading-5 text-foreground">{t('site.player.lessonComplete')}</p>
+                  {nextLesson && !nextLesson.is_locked ? (
+                    <p className="text-[12px] leading-[18px] text-muted-foreground">{t('site.player.lessonCompleteBody')}</p>
+                  ) : null}
+                </div>
               </div>
               {nextLesson && !nextLesson.is_locked && courseId !== null ? (
-                <Button asChild variant="accent">
+                <Button asChild variant="accent" size="sm">
                   <Link to={paths.app.lesson(nextLesson.id, courseId)}>
                     {t('site.player.nextLesson')}
                     <ArrowRight aria-hidden="true" />
                   </Link>
                 </Button>
               ) : !nextLesson && courseId !== null ? (
-                <Button asChild variant="outline">
+                <Button asChild variant="outline" size="sm">
                   <Link to={paths.app.courseDetail(courseId)}>{t('site.player.backToCourse')}</Link>
                 </Button>
               ) : null}
             </div>
           ) : stream.data ? (
-            <p className="flex items-start gap-2 text-sm text-muted-foreground">
-              <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            <p className="flex items-start gap-2 text-[12px] leading-[18px] text-muted-foreground">
+              <Info className="mt-px size-3.5 shrink-0" aria-hidden="true" />
               {t('site.player.noSkipHint')}
             </p>
           ) : null}
@@ -176,7 +181,7 @@ export function LessonPage() {
 
         {course.data && courseId !== null ? (
           <aside className="min-w-0">
-            <h2 className="mb-3 text-base font-semibold text-foreground">{t('site.player.courseLessons')}</h2>
+            <h2 className="mb-2 text-[14px] font-semibold leading-5 text-primary">{t('site.player.courseLessons')}</h2>
             <CourseTopicList
               courseId={courseId}
               topics={course.data.topics}

@@ -1,32 +1,27 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { GraduationCap, Plus, Search, SearchX, WifiOff, X } from 'lucide-react';
+import { GraduationCap, Plus, SearchX, WifiOff } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { EnrolledCourseCard, EnrolledCourseCardSkeleton } from '@/features/portal/components/EnrolledCourseCard';
+import { SearchField } from '@/components/shared/SearchField';
+import { CourseListRow, CourseListRowSkeleton } from '@/features/portal/components/CourseListRow';
 import { useStudentCourses } from '@/features/portal/queries';
 import { paths } from '@/routes/paths';
 
 /**
- * My Courses (`POR-3`, list half) — the courses this student is enrolled in,
- * and nothing else. The web counterpart of the mobile app's Courses tab.
+ * My Courses (`POR-3`) — the mobile app's Courses tab: the courses this student
+ * is enrolled in, one row each with a progress ring, and nothing else. Finding
+ * something new is Browse's job, one tap away in the header and the empty state.
  *
- * **Enrolled only, in the admin's course order.** Mobile dropped its All/Mine
- * toggle at the client's request: this page answers "how far am I?", and
- * finding something new is the catalogue's job, one click away in the header
- * and in the empty state. The order is the server's (category → Course 1,
- * Course 2 …), not progress, because Plan B's courses are a sequence.
+ * One design at every size (the client's choice): the app's rows, one column on
+ * a phone and two from `md` up. On a phone the page draws its own title row, as
+ * the app does, so the shell's logo bar is hidden here (`ownPhoneHeader`).
  *
- * **Search filters in place, client-side.** A student owns a handful of
- * courses and they are all already loaded — a request per keystroke would buy
- * a spinner and nothing else. It appears only once there is more than one
- * course to filter.
- *
- * Reads the same `student/courses` cache as the portal home, so arriving here
- * from home costs no request.
+ * The search box filters the enrolled list in place — a student owns a handful
+ * of courses, all already loaded, so a request per keystroke would buy nothing.
+ * It appears only once there is more than one course to filter.
  */
 export function MyCoursesPage() {
   const { t } = useTranslation();
@@ -37,60 +32,40 @@ export function MyCoursesPage() {
 
   const visible = useMemo(() => {
     const term = query.trim().toLowerCase();
-    if (term === '') return enrolled;
 
-    return enrolled.filter(
-      (course) =>
-        course.name.toLowerCase().includes(term) || (course.category_name ?? '').toLowerCase().includes(term),
-    );
+    return term === '' ? enrolled : enrolled.filter((course) => course.name.toLowerCase().includes(term));
   }, [enrolled, query]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <header className="flex items-center justify-between gap-3">
-        <h1 className="min-w-0 text-xl font-semibold text-foreground sm:text-2xl">{t('courses.myTitle')}</h1>
+        <h1 className="min-w-0 truncate text-[28px] font-bold leading-10 text-primary">{t('courses.myTitle')}</h1>
 
-        {/* The way to more courses from a page that deliberately shows none. */}
-        <Button asChild variant="outline" size="sm" className="shrink-0">
-          <Link to={paths.courses}>
-            <Plus aria-hidden="true" />
-            {t('courses.browse')}
-          </Link>
-        </Button>
+        <Link
+          to={paths.app.browse()}
+          aria-label={t('courses.browseAll')}
+          className="flex min-h-9 shrink-0 items-center gap-1.5 rounded-full bg-primary-soft px-3 text-[13px] font-semibold leading-5 text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring/50 hover:bg-border active:bg-border"
+        >
+          <Plus className="size-[15px]" aria-hidden="true" />
+          {t('courses.browse')}
+        </Link>
       </header>
 
       {enrolled.length > 1 ? (
-        <div className="relative max-w-md">
-          <Search
-            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
-            aria-hidden="true"
-          />
-          <Input
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={t('courses.mySearchPlaceholder')}
-            aria-label={t('courses.mySearchLabel')}
-            className="bg-card pr-10 pl-9 [&::-webkit-search-cancel-button]:hidden"
-          />
-          {query !== '' ? (
-            <button
-              type="button"
-              onClick={() => setQuery('')}
-              aria-label={t('common.clearSearch')}
-              className="absolute top-1/2 right-1 flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground"
-            >
-              <X className="size-4" aria-hidden="true" />
-            </button>
-          ) : null}
-        </div>
+        <SearchField
+          value={query}
+          onValueChange={setQuery}
+          aria-label={t('courses.mySearchLabel')}
+          placeholder={t('courses.mySearchPlaceholder')}
+          className="md:max-w-md"
+        />
       ) : null}
 
       {courses.isPending ? (
-        <ul className="grid gap-3 lg:grid-cols-2" aria-busy="true">
-          {[0, 1, 2, 3].map((slot) => (
+        <ul className="grid gap-2.5 md:grid-cols-2" aria-busy="true">
+          {[0, 1, 2, 3, 4, 5].map((slot) => (
             <li key={slot}>
-              <EnrolledCourseCardSkeleton />
+              <CourseListRowSkeleton />
             </li>
           ))}
         </ul>
@@ -107,7 +82,7 @@ export function MyCoursesPage() {
           }
         />
       ) : enrolled.length === 0 ? (
-        // Nothing enrolled is a fixable problem, and the fix is one click away.
+        // Nothing enrolled is a fixable problem, and the fix is one tap away.
         <EmptyState
           icon={GraduationCap}
           title={t('courses.noneEnrolledTitle')}
@@ -115,7 +90,7 @@ export function MyCoursesPage() {
           className="bg-card"
           action={
             <Button asChild size="sm">
-              <Link to={paths.courses}>{t('courses.browseAll')}</Link>
+              <Link to={paths.app.browse()}>{t('courses.browseAll')}</Link>
             </Button>
           }
         />
@@ -132,14 +107,10 @@ export function MyCoursesPage() {
           }
         />
       ) : (
-        /*
-          One column on a phone, two from a laptop up — every card stays a
-          full, readable row while a typical shelf fits on one screen.
-        */
-        <ul className="grid gap-3 lg:grid-cols-2">
+        <ul className="grid gap-2.5 md:grid-cols-2">
           {visible.map((course) => (
             <li key={course.id}>
-              <EnrolledCourseCard course={course} />
+              <CourseListRow course={course} />
             </li>
           ))}
         </ul>

@@ -17,7 +17,7 @@ import { ServiceHowItWorks } from '@/features/services/ServiceHowItWorks';
 import { usePaymentsEnabled } from '@/features/enrolment/usePaymentsEnabled';
 import { usePurchaseService } from '@/features/services/usePurchaseService';
 import { useService } from '@/features/services/useServices';
-import { shortDeliveryTime } from '@/lib/shortDeliveryTime';
+import { shortDeliveryTime } from '@shared/lib/shortDeliveryTime';
 
 /**
  * One service: what it is, what it costs, and — once bought — how far along it is.

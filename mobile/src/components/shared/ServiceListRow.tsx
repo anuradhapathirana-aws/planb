@@ -9,7 +9,7 @@ import { colors } from '@shared/theme/tokens';
 import { formatMoney } from '@shared/lib/formatters';
 import { PressableCard } from '@/components/ui/Card';
 import { Text } from '@/components/ui/Text';
-import { shortDeliveryTime } from '@/lib/shortDeliveryTime';
+import { shortDeliveryTime } from '@shared/lib/shortDeliveryTime';
 import { ServiceStatusBadge, useServiceStatusLabel } from './ServiceStatusBadge';
 
 export interface ServiceListRowProps {

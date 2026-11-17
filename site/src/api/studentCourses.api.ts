@@ -4,6 +4,7 @@ import type { StudentAppConfig } from '@shared/types/companySettings';
 import type { EnrolResult } from '@shared/types/studentOrder';
 import type {
   StudentCategoryDetail,
+  StudentCourseCategory,
   StudentCourseDetail,
   StudentCourseListFilters,
   StudentCourseSummary,
@@ -56,6 +57,38 @@ export async function enrolInCourse(courseId: number): Promise<EnrolResult> {
  */
 export async function fetchAppConfig(): Promise<StudentAppConfig> {
   const { data } = await apiClient.get<ApiResource<StudentAppConfig>>('/student/app-config');
+
+  return data.data;
+}
+
+/**
+ * Every visible top-level category, in the admin's order — Home's "Top
+ * Categories" row. Its own list rather than one read off the courses: an active
+ * category with no published course yet still belongs on the row.
+ */
+export async function fetchStudentCourseCategories(): Promise<StudentCourseCategory[]> {
+  const { data } = await apiClient.get<ApiResource<StudentCourseCategory[]>>('/student/course-categories');
+
+  return data.data;
+}
+
+export interface WishlistState {
+  course_id: number;
+  is_wishlisted: boolean;
+}
+
+/**
+ * Save or unsave a course. Explicit add/remove rather than a toggle: both are
+ * idempotent on the server, so a retried request lands on the state the student
+ * asked for instead of flipping it back.
+ */
+export async function setWishlisted(courseId: number, wishlisted: boolean): Promise<WishlistState> {
+  await ensureCsrfCookie();
+
+  const url = `/student/courses/${courseId}/wishlist`;
+  const { data } = wishlisted
+    ? await apiClient.post<ApiResource<WishlistState>>(url)
+    : await apiClient.delete<ApiResource<WishlistState>>(url);
 
   return data.data;
 }

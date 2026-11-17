@@ -1,14 +1,15 @@
 import { useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Link, Navigate, useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
-import { BookOpen, ChevronRight, Clock, ExternalLink, Info, SearchX, WifiOff } from 'lucide-react';
+import { BookOpen, ChevronRight, Clock, Info, SearchX, WifiOff } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { CourseAssessmentCard } from '@/features/portal/components/CourseAssessmentCard';
+import { CourseEnrolPanel } from '@/features/portal/components/CourseEnrolPanel';
 import { CourseProgressPanel } from '@/features/portal/components/CourseProgressPanel';
 import { CourseTopicList } from '@/features/portal/components/CourseTopicList';
 import { useStudentCourse } from '@/features/portal/queries';
@@ -16,16 +17,15 @@ import { paths } from '@/routes/paths';
 import { formatCourseLength } from '@shared/lib/formatters';
 
 /**
- * A course the student owns, inside the portal (`POR-3`) — `/app/courses/:id`.
- * The web counterpart of the mobile app's Course screen for an enrolled student.
+ * One course inside the portal (`POR-3`) — `/app/courses/:id`. The web
+ * counterpart of the mobile app's Course screen, which serves both cases:
  *
- * Where every "Resume", "Go to course" and "Start learning" in the site lands:
- * the syllabus with the student's own ticks and locks, their progress, the one
- * next lesson, and the final assessment.
- *
- * **A course the student does not own goes to its public page**, which already
- * knows how to sell it (enrol, bundle, coming soon). Two pages that each
- * half-sell a course would drift; one does it.
+ *  - **owned** → the syllabus with the student's own ticks and locks, their
+ *    progress, the one next lesson, and the final assessment;
+ *  - **not owned yet** → the same syllabus (every lesson locked) with
+ *    `CourseEnrolPanel` in place of progress — enrol, view the bundle, or
+ *    "coming soon". A signed-in student is never sent to the public course page;
+ *    that page stays for visitors who are not signed in.
  *
  * `is_enrolled` / `is_locked` are presentation. The stream, progress and paper
  * endpoints 403 without an enrolment, whatever this page draws.
@@ -90,9 +90,6 @@ export function PortalCourseDetailPage() {
 
   const data = course.data;
 
-  // Not theirs (yet): the public page is where a course is bought.
-  if (!data.is_enrolled) return <Navigate to={paths.courseDetail(data.id)} replace />;
-
   const length = formatCourseLength(data.total_duration_seconds);
 
   return (
@@ -107,8 +104,12 @@ export function PortalCourseDetailPage() {
         <nav aria-label={t('site.course.breadcrumbLabel')}>
           <ol className="flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
             <li>
-              <Link to={paths.app.courses} className="hover:text-foreground hover:underline">
-                {t('courses.myTitle')}
+              {/* Back to where a course like this one lives for this student. */}
+              <Link
+                to={data.is_enrolled ? paths.app.courses : paths.app.browse()}
+                className="hover:text-foreground hover:underline"
+              >
+                {data.is_enrolled ? t('courses.myTitle') : t('browse.title')}
               </Link>
             </li>
             <li className="flex min-w-0 items-center gap-1">
@@ -148,13 +149,6 @@ export function PortalCourseDetailPage() {
                 <BookOpen className="size-4" aria-hidden="true" />
                 {t('courses.content', { topics: data.topics.length, lessons: data.videos_count })}
               </span>
-              <Link
-                to={paths.courseDetail(data.id)}
-                className="flex items-center gap-1 text-primary hover:underline"
-              >
-                <ExternalLink className="size-3.5" aria-hidden="true" />
-                {t('site.portal.course.viewPage')}
-              </Link>
             </p>
 
             {/* The path this course is one step of. Advice, not a lock. */}
@@ -173,8 +167,14 @@ export function PortalCourseDetailPage() {
         {/* First in source order: on a phone, progress and the next lesson come before the syllabus. */}
         <aside className="space-y-4 lg:order-last">
           <div className="space-y-4 lg:sticky lg:top-24">
-            <CourseProgressPanel course={data} nextLesson={nextLesson} />
-            {data.paper ? <CourseAssessmentCard courseId={data.id} paper={data.paper} /> : null}
+            {data.is_enrolled ? (
+              <>
+                <CourseProgressPanel course={data} nextLesson={nextLesson} />
+                {data.paper ? <CourseAssessmentCard courseId={data.id} paper={data.paper} /> : null}
+              </>
+            ) : (
+              <CourseEnrolPanel course={data} />
+            )}
           </div>
         </aside>
 
@@ -188,7 +188,12 @@ export function PortalCourseDetailPage() {
               className="bg-card"
             />
           ) : (
-            <CourseTopicList courseId={data.id} topics={data.topics} nextLessonId={nextLesson?.id ?? null} />
+            <CourseTopicList
+              courseId={data.id}
+              topics={data.topics}
+              nextLessonId={data.is_enrolled ? (nextLesson?.id ?? null) : null}
+              isEnrolled={data.is_enrolled}
+            />
           )}
         </section>
       </div>

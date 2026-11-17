@@ -2,8 +2,13 @@ import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 
 import { fetchChecklists } from '@/api/checklists.api';
-import { fetchStudentCourse, fetchStudentCourses } from '@/api/studentCourses.api';
-import { fetchHomeBanners } from '@/api/studentHome.api';
+import {
+  fetchStudentCourse,
+  fetchStudentCourseCategories,
+  fetchStudentCourses,
+} from '@/api/studentCourses.api';
+import { fetchExchangeRate, fetchHomeBanners } from '@/api/studentHome.api';
+import type { StudentCourseListFilters } from '@shared/types/studentCourse';
 
 /*
  * The portal's shared queries. One key per endpoint, so the home page warms the
@@ -16,9 +21,13 @@ import { fetchHomeBanners } from '@/api/studentHome.api';
  */
 export const portalKeys = {
   courses: ['student', 'courses'] as const,
+  /** A filtered course list. Sits under `courses` so a wishlist write updates it too. */
+  courseSearch: (filters: StudentCourseListFilters) => ['student', 'courses', filters] as const,
   course: (id: number | null) => ['student', 'course', id] as const,
+  courseCategories: ['student', 'course-categories'] as const,
   checklists: ['student', 'checklists'] as const,
   homeBanners: ['student', 'home-banners'] as const,
+  exchangeRate: ['student', 'exchange-rate'] as const,
 };
 
 /**
@@ -52,6 +61,37 @@ export function useStudentCourse(id: number | null) {
 
 export function useChecklists() {
   return useQuery({ queryKey: portalKeys.checklists, queryFn: fetchChecklists });
+}
+
+/**
+ * A server-side search of the catalogue. Disabled until there is something to
+ * search for, so an idle search box costs no request.
+ */
+export function useCourseSearch(filters: StudentCourseListFilters, enabled: boolean) {
+  return useQuery({
+    queryKey: portalKeys.courseSearch(filters),
+    queryFn: () => fetchStudentCourses(filters),
+    select: (response) => response.data,
+    enabled,
+    staleTime: 60_000,
+  });
+}
+
+/** Admins change categories rarely; the default caching is enough. */
+export function useCourseCategories() {
+  return useQuery({ queryKey: portalKeys.courseCategories, queryFn: fetchStudentCourseCategories });
+}
+
+/**
+ * The server refreshes this a few times a day, so refetching on every Home
+ * visit would be a request per visit for a number that has not moved.
+ */
+export function useExchangeRate() {
+  return useQuery({
+    queryKey: portalKeys.exchangeRate,
+    queryFn: fetchExchangeRate,
+    staleTime: 60 * 60 * 1000,
+  });
 }
 
 export function useHomeBanners() {

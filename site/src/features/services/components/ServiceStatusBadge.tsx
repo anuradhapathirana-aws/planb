@@ -18,14 +18,24 @@ const PRESENTATION: Record<ServicePurchaseStatus, { key: string; className: stri
   cancelled: { key: 'services.statusCancelled', className: 'bg-destructive/10 text-destructive', icon: XCircle },
 };
 
-export function ServiceStatusBadge({ status, className }: { status: ServicePurchaseStatus; className?: string }) {
+export function ServiceStatusBadge({
+  status,
+  size = 'default',
+  className,
+}: {
+  status: ServicePurchaseStatus;
+  /** `sm` for list rows, as the app draws it there. */
+  size?: 'default' | 'sm';
+  className?: string;
+}) {
   const { t } = useTranslation();
   const { key, className: tone, icon: Icon } = PRESENTATION[status];
 
   return (
     <span
       className={cn(
-        'inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap',
+        'inline-flex w-fit items-center gap-1 rounded-full font-semibold whitespace-nowrap',
+        size === 'sm' ? 'px-1.5 py-px text-[10px]' : 'px-2 py-0.5 text-[11px]',
         tone,
         className,
       )}

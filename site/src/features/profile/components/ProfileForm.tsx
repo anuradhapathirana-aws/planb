@@ -318,8 +318,11 @@ export function ProfileForm({ student }: { student: StudentProfile }) {
         </div>
       </Section>
 
-      {/* Sticky on a phone, so a long form never hides its own Save button. */}
-      <div className="sticky bottom-16 z-10 flex items-center justify-end gap-3 rounded-xl border bg-card/95 p-3 backdrop-blur md:static md:border-0 md:bg-transparent md:p-0">
+      {/*
+        Sticky on a phone, so a long form never hides its own Save button —
+        resting just above the floating tab bar, whose height PortalLayout publishes.
+      */}
+      <div className="sticky bottom-[calc(var(--portal-tabbar-clearance)+0.5rem)] z-10 flex items-center justify-end gap-3 rounded-xl border bg-card/95 p-3 backdrop-blur md:static md:border-0 md:bg-transparent md:p-0">
         {isDirty ? <p className="mr-auto text-xs text-muted-foreground">{t('site.portal.profile.unsavedHint')}</p> : null}
         <Button
           type="button"

@@ -1,4 +1,4 @@
-import { BookOpen, CheckSquare, Home, Sparkles, User } from 'lucide-react';
+import { GraduationCap, Home, Plane, Sparkles, User } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { paths } from '@/routes/paths';
 
@@ -70,17 +70,34 @@ export interface PortalNavItem {
   icon: LucideIcon;
   /** `end` for the index route, so `/app` is not "active" on every child page. */
   end?: boolean;
+  /**
+   * Other route prefixes that belong to this tab. A lesson or a paper result is
+   * part of Courses even though its URL does not sit under `/app/courses`, and
+   * the tab bar's circle has to rest somewhere on every portal page.
+   */
+  alsoActiveOn?: readonly string[];
 }
 
 /**
- * The portal's tabs — the same five the mobile app uses, in the same order, so a
- * student who learned the app does not have to learn the website (root
- * CLAUDE.md §8 "Student UX").
+ * The portal's tabs — the same five the mobile app uses (`mobile/app/(tabs)/_layout.tsx`),
+ * in the same order and with the same icons, so a student who learned the app
+ * does not have to learn the website (root CLAUDE.md §8 "Student UX").
  */
 export const portalNav: PortalNavItem[] = [
-  { labelKey: 'home.title', to: paths.app.home, icon: Home, end: true },
-  { labelKey: 'courses.myTitle', to: paths.app.courses, icon: BookOpen },
-  { labelKey: 'checklist.title', to: paths.app.checklist, icon: CheckSquare },
+  // The converter is opened from Home's rate card, so Home stays selected on it.
+  { labelKey: 'home.title', to: paths.app.home, icon: Home, end: true, alsoActiveOn: ['/app/tools'] },
+  {
+    labelKey: 'courses.myTitle',
+    to: paths.app.courses,
+    icon: GraduationCap,
+    alsoActiveOn: ['/app/browse', '/app/categories', '/app/lessons', '/app/paper-attempts'],
+  },
   { labelKey: 'services.title', to: paths.app.services, icon: Sparkles },
-  { labelKey: 'profile.title', to: paths.app.profile, icon: User },
+  { labelKey: 'checklist.title', to: paths.app.checklist, icon: Plane },
+  {
+    labelKey: 'profile.title',
+    to: paths.app.profile,
+    icon: User,
+    alsoActiveOn: [paths.app.orders, paths.app.wishlist],
+  },
 ];

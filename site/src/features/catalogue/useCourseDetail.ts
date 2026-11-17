@@ -71,7 +71,10 @@ export function useEnrolCourse() {
     onSuccess: async (result, courseId) => {
       if (result.status === 'enrolled') {
         // Access changed: the portal's lists and this page's "Enrolled" state are stale.
-        await queryClient.invalidateQueries({ queryKey: portalKeys.courses });
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: portalKeys.courses }),
+          queryClient.invalidateQueries({ queryKey: portalKeys.course(courseId) }),
+        ]);
         toast.success(t('enrol.done'));
         navigate(paths.app.courseDetail(courseId));
 

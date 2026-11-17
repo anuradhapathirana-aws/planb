@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 
 import { RootLayout } from '@/components/layout/RootLayout';
+import type { PortalRouteHandle } from '@/components/layout/portal/PortalLayout';
 import { FullScreenSpinner } from '@/components/shared/FullScreenSpinner';
 import { PlaceholderPage } from '@/components/shared/PlaceholderPage';
 import { RequireStudent } from '@/routes/guards';
@@ -29,7 +30,7 @@ const PublicLayout = lazy(() =>
   import('@/components/layout/PublicLayout').then((m) => ({ default: m.PublicLayout })),
 );
 const PortalLayout = lazy(() =>
-  import('@/components/layout/PortalLayout').then((m) => ({ default: m.PortalLayout })),
+  import('@/components/layout/portal/PortalLayout').then((m) => ({ default: m.PortalLayout })),
 );
 
 const HomePage = lazy(() =>
@@ -59,8 +60,11 @@ const PortalHomePage = lazy(() =>
 const MyCoursesPage = lazy(() =>
   import('@/features/portal/pages/MyCoursesPage').then((m) => ({ default: m.MyCoursesPage })),
 );
-const ServicesPage = lazy(() =>
-  import('@/features/services/pages/ServicesPage').then((m) => ({ default: m.ServicesPage })),
+const MyServicesPage = lazy(() =>
+  import('@/features/services/pages/MyServicesPage').then((m) => ({ default: m.MyServicesPage })),
+);
+const BrowseServicesPage = lazy(() =>
+  import('@/features/services/pages/BrowseServicesPage').then((m) => ({ default: m.BrowseServicesPage })),
 );
 const ServiceDetailPage = lazy(() =>
   import('@/features/services/pages/ServiceDetailPage').then((m) => ({ default: m.ServiceDetailPage })),
@@ -70,6 +74,15 @@ const ProfilePage = lazy(() =>
 );
 const RegisterPage = lazy(() =>
   import('@/features/auth/pages/RegisterPage').then((m) => ({ default: m.RegisterPage })),
+);
+const PortalCategoryPage = lazy(() =>
+  import('@/features/portal/pages/PortalCategoryPage').then((m) => ({ default: m.PortalCategoryPage })),
+);
+const BrowseCoursesPage = lazy(() =>
+  import('@/features/portal/pages/BrowseCoursesPage').then((m) => ({ default: m.BrowseCoursesPage })),
+);
+const CurrencyConverterPage = lazy(() =>
+  import('@/features/tools/pages/CurrencyConverterPage').then((m) => ({ default: m.CurrencyConverterPage })),
 );
 const ChecklistPage = lazy(() =>
   import('@/features/checklist/pages/ChecklistPage').then((m) => ({ default: m.ChecklistPage })),
@@ -111,15 +124,49 @@ export const router = createBrowserRouter([
           </RequireStudent>
         ),
         children: [
-          { index: true, element: <PortalHomePage /> },
-          { path: 'courses', element: <MyCoursesPage /> },
+          {
+            index: true,
+            element: <PortalHomePage />,
+            handle: { ownPhoneHeader: true } satisfies PortalRouteHandle,
+          },
+          {
+            path: 'courses',
+            element: <MyCoursesPage />,
+            handle: { ownPhoneHeader: true } satisfies PortalRouteHandle,
+          },
+          {
+            path: 'browse',
+            element: <BrowseCoursesPage />,
+            handle: { ownPhoneHeader: true } satisfies PortalRouteHandle,
+          },
           { path: 'courses/:id', element: <PortalCourseDetailPage /> },
+          {
+            path: 'categories/:id',
+            element: <PortalCategoryPage />,
+            handle: { ownPhoneHeader: true } satisfies PortalRouteHandle,
+          },
           { path: 'courses/:id/paper', element: <PlaceholderPage title="Assessment" task="POR-5" /> },
           { path: 'lessons/:id', element: <LessonPage /> },
           { path: 'paper-attempts/:attemptId', element: <PlaceholderPage title="Result" task="POR-5" /> },
-          { path: 'services', element: <ServicesPage /> },
+          {
+            path: 'services',
+            element: <MyServicesPage />,
+            handle: { ownPhoneHeader: true } satisfies PortalRouteHandle,
+          },
+          {
+            // A static segment, so it wins over `services/:id`.
+            path: 'services/browse',
+            element: <BrowseServicesPage />,
+            handle: { ownPhoneHeader: true } satisfies PortalRouteHandle,
+          },
           { path: 'services/:id', element: <ServiceDetailPage /> },
           { path: 'checklist', element: <ChecklistPage /> },
+          {
+            path: 'tools/currency',
+            element: <CurrencyConverterPage />,
+            // It has its own back-arrow title row, like the app's screen.
+            handle: { ownPhoneHeader: true } satisfies PortalRouteHandle,
+          },
           { path: 'orders', element: <PlaceholderPage title="Orders" task="POR-8" /> },
           { path: 'wishlist', element: <PlaceholderPage title="Saved courses" task="POR-10" /> },
           { path: 'profile', element: <ProfilePage /> },
