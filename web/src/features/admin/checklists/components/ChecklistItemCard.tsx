@@ -6,11 +6,13 @@ import {
   type UseFormRegister,
 } from 'react-hook-form';
 import { ArrowDown, ArrowUp, CheckSquare, ChevronDown, FileText, Trash2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FieldError, FieldLabel } from '@/components/shared/FormField';
 import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import type { ChecklistFormSchema } from '@/features/admin/checklists/checklistSchema';
+import { ChecklistPointsField } from '@/features/admin/checklists/components/ChecklistPointsField';
 import { htmlToPlainText } from '@/lib/formatters';
 import { cn } from '@/lib/utils';
 
@@ -55,8 +57,10 @@ export function ChecklistItemCard({
 
   const title = useWatch({ control, name: `items.${index}.title` });
   const description = useWatch({ control, name: `items.${index}.description` });
+  const points = useWatch({ control, name: `items.${index}.points` });
 
   const excerpt = htmlToPlainText(description);
+  const pointCount = points?.length ?? 0;
 
   return (
     <div className={cn('rounded-lg border', itemErrors && 'border-destructive/50')}>
@@ -78,6 +82,11 @@ export function ChecklistItemCard({
               {excerpt || 'No description yet'}
             </span>
           </span>
+          {pointCount > 0 && (
+            <Badge variant="secondary" className="shrink-0">
+              {pointCount} {pointCount === 1 ? 'point' : 'points'}
+            </Badge>
+          )}
           <ChevronDown
             className={cn('size-4 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')}
             aria-hidden="true"
@@ -155,6 +164,14 @@ export function ChecklistItemCard({
               Students read this on their phone, so keep it short and use steps or links where they help.
             </p>
           </div>
+
+          <ChecklistPointsField
+            itemIndex={index}
+            control={control}
+            register={register}
+            errors={errors}
+            disabled={disabled}
+          />
         </div>
       )}
     </div>

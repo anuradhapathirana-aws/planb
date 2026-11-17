@@ -134,6 +134,7 @@ class StudentAccountService
             $student->videoProgress()->delete();
             $student->programmeProgress()->delete();
             $student->checklistProgress()->delete();
+            $student->checklistPointProgress()->delete();
             $student->wishlist()->delete();
 
             $student->forceFill(array_merge(

@@ -29,6 +29,12 @@ function toFormValues(items: ChecklistItem[]): ChecklistFormSchema {
       saved_id: item.id,
       title: item.title,
       description: item.description ?? '',
+      points: item.points.map((point) => ({
+        client_key: newClientKey(),
+        saved_id: point.id,
+        title: point.title,
+        description: point.description ?? '',
+      })),
     })),
   };
 }
@@ -94,6 +100,11 @@ export function ChecklistPhasePanel({ phase }: { phase: ChecklistPhase }) {
           id: item.saved_id,
           title: item.title,
           description: item.description || null,
+          points: item.points.map((point) => ({
+            id: point.saved_id,
+            title: point.title.trim(),
+            description: point.description || null,
+          })),
         })),
       },
       {

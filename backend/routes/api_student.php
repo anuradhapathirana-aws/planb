@@ -273,6 +273,9 @@ Route::middleware(['auth:student-web,student', 'student.actor', 'student.active'
     Route::get('checklists', [ChecklistController::class, 'index']);
     Route::put('checklist-items/{checklistItem}', [ChecklistController::class, 'update'])
         ->middleware('throttle:120,1');
+    // One checking point under a step. Same contract, same answer shape.
+    Route::put('checklist-points/{checklistItemPoint}', [ChecklistController::class, 'updatePoint'])
+        ->middleware('throttle:120,1');
 
     Route::get('courses/{course}/paper', [PaperController::class, 'show']);
     Route::post('courses/{course}/paper/attempts', [PaperController::class, 'start']);

@@ -4,10 +4,11 @@ import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PortalSection } from '@/features/portal/components/PortalSection';
 import { paths } from '@/routes/paths';
+import { checklistPhaseLabel } from '@shared/lib/checklistPhases';
 import type { StudentChecklistPhase } from '@shared/types/studentChecklist';
 
 /**
- * How far the student is through each arrival checklist. Every number is the
+ * How far the student is through each checklist. Every number is the
  * server's (`progress` on each phase) — nothing is counted here, so this can
  * never disagree with the checklist page it links to.
  */
@@ -26,7 +27,7 @@ export function ChecklistSummaryCard({ phases }: { phases: StudentChecklistPhase
             <li key={phase.phase}>
               <div className="flex items-baseline justify-between gap-3">
                 <span className="text-sm font-medium text-foreground">
-                  {phase.phase === 'before_arrival' ? t('checklist.beforeArrival') : t('checklist.afterArrival')}
+                  {checklistPhaseLabel(phase.phase, t)}
                 </span>
                 <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
                   {t('checklist.progress', { completed: phase.progress.completed, total: phase.progress.total })}

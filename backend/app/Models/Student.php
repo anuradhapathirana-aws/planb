@@ -134,6 +134,12 @@ class Student extends Authenticatable implements HasMedia
         return $this->hasMany(StudentChecklistItem::class);
     }
 
+    /** This student's ticks on checklist checking points. */
+    public function checklistPointProgress(): HasMany
+    {
+        return $this->hasMany(StudentChecklistItemPoint::class);
+    }
+
     /** Courses this student has paid for (or been granted). */
     public function enrolledProgrammes(): BelongsToMany
     {

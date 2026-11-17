@@ -6,30 +6,35 @@ import { ListChecks, WifiOff } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { ChecklistItemRow, ChecklistItemSkeleton } from '@/features/checklist/components/ChecklistItemRow';
 import { PhaseProgressCard } from '@/features/checklist/components/PhaseProgressCard';
-import { phaseLabel, useChecklistTick } from '@/features/checklist/useChecklistTick';
+import { PhaseSwitch } from '@/features/checklist/components/PhaseSwitch';
+import { useChecklistTick, type ChecklistTick } from '@/features/checklist/useChecklistTick';
 import { useChecklists } from '@/features/portal/queries';
-import { cn } from '@/lib/utils';
+import { CHECKLIST_PHASES, checklistPhaseLabel } from '@shared/lib/checklistPhases';
 import type { ChecklistPhase } from '@shared/types/checklist';
 import type { StudentChecklistPhase } from '@shared/types/studentChecklist';
 
-const PHASES: ChecklistPhase[] = ['before_arrival', 'after_arrival'];
-
 /* `?phase=after` — short, and anything else falls back to the first phase. */
-const PHASE_PARAM: Record<ChecklistPhase, string> = { before_arrival: 'before', after_arrival: 'after' };
+const PHASE_PARAM: Record<ChecklistPhase, string> = {
+  before_arrival: 'before',
+  baggage: 'baggage',
+  after_arrival: 'after',
+};
+
+const FIRST_PHASE = CHECKLIST_PHASES[0] ?? 'before_arrival';
 
 /**
- * The arrival checklists (`POR-7`) — `/app/checklist`. The web twin of the
- * mobile app's Checklist tab.
+ * The checklists (`POR-7`) — `/app/checklist`. The web twin of the mobile app's
+ * Checklist tab, switched with the same bubble `PhaseSwitch`.
  *
- * Two phases, one at a time. Both come down in one request (shared with the
- * portal home), so switching is instant; the phase lives in the URL so a link
- * or a refresh lands on the same one.
+ * One phase at a time. All come down in one request (shared with the portal
+ * home), so switching is instant; the phase lives in the URL so a link or a
+ * refresh lands on the same one.
  *
- * Every signed-in student sees both phases — this is Plan B's guidance, not
+ * Every signed-in student sees every phase — this is Plan B's guidance, not
  * purchased content. What is per student is the ticks, and the server scopes
  * those to the session (`PUT` carries the state wanted, not a toggle).
  */
@@ -39,7 +44,8 @@ export function ChecklistPage() {
   const checklists = useChecklists();
   const tick = useChecklistTick();
 
-  const phase: ChecklistPhase = search.get('phase') === PHASE_PARAM.after_arrival ? 'after_arrival' : 'before_arrival';
+  const param = search.get('phase');
+  const phase = CHECKLIST_PHASES.find((candidate) => PHASE_PARAM[candidate] === param) ?? FIRST_PHASE;
 
   /*
    * One open step at a time: every description unfolded is a wall of text that
@@ -50,8 +56,8 @@ export function ChecklistPage() {
   const expandedId = open?.phase === phase ? open.id : null;
 
   const changePhase = (next: string) => {
-    const value = PHASES.find((candidate) => candidate === next) ?? 'before_arrival';
-    setSearch(value === 'before_arrival' ? {} : { phase: PHASE_PARAM[value] }, { replace: true });
+    const value = CHECKLIST_PHASES.find((candidate) => candidate === next) ?? FIRST_PHASE;
+    setSearch(value === FIRST_PHASE ? {} : { phase: PHASE_PARAM[value] }, { replace: true });
   };
 
   return (
@@ -80,16 +86,13 @@ export function ChecklistPage() {
         />
       ) : (
         <Tabs value={phase} onValueChange={changePhase} className="gap-4">
-          <TabsList aria-label={t('site.checklist.phasesLabel')} className="w-full sm:w-auto">
-            {PHASES.map((value) => (
-              <TabsTrigger key={value} value={value} className="sm:min-w-44">
-                {phaseLabel(value, t)}
-                <PhaseCount phase={checklists.data?.find((candidate) => candidate.phase === value)} />
-              </TabsTrigger>
-            ))}
-          </TabsList>
+          <PhaseSwitch
+            value={phase}
+            label={t('site.checklist.phasesLabel')}
+            options={CHECKLIST_PHASES.map((value) => ({ value, label: checklistPhaseLabel(value, t) }))}
+          />
 
-          {PHASES.map((value) => (
+          {CHECKLIST_PHASES.map((value) => (
             <TabsContent key={value} value={value}>
               {checklists.data ? (
                 <PhasePanel
@@ -97,7 +100,7 @@ export function ChecklistPage() {
                   value={value}
                   expandedId={expandedId}
                   onToggleExpanded={(id) => setOpen(expandedId === id ? null : { phase: value, id })}
-                  onToggleCompleted={tick}
+                  onTick={tick}
                 />
               ) : (
                 <ChecklistPageSkeleton />
@@ -110,44 +113,18 @@ export function ChecklistPage() {
   );
 }
 
-/** "3/10" on each tab, so the student sees both phases' state without switching. */
-function PhaseCount({ phase }: { phase: StudentChecklistPhase | undefined }) {
-  const { t } = useTranslation();
-
-  if (!phase || phase.progress.total === 0) return null;
-
-  const done = phase.progress.completed === phase.progress.total;
-
-  return (
-    <>
-      <span
-        aria-hidden="true"
-        className={cn(
-          'rounded-full px-1.5 py-0.5 text-[11px] font-semibold tabular-nums',
-          done ? 'bg-success/10 text-success' : 'bg-primary-soft text-primary',
-        )}
-      >
-        {phase.progress.completed}/{phase.progress.total}
-      </span>
-      <span className="sr-only">
-        {t('checklist.progress', { completed: phase.progress.completed, total: phase.progress.total })}
-      </span>
-    </>
-  );
-}
-
 function PhasePanel({
   phase,
   value,
   expandedId,
   onToggleExpanded,
-  onToggleCompleted,
+  onTick,
 }: {
   phase: StudentChecklistPhase | undefined;
   value: ChecklistPhase;
   expandedId: number | null;
   onToggleExpanded: (id: number) => void;
-  onToggleCompleted: (id: number, isCompleted: boolean) => void;
+  onTick: (tick: ChecklistTick) => void;
 }) {
   const { t } = useTranslation();
 
@@ -166,14 +143,14 @@ function PhasePanel({
         </div>
       </aside>
 
-      <ol className="space-y-2 lg:col-span-2" aria-label={phaseLabel(value, t)}>
+      <ol className="space-y-2 lg:col-span-2" aria-label={checklistPhaseLabel(value, t)}>
         {phase.items.map((item) => (
           <li key={item.id}>
             <ChecklistItemRow
               item={item}
               expanded={expandedId === item.id}
               onToggleExpanded={() => onToggleExpanded(item.id)}
-              onToggleCompleted={(isCompleted) => onToggleCompleted(item.id, isCompleted)}
+              onTick={onTick}
             />
           </li>
         ))}

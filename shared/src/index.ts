@@ -35,6 +35,7 @@ export * from './schemas/studentAuth';
 export * from './schemas/studentProfile';
 
 // Platform-neutral helpers.
+export * from './lib/checklistPhases';
 export * from './lib/clientKey';
 export * from './lib/formatters';
 export * from './lib/serverErrors';

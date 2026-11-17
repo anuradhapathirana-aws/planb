@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { PartyPopper } from 'lucide-react';
 
 import { Progress } from '@/components/ui/progress';
-import { phaseLabel } from '@/features/checklist/useChecklistTick';
+import { checklistPhaseHint, checklistPhaseLabel } from '@shared/lib/checklistPhases';
 import type { ChecklistPhase } from '@shared/types/checklist';
 import type { ChecklistProgress } from '@shared/types/studentChecklist';
 
@@ -26,7 +26,7 @@ export function PhaseProgressCard({ phase, progress }: { phase: ChecklistPhase; 
           <PartyPopper className="size-6" aria-hidden="true" />
         </span>
         <div className="min-w-0">
-          <p className="text-xs font-semibold tracking-wide text-accent uppercase">{phaseLabel(phase, t)}</p>
+          <p className="text-xs font-semibold tracking-wide text-accent uppercase">{checklistPhaseLabel(phase, t)}</p>
           <h2 className="mt-0.5 text-lg font-semibold text-white">{t('checklist.allDoneTitle')}</h2>
           <p className="text-sm text-surface-muted">{t('checklist.allDoneBody')}</p>
         </div>
@@ -36,7 +36,7 @@ export function PhaseProgressCard({ phase, progress }: { phase: ChecklistPhase; 
 
   return (
     <section className="rounded-xl bg-surface p-5 text-surface-foreground">
-      <p className="text-xs font-semibold tracking-wide text-accent uppercase">{phaseLabel(phase, t)}</p>
+      <p className="text-xs font-semibold tracking-wide text-accent uppercase">{checklistPhaseLabel(phase, t)}</p>
       <h2 className="mt-1 text-lg font-semibold text-white">
         {progress.completed === 0
           ? t('checklist.notStarted')
@@ -56,7 +56,7 @@ export function PhaseProgressCard({ phase, progress }: { phase: ChecklistPhase; 
       <p className="mt-2 text-sm text-surface-muted">
         {t('checklist.stepsToGo', { count: remaining })}
         {' · '}
-        {phase === 'before_arrival' ? t('checklist.beforeArrivalHint') : t('checklist.afterArrivalHint')}
+        {checklistPhaseHint(phase, t)}
       </p>
     </section>
   );

@@ -20,6 +20,7 @@ class ChecklistItemResource extends JsonResource
             // Sanitized HTML — any client rendering it still needs DOMPurify (CLAUDE.md §7.6).
             'description' => $this->description,
             'sort_order' => $this->sort_order,
+            'points' => ChecklistItemPointResource::collection($this->whenLoaded('points')),
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];
