@@ -19,17 +19,22 @@ use Intervention\Image\ImageManager;
 class SiteHeroSlideService
 {
     /**
-     * 1200x900 — 4:3, exactly the frame `HeroSlider.tsx` reserves.
+     * 1920x1080 — 16:9, a full-HD laptop/desktop screen.
      *
-     * **These two numbers and the slider's `aspect-[4/3]` are one decision in
-     * two files.** `cover()` below crops every upload to this ratio, so the
-     * stored file IS this shape; if the page reserved a different one the
-     * browser would crop it a second time at display and the admin's picture
-     * would quietly lose its edges. Change one, change the other.
+     * Since 2026-11 the slide image is the hero's full-screen background (behind
+     * the header too), not a 4:3 card beside the text. The browser fills the
+     * screen with `object-cover`, so a 16:9 file shows almost whole on a laptop.
+     * On a phone the browser keeps the right-of-centre part (`HERO_FOCUS` in
+     * `HeroSlider.tsx`), which is why the admin hint asks for the person on the
+     * right. `cover()` crops every upload to this shape, so what the admin
+     * previews in the 16:9 box is what visitors get.
+     *
+     * **These numbers, the admin hint in `HeroSlideFormPage.tsx` and the
+     * preview's `aspect-video` are one decision.** Change one, change the others.
      */
-    private const IMAGE_WIDTH = 1200;
+    private const IMAGE_WIDTH = 1920;
 
-    private const IMAGE_HEIGHT = 900;
+    private const IMAGE_HEIGHT = 1080;
 
     /**
      * Every slide, in the admin's order.

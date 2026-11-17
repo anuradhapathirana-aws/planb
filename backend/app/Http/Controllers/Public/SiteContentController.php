@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Public;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Public\PublicBrandingResource;
 use App\Http\Resources\Public\PublicCommunityResource;
+use App\Http\Resources\Public\PublicHeroFiguresResource;
 use App\Http\Resources\Public\PublicHeroSlideResource;
 use App\Http\Resources\Public\PublicTeamMemberResource;
 use App\Services\Settings\CompanySettingsService;
@@ -58,6 +59,13 @@ class SiteContentController extends Controller
                  * supplied artwork.
                  */
                 'hero_slides' => PublicHeroSlideResource::collection($this->slides->live()),
+                /*
+                 * The strip under every slide. Null = never saved, so the website
+                 * keeps its built-in figures; an empty list = the admin hid it.
+                 */
+                'hero_figures' => $settings->hero_figures === null
+                    ? null
+                    : new PublicHeroFiguresResource($settings),
                 'community' => new PublicCommunityResource($settings),
                 // Empty hides the section rather than drawing an empty carousel.
                 'team' => PublicTeamMemberResource::collection($this->team->live()),

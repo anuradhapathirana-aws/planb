@@ -2,12 +2,13 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
   deleteCommunityPoster,
+  updateHeroFigures,
   updateWebsiteContent,
   uploadCommunityPoster,
 } from '@/api/companySettings.api';
 import { companySettingsKeys } from '@/features/admin/settings/hooks/useCompanySettings';
 import { getValidationErrors } from '@shared/lib/serverErrors';
-import type { CompanySettings } from '@shared/types/companySettings';
+import type { CompanySettings, SaveHeroFiguresPayload } from '@shared/types/companySettings';
 import type { SaveWebsiteContentPayload } from '@shared/types/siteContent';
 
 /**
@@ -38,6 +39,23 @@ export function useUpdateWebsiteContent() {
     // Field-level 422s render under the offending input; only report the rest.
     onError: (error) => {
       if (!getValidationErrors(error)) toast.error('Could not save the About section.');
+    },
+  });
+}
+
+/** The hero's figures strip. Same singleton, same cache entry as the About band. */
+export function useUpdateHeroFigures() {
+  const seed = useSeed();
+
+  return useMutation({
+    mutationFn: (payload: SaveHeroFiguresPayload) => updateHeroFigures(payload),
+    onSuccess: (settings) => {
+      seed(settings);
+      toast.success('Figures strip saved.');
+    },
+    // Field-level 422s render under the offending input; only report the rest.
+    onError: (error) => {
+      if (!getValidationErrors(error)) toast.error('Could not save the figures strip.');
     },
   });
 }

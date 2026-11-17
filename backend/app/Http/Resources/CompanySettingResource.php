@@ -52,6 +52,13 @@ class CompanySettingResource extends JsonResource
             'community_floating_label_si' => $this->community_floating_label_si,
             'community_poster_url' => PublicUrl::forRequest($this->community_poster_url, $request),
 
+            /*
+             * The website hero's figures strip, both language columns raw for the
+             * same reason. Null = never saved (the website shows its built-in
+             * figures); an empty list = the admin hid the strip.
+             */
+            'hero_figures' => $this->hero_figures,
+
             'updated_at' => $this->updated_at?->toIso8601String(),
         ];
     }

@@ -52,11 +52,19 @@ export function CommunitySection({
   return (
     <section
       id={id}
-      className="scroll-mt-20 bg-gradient-to-b from-muted/50 via-muted/30 to-background py-12 sm:py-14"
+      className="scroll-mt-20 bg-gradient-to-b from-muted/50 via-muted/30 to-background py-9 sm:py-11"
     >
-      <Container className="grid items-center gap-8 lg:grid-cols-2 lg:gap-10">
+      {/*
+        Three grid items, not two: the button is its own item so it can follow
+        the VIDEO on a phone (client instruction, 2026-11-17) while staying under
+        the paragraph on a laptop. Source order is copy → video → button, which
+        is the phone order; from `lg` the copy and button share the left column
+        (rows 1 and 2) and the video spans both rows on the right, so the desktop
+        layout is unchanged.
+      */}
+      <Container className="grid items-center gap-8 lg:grid-cols-2 lg:grid-rows-[auto_auto] lg:gap-x-10 lg:gap-y-6">
         {/* ------------------------------------------------------------ copy */}
-        <div>
+        <div className="lg:col-start-1 lg:row-start-1 lg:self-end">
           <span className="inline-flex items-center rounded-full bg-accent-soft px-3 py-1 text-xs font-semibold uppercase tracking-wider text-accent-strong">
             {community.eyebrow}
           </span>
@@ -70,17 +78,10 @@ export function CommunitySection({
           <p className="mt-3 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
             {community.body}
           </p>
-
-          <Button asChild size="lg" className="mt-6">
-            <Link to={paths.courses}>
-              Start learning
-              <ArrowRight className="size-4" aria-hidden="true" />
-            </Link>
-          </Button>
         </div>
 
         {/* ---------------------------------------------------------- video */}
-        <div className="relative">
+        <div className="relative lg:col-start-2 lg:row-span-2 lg:row-start-1">
           {videoId ? (
             <YouTubeFacade
               videoId={videoId}
@@ -117,6 +118,22 @@ export function CommunitySection({
             </span>
             <span className="text-xs font-semibold text-foreground">{community.floatingLabel}</span>
           </div>
+        </div>
+
+        {/* --------------------------------------------------------- action
+            Under the video and full width on a phone, an easy thumb target
+            closing the section; `-mt-2` pulls it to 24px under the video rather
+            than the grid's 32px, so it reads as belonging to it. From `lg` it is
+            back under the paragraph at its own width. */}
+        <div className="-mt-2 lg:col-start-1 lg:row-start-2 lg:mt-0 lg:self-start">
+          {/* Fully rounded (client instruction, 2026-11-17), matching the
+              "View all courses" pill in Our Programmes. */}
+          <Button asChild size="lg" className="rounded-full px-7 max-sm:h-11 max-sm:w-full">
+            <Link to={paths.courses}>
+              Start learning
+              <ArrowRight className="size-4" aria-hidden="true" />
+            </Link>
+          </Button>
         </div>
       </Container>
     </section>

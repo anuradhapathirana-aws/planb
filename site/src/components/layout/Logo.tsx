@@ -63,8 +63,12 @@ const SIZES = {
    * over the hero's first line of copy.
    */
   overhang: 'h-14 sm:h-24 lg:h-28',
-  /** The footer: its own column with room to spare, so the mark can be read there. */
-  xl: 'h-20 sm:h-24',
+  /**
+   * The footer: its own column with room to spare, so the mark can be read
+   * there. Largest on a phone (client instruction, 2026-11-17), where it sits
+   * centred on its own row at the top of the footer.
+   */
+  xl: 'h-28 sm:h-24',
 } as const;
 
 /**

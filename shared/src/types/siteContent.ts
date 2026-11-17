@@ -211,11 +211,14 @@ export interface PublicHeroSlide {
   heading: string | null;
   body: string | null;
   icon: SiteHeroIcon;
-  /** Null draws the designed fallback panel rather than an empty box. */
+  /** Full-screen 1920x1080 background. Null uses the website's default banner image. */
   image_url: string | null;
   primary_cta: PublicSiteCta | null;
   secondary_cta: PublicSiteCta | null;
-  /** Zero, one or two. An empty pair is dropped rather than sent blank. */
+  /**
+   * Zero, one or two. An empty pair is dropped rather than sent blank. Not drawn
+   * by the full-screen hero (2026-11), which shows `hero_figures` instead.
+   */
   stats: { value: string; label: string }[];
 }
 
@@ -262,10 +265,22 @@ export interface PublicBranding {
   logo_url: string | null;
 }
 
+/** Mirrors `backend/app/Http/Resources/Public/PublicHeroFiguresResource.php`. */
+export interface PublicHeroFigure {
+  value: string;
+  /** Already in the visitor's language. */
+  label: string;
+}
+
 /** Everything `GET public/site-content` returns, in one payload. */
 export interface PublicSiteContent {
   branding: PublicBranding;
   hero_slides: PublicHeroSlide[];
+  /**
+   * The strip under every hero slide, one language, picked by the server.
+   * Null = never saved (use the built-in figures); empty = hidden by the admin.
+   */
+  hero_figures: PublicHeroFigure[] | null;
   community: PublicCommunity;
   team: PublicTeamMember[];
 }

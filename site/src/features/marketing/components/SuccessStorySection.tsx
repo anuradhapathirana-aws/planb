@@ -32,7 +32,7 @@ export function SuccessStorySection({ id, stories }: { id?: string; stories: Suc
 
   if (!story) {
     return (
-      <section id={id} className="scroll-mt-20 bg-surface py-16 sm:py-20">
+      <section id={id} className="scroll-mt-20 bg-surface py-12 sm:py-16">
         <Container>
           <EmptyState
             className="border-surface-border text-surface-foreground"
@@ -56,7 +56,7 @@ export function SuccessStorySection({ id, stories }: { id?: string; stories: Suc
     .join('');
 
   return (
-    <section id={id} className="relative scroll-mt-20 overflow-hidden bg-surface py-16 text-surface-foreground sm:py-20">
+    <section id={id} className="relative scroll-mt-20 overflow-hidden bg-surface py-12 text-surface-foreground sm:py-16">
       {/* Decorative wash, mirrored from the hero so the two navy bands rhyme. */}
       <div
         aria-hidden="true"

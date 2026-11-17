@@ -668,6 +668,7 @@
     },
     "whatsapp": {
       "label": "Chat on WhatsApp",
+      "greeting": "Hi! Need help? Chat with us",
       "prefill": "Hi Plan B, I would like to know more about studying and working in the UAE."
     },
     "carousel": {

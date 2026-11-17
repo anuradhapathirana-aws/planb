@@ -28,7 +28,7 @@ import { testimonials } from '@/features/marketing/homeContent';
  * id** as props rather than hardcoding either.
  */
 export function HomePage() {
-  const { heroSlides, community, team } = useSiteContent();
+  const { heroSlides, heroFigures, community, team } = useSiteContent();
   const { programmes, isLoading: coursesLoading } = useHomePageCourses();
 
   return (
@@ -41,7 +41,7 @@ export function HomePage() {
         finished work waiting on an admin toggle and this was placeholder copy
         the client never approved. `git` has it if it is ever wanted back.
       */}
-      <HeroSlider slides={heroSlides} />
+      <HeroSlider slides={heroSlides} figures={heroFigures} />
 
       {/*
         **Programmes sits directly under the hero, About Us below it** (client

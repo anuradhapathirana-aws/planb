@@ -215,14 +215,88 @@ class WebsiteConfigurationTest extends TestCase
             ['image' => UploadedFile::fake()->image('wrong-shape.png', 900, 900)],
         )->assertOk();
 
-        // 4:3, whatever was uploaded — the stored file IS the shape the page
-        // reserves, so the browser never crops it a second time.
+        // Full-screen 16:9, whatever was uploaded — the shape the admin
+        // previews is the shape every visitor's screen is filled from.
         $media = SiteHeroSlide::query()->findOrFail($id)->getFirstMedia(SiteHeroSlide::IMAGE_COLLECTION);
         $this->assertNotNull($media);
 
         [$width, $height] = getimagesize($media->getPath());
-        $this->assertSame(1200, $width);
-        $this->assertSame(900, $height);
+        $this->assertSame(1920, $width);
+        $this->assertSame(1080, $height);
+    }
+
+    public function test_a_webp_slide_image_is_accepted_and_stored_as_jpeg(): void
+    {
+        Storage::fake('public');
+        $this->actingAsRole(RoleName::SuperAdmin);
+
+        $id = $this->postJson('/api/v1/admin/site-hero-slides', $this->slidePayload())->json('data.id');
+
+        $this->post(
+            "/api/v1/admin/site-hero-slides/{$id}/image",
+            ['image' => UploadedFile::fake()->image('banner.webp', 2560, 1440)],
+        )->assertOk();
+
+        $media = SiteHeroSlide::query()->findOrFail($id)->getFirstMedia(SiteHeroSlide::IMAGE_COLLECTION);
+        $this->assertNotNull($media);
+        $this->assertSame('image/jpeg', $media->mime_type);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | The hero's figures strip
+    |--------------------------------------------------------------------------
+    */
+
+    public function test_hero_figures_are_saved_and_blank_rows_dropped(): void
+    {
+        $this->actingAsRole(RoleName::ContentManager);
+
+        $this->putJson('/api/v1/admin/company-settings/hero-figures', [
+            'figures' => [
+                ['value' => '500+', 'label' => 'Students guided', 'label_si' => 'සිසුන්'],
+                ['value' => ' ', 'label' => '', 'label_si' => ''],
+                ['value' => '12+', 'label' => 'Professions covered', 'label_si' => ''],
+                ['value' => '', 'label' => '', 'label_si' => ''],
+            ],
+        ])
+            ->assertOk()
+            ->assertJsonPath('data.hero_figures', [
+                ['value' => '500+', 'label' => 'Students guided', 'label_si' => 'සිසුන්'],
+                ['value' => '12+', 'label' => 'Professions covered', 'label_si' => null],
+            ]);
+    }
+
+    public function test_a_figure_without_a_label_is_refused(): void
+    {
+        $this->actingAsRole(RoleName::SuperAdmin);
+
+        $this->putJson('/api/v1/admin/company-settings/hero-figures', [
+            'figures' => [['value' => '500+', 'label' => '', 'label_si' => '']],
+        ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('figures.0.label');
+    }
+
+    public function test_more_than_four_figures_are_refused(): void
+    {
+        $this->actingAsRole(RoleName::SuperAdmin);
+
+        $row = ['value' => '1', 'label' => 'One', 'label_si' => null];
+
+        $this->putJson('/api/v1/admin/company-settings/hero-figures', [
+            'figures' => array_fill(0, 5, $row),
+        ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('figures');
+    }
+
+    public function test_an_accountant_cannot_edit_hero_figures(): void
+    {
+        $this->actingAsRole(RoleName::Accountant);
+
+        $this->putJson('/api/v1/admin/company-settings/hero-figures', ['figures' => []])
+            ->assertForbidden();
     }
 
     public function test_a_non_image_upload_is_refused(): void

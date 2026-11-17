@@ -21,7 +21,8 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  * The `community_*` columns are the website's About section. They live here
  * rather than in a second settings table because they are about-the-company
  * copy and there is exactly one of them — two singleton tables would be two
- * rows to keep in step with no rule for which owns what.
+ * rows to keep in step with no rule for which owns what. `hero_figures` (the
+ * website hero's figures strip) is here for the same reason.
  */
 class CompanySetting extends Model implements HasMedia
 {
@@ -54,6 +55,7 @@ class CompanySetting extends Model implements HasMedia
         'community_video_duration_label',
         'community_floating_label',
         'community_floating_label_si',
+        'hero_figures',
     ];
 
     protected $attributes = [
@@ -68,6 +70,8 @@ class CompanySetting extends Model implements HasMedia
             'bank_transfer_enabled' => 'boolean',
             'intro_is_enabled' => 'boolean',
             'intro_animation' => IntroAnimation::class,
+            // list<array{value: string, label: string, label_si: string|null}>
+            'hero_figures' => 'array',
         ];
     }
 

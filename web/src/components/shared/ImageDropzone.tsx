@@ -10,13 +10,19 @@ interface ImageDropzoneProps {
   onSelect: (file: File) => void;
   onRemove: () => void;
   /**
-   * Shape of the frame. `video` is 16:9, matching course and lesson art;
-   * `banner` is 64:27, the Home carousel's shape; `photo` is 4:3, the website
-   * hero's artwork; `portrait` is 4:5, a team member's photograph. The frame
-   * should match what the backend crops that image to, so an admin sees the crop
-   * they are going to get rather than discovering it on a phone.
+   * Shape of the frame. `video` is 16:9, matching course and lesson art and the
+   * website's full-screen hero; `banner` is 64:27, the Home carousel's shape;
+   * `portrait` is 4:5, a team member's photograph. The frame should match what
+   * the backend crops that image to, so an admin sees the crop they are going to
+   * get rather than discovering it on a phone.
    */
-  aspect?: 'video' | 'square' | 'banner' | 'photo' | 'portrait';
+  aspect?: 'video' | 'square' | 'banner' | 'portrait';
+  /**
+   * The size the backend stores. A smaller upload is still accepted (it is
+   * scaled up), but the admin is warned it may look soft — for images shown
+   * large, like the website's full-screen hero.
+   */
+  recommendedSize?: { width: number; height: number };
   acceptedTypes?: string[];
   maxBytes?: number;
   /** Second line inside the empty dropzone, e.g. "PNG or JPG, up to 2MB". */
@@ -35,7 +41,6 @@ const ASPECT_RATIOS: Record<NonNullable<ImageDropzoneProps['aspect']>, number> =
   video: 16 / 9,
   banner: 64 / 27,
   square: 1,
-  photo: 4 / 3,
   portrait: 4 / 5,
 };
 
@@ -43,32 +48,56 @@ const ASPECT_NAMES: Record<NonNullable<ImageDropzoneProps['aspect']>, string> = 
   video: '16:9',
   banner: '64:27',
   square: 'square',
-  photo: '4:3',
   portrait: '4:5 portrait',
 };
 
 // Loose enough that 1920×1081 or a rounded export does not nag the admin.
 const ASPECT_TOLERANCE = 0.02;
 
+/** A label for the file-type error and hints: `image/jpeg` → `JPG`. */
+const typeName = (type: string) =>
+  type === 'image/jpeg' ? 'JPG' : type.replace('image/', '').toUpperCase();
+
 /**
  * The backend centre-crops every upload to the frame's shape. There is no crop
  * tool by design — admins are asked to upload art at the recommended size — so
- * an off-shape image is still accepted, but the admin is told the edges will go
- * rather than finding out on a phone.
+ * an off-shape or undersized image is still accepted, but the admin is told the
+ * edges will go, or that it may look soft, rather than finding out on a phone.
  */
-function warnIfOffShape(file: File, aspect: NonNullable<ImageDropzoneProps['aspect']>) {
+function warnIfOffShape(
+  file: File,
+  aspect: NonNullable<ImageDropzoneProps['aspect']>,
+  recommendedSize?: { width: number; height: number },
+) {
   const objectUrl = URL.createObjectURL(file);
   const img = new Image();
 
   img.onload = () => {
     URL.revokeObjectURL(objectUrl);
-    if (!img.naturalWidth || !img.naturalHeight) return;
+    const width = img.naturalWidth;
+    const height = img.naturalHeight;
+    if (!width || !height) return;
 
     const expected = ASPECT_RATIOS[aspect];
-    const actual = img.naturalWidth / img.naturalHeight;
-    if (Math.abs(actual - expected) / expected <= ASPECT_TOLERANCE) return;
+    const offShape = Math.abs(width / height - expected) / expected > ASPECT_TOLERANCE;
+    const tooSmall =
+      recommendedSize !== undefined &&
+      (width < recommendedSize.width || height < recommendedSize.height);
 
-    toast.warning(`This image is ${img.naturalWidth}×${img.naturalHeight}, not ${ASPECT_NAMES[aspect]}.`, {
+    if (!offShape && !tooSmall) return;
+
+    const size = recommendedSize ? `${recommendedSize.width}×${recommendedSize.height}` : null;
+
+    if (tooSmall && size) {
+      toast.warning(`This image is ${width}×${height}, smaller than ${size}.`, {
+        description: offShape
+          ? `It may look blurry on large screens, and its edges will be cropped to ${ASPECT_NAMES[aspect]}. Upload ${size} for the best result.`
+          : `It may look blurry on large screens. Upload ${size} for the best result.`,
+      });
+      return;
+    }
+
+    toast.warning(`This image is ${width}×${height}, not ${ASPECT_NAMES[aspect]}.`, {
       description: 'Its edges will be cropped. Upload the recommended size for the best result.',
     });
   };
@@ -90,6 +119,7 @@ export function ImageDropzone({
   onSelect,
   onRemove,
   aspect = 'video',
+  recommendedSize,
   acceptedTypes = DEFAULT_TYPES,
   maxBytes = DEFAULT_MAX_BYTES,
   hint,
@@ -105,8 +135,7 @@ export function ImageDropzone({
 
   const validate = (file: File): boolean => {
     if (!acceptedTypes.includes(file.type)) {
-      const names = acceptedTypes.map((type) => (type === 'image/jpeg' ? 'JPG' : type.replace('image/', '').toUpperCase()));
-      toast.error(`Use a ${names.join(' or ')} image.`);
+      toast.error(`Use a ${acceptedTypes.map(typeName).join(' or ')} image.`);
       return false;
     }
     if (file.size > maxBytes) {
@@ -118,7 +147,7 @@ export function ImageDropzone({
 
   const handleFile = (file: File | undefined) => {
     if (!file || !validate(file)) return;
-    warnIfOffShape(file, aspect);
+    warnIfOffShape(file, aspect, recommendedSize);
     onSelect(file);
   };
 
@@ -166,7 +195,6 @@ export function ImageDropzone({
           aspect === 'video' && 'aspect-video',
           aspect === 'banner' && 'aspect-64/27',
           aspect === 'square' && 'aspect-square',
-          aspect === 'photo' && 'aspect-4/3',
           // Capped, or a portrait frame in a narrow form column runs off-screen.
           aspect === 'portrait' && 'mx-auto aspect-4/5 max-w-xs',
           url ? 'border-solid border-border' : 'border-input',

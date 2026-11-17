@@ -40,7 +40,28 @@ export interface CompanySettings {
   community_floating_label_si: string | null;
   community_poster_url: string | null;
 
+  /**
+   * The website hero's figures strip, shared by every slide (Website
+   * Configuration > Hero Slider). Null = never saved, so the website shows its
+   * built-in figures; an empty list = the admin hid the strip.
+   */
+  hero_figures: HeroFigure[] | null;
+
   updated_at: string | null;
+}
+
+/** One figure in the hero strip, both language columns raw for the admin form. */
+export interface HeroFigure {
+  /** Short: "500+". */
+  value: string;
+  label: string;
+  /** Null = not translated yet; the website falls back to `label`. */
+  label_si: string | null;
+}
+
+/** Up to four rows. A row with a blank `value` is dropped by the server. */
+export interface SaveHeroFiguresPayload {
+  figures: { value: string | null; label: string | null; label_si: string | null }[];
 }
 
 export interface SaveBankDetailsPayload {

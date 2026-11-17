@@ -1,19 +1,49 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Container } from '@/components/shared/Container';
-import { Highlight } from '@/components/shared/Highlight';
 import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
 import { cn } from '@/lib/utils';
-import type { HeroSlide } from '@/features/marketing/homeContent';
+import { useHeroOverlayStore } from '@/stores/heroOverlayStore';
+import type { HeroFigure, HeroSlide } from '@/features/marketing/homeContent';
 import type { SiteCtaLink } from '@/features/marketing/siteLinks';
+
+import { TypingHeading } from './TypingHeading';
 
 const ADVANCE_MS = 7000;
 
+/** The public header's bar height (`h-20`). The hero is pulled up underneath it by this much. */
+const HEADER_PX = 80;
+
 /**
- * The hero: **copy and buttons on the left, slide artwork on the right.**
+ * The default background: the traveller at Dubai airport. Used by any slide the
+ * admin has not given an image, and by the built-in fallback slides, so the hero
+ * is never a flat navy panel.
+ *
+ * Each slide's own image (Website Configuration > Hero Slider, stored as
+ * 1920×1080) replaces this for that slide.
+ */
+const HERO_BACKGROUND = '/images/hero/airportbnr1.webp';
+
+/**
+ * Where the crop is anchored, so the main subject stays on screen whatever the
+ * window's shape. **Applies to admin uploads too**, and the admin upload hint
+ * asks for exactly this layout: the person on the right-of-centre, the left
+ * side calm enough for the text.
+ *
+ *  - 68% across is where the subject stands, so a narrowing screen (a phone)
+ *    crops the empty left side, not them.
+ *  - 40% down, not the bottom: on a screen wider than the photo the top and
+ *    bottom are cropped, and bottom-aligning would push a head up under the
+ *    floating header.
+ */
+const HERO_FOCUS = '68% 40%';
+
+/**
+ * The hero: **a full-bleed picture running up behind the header**, with the copy
+ * on the left and a fixed strip of business figures along the bottom.
  *
  * Built by hand rather than with a carousel package — the approved stack has no
  * carousel, and what matters here is accessibility rather than gestures.
@@ -23,14 +53,18 @@ const ADVANCE_MS = 7000;
  * way first — but it put **44 kB gzipped on the landing page to perform a
  * crossfade**, which is the page whose load time decides whether the site
  * ranks. Opacity and transform on a mounted element do the same thing for
- * nothing. Mounting every slide also means the artwork for slide two is already
- * decoded before it is shown, so the swap has no flash.
+ * nothing.
  *
  * The cost of keeping them mounted is that a screen reader and the Tab key can
  * otherwise reach three headings and six links where a visitor sees one — so
  * inactive slides are `aria-hidden` and every control inside them is taken out
  * of the tab order. That pairing is not optional; dropping either half is how
  * this pattern becomes unusable without a mouse.
+ *
+ * **The text never sits on the bare photo.** A navy scrim runs over every image
+ * (darkest under the copy), so the white heading and gold marked words keep
+ * their contrast whatever an admin uploads later. Without it, one bright photo
+ * would make the hero unreadable.
  *
  * The rest is the usual carousel etiquette, all deliberate:
  *  - stops on hover **and** on keyboard focus,
@@ -41,13 +75,21 @@ const ADVANCE_MS = 7000;
  *    announcing an unrequested slide change interrupts a screen reader
  *    mid-sentence.
  */
-export function HeroSlider({ slides }: { slides: HeroSlide[] }) {
+export function HeroSlider({
+  slides,
+  figures,
+}: {
+  slides: HeroSlide[];
+  /** The strip under every slide. Empty hides it. */
+  figures: HeroFigure[];
+}) {
   const reduceMotion = usePrefersReducedMotion();
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   /** True once the visitor has used the dots or arrows — see the live region. */
   const [userDriven, setUserDriven] = useState(false);
   const rootRef = useRef<HTMLElement>(null);
+  const setUnderHeader = useHeroOverlayStore((s) => s.setUnderHeader);
 
   const count = slides.length;
 
@@ -69,12 +111,39 @@ export function HeroSlider({ slides }: { slides: HeroSlide[] }) {
     return () => window.clearInterval(timer);
   }, [reduceMotion, paused, count]);
 
+  /*
+   * Tell the header whether the photo is behind it, so it floats over the hero
+   * and turns solid once the hero has scrolled away. A layout effect so the
+   * header is already floating on the first paint, not solid for one frame.
+   */
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+
+    const update = () => setUnderHeader(root.getBoundingClientRect().bottom > HEADER_PX + 12);
+
+    update();
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+
+    return () => {
+      window.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+      setUnderHeader(false);
+    };
+  }, [setUnderHeader, count]);
+
   if (count === 0) return null;
 
   return (
     <section
       ref={rootRef}
-      className="relative overflow-hidden bg-surface text-surface-foreground"
+      /*
+       * `-mt-20` pulls the hero up under the sticky header, so the photo runs to
+       * the top of the window. `isolate` keeps the background layers' `-z-10`
+       * inside this section instead of behind the page.
+       */
+      className="relative isolate -mt-20 flex min-h-svh flex-col lg:h-svh lg:min-h-[36rem] overflow-hidden bg-surface text-surface-foreground"
       aria-roledescription="carousel"
       aria-label="Plan B International"
       onMouseEnter={() => setPaused(true)}
@@ -89,16 +158,62 @@ export function HeroSlider({ slides }: { slides: HeroSlide[] }) {
         if (event.key === 'ArrowLeft') goTo(index - 1);
       }}
     >
-      {/* Decorative wash — carries no meaning, so it is hidden. */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -right-24 -top-24 size-[28rem] rounded-full bg-accent/10 blur-3xl"
-      />
+      {/* ------------------------------------------------------ background */}
+      <div className="absolute inset-0 -z-10" aria-hidden="true">
+        {/*
+          One image per slide, stacked and crossfaded like the copy. Slides that
+          share a background (every slide without its own image) are the same
+          URL, so the browser downloads it once and the crossfade is invisible.
+        */}
+        {slides.map((slide, slideIndex) => (
+          <img
+            key={slide.id}
+            src={slide.imageUrl ?? HERO_BACKGROUND}
+            alt=""
+            className={cn(
+              'absolute inset-0 size-full object-cover',
+              !reduceMotion && 'transition-opacity duration-700 ease-out',
+              slideIndex === index ? 'opacity-100' : 'opacity-0',
+            )}
+            style={{ objectPosition: HERO_FOCUS }}
+            // The first slide is the largest element above the fold: never
+            // deprioritise it. The rest are not needed until it rotates.
+            loading={slideIndex === 0 ? 'eager' : 'lazy'}
+            fetchPriority={slideIndex === 0 ? 'high' : 'low'}
+            decoding="async"
+          />
+        ))}
 
-      <Container className="relative grid items-center gap-8 py-10 sm:py-14 lg:grid-cols-2 lg:gap-10 lg:py-16">
+        {/*
+          The scrim — see the docblock. **From `lg` it covers the copy only**:
+          dark at the left edge, half-strength at 35%, and fully clear by 60%,
+          so everything right of the text (the traveller, the Burj Khalifa) is
+          shown at full brightness. Explicit stop positions matter here — with
+          Tailwind's default stops the fade runs the whole width and dims the
+          subject too (client feedback, 2026-11-17).
+
+          On a phone the copy covers the whole width, so the whole picture is
+          shaded, darkest at the bottom where the buttons and figures sit.
+        */}
+        <div
+          className={cn(
+            'absolute inset-0 bg-gradient-to-t from-surface/90 via-surface/60 to-surface/25',
+            'lg:bg-gradient-to-r lg:from-surface/90 lg:from-0% lg:via-surface/55 lg:via-35% lg:to-transparent lg:to-60%',
+          )}
+        />
+        {/* Just enough behind the figures strip for its text; short, so the
+            traveller's feet and suitcase above it stay bright. */}
+        <div className="absolute inset-x-0 bottom-0 hidden h-28 bg-gradient-to-t from-surface/60 to-transparent lg:block" />
+      </div>
+
+      {/*
+        Top padding clears the floating header plus the logo that hangs below
+        it: 92px of bar on a phone, up to 124px of logo at `lg`.
+      */}
+      <Container className="flex min-h-0 flex-1 flex-col pt-32 pb-6 sm:pt-40 sm:pb-8 lg:pt-40 short:pt-32 short:pb-5">
         {/* ------------------------------------------------------------ copy */}
         <div
-          className="flex flex-col justify-center"
+          className="flex min-h-0 max-w-2xl flex-1 flex-col justify-center"
           aria-live={userDriven && !paused ? 'polite' : 'off'}
           aria-atomic="true"
         >
@@ -134,18 +249,8 @@ export function HeroSlider({ slides }: { slides: HeroSlide[] }) {
           ) : null}
         </div>
 
-        {/* --------------------------------------------------------- artwork */}
-        <div className="relative hidden lg:grid" aria-hidden="true">
-          {slides.map((slide, slideIndex) => (
-            <HeroArtwork
-              key={slide.id}
-              slide={slide}
-              isActive={slideIndex === index}
-              isFirst={slideIndex === 0}
-              reduceMotion={reduceMotion}
-            />
-          ))}
-        </div>
+        {/* ---------------------------------------------------------- figures */}
+        <HeroFigures figures={figures} />
       </Container>
     </section>
   );
@@ -179,23 +284,24 @@ function HeroCopy({
         !reduceMotion && (isActive ? 'translate-y-0' : 'translate-y-2'),
       )}
     >
-      {/* The chip and the paragraph are both optional for an admin-written
-          slide. Rendered conditionally so a blank one is absent rather than an
-          empty bordered pill or a stray gap above the buttons. */}
+      {/* The eyebrow and the paragraph are both optional for an admin-written
+          slide. Rendered conditionally so a blank one leaves no stray gap. */}
       {slide.eyebrow ? (
-        <span className="inline-flex items-center rounded-full border border-surface-border bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-accent">
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent sm:text-sm">
           {slide.eyebrow}
-        </span>
+        </p>
       ) : null}
 
-      <h1 className="mt-3 text-3xl font-bold leading-[1.15] tracking-tight sm:text-4xl lg:text-5xl">
-        {/* No colour override: `Highlight` is `--accent` everywhere now, and on
-            this navy that gold measures 7.5:1. */}
-        <Highlight text={slide.heading} />
-      </h1>
+      {/* White with gold marked words — gold on this navy scrim is 7.5:1. */}
+      <TypingHeading
+        text={slide.heading}
+        isActive={isActive}
+        reduceMotion={reduceMotion}
+        className="mt-3 text-4xl font-bold leading-[1.1] tracking-tight text-white sm:text-5xl lg:text-6xl short:text-[clamp(2.25rem,6.2vh,3.25rem)]"
+      />
 
       {slide.body ? (
-        <p className="mt-3 max-w-xl text-base leading-relaxed text-surface-muted sm:text-lg">
+        <p className="mt-4 max-w-xl text-base leading-relaxed text-surface-foreground sm:text-lg short:mt-3 short:text-base">
           {slide.body}
         </p>
       ) : null}
@@ -203,7 +309,7 @@ function HeroCopy({
       {/* Either button can be absent: an admin may set a slide to show one, or
           none at all. The row simply collapses. */}
       {slide.primaryCta || slide.secondaryCta ? (
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+        <div className="mt-7 flex flex-col gap-3 sm:flex-row short:mt-5">
           {slide.primaryCta ? (
             <CtaButton cta={slide.primaryCta} variant="accent" tabIndex={tabIndex} withArrow />
           ) : null}
@@ -246,7 +352,13 @@ function CtaButton({
   );
 
   return (
-    <Button asChild variant={variant} size="xl">
+    <Button
+      asChild
+      variant={variant}
+      size="xl"
+      // Frosted rather than see-through, so the outline button holds up over a busy photo.
+      className={cn(variant === 'onSurface' && 'bg-white/10 backdrop-blur-sm')}
+    >
       {cta.isExternal ? (
         <a href={cta.to} tabIndex={tabIndex} target="_blank" rel="noreferrer noopener">
           {label}
@@ -260,63 +372,50 @@ function CtaButton({
   );
 }
 
-function HeroArtwork({
-  slide,
-  isActive,
-  isFirst,
-  reduceMotion,
-}: {
-  slide: HeroSlide;
-  isActive: boolean;
-  isFirst: boolean;
-  reduceMotion: boolean;
-}) {
-  const Icon = slide.icon;
+/** Literal classes so Tailwind's scanner sees them — never built from a number. */
+const FIGURE_COLUMNS: Record<number, string> = {
+  1: 'lg:grid-cols-1',
+  2: 'lg:grid-cols-2',
+  3: 'lg:grid-cols-3',
+  4: 'lg:grid-cols-4',
+};
+
+/**
+ * The strip of business figures along the bottom of the hero (admin-managed,
+ * up to four). It does not change with the slide. Two by two on a phone, one
+ * row from `lg`; an odd one out on a phone spans the full width.
+ */
+function HeroFigures({ figures }: { figures: HeroFigure[] }) {
+  const total = figures.length;
+
+  if (total === 0) return null;
 
   return (
-    <div
-      style={{ gridArea: '1 / 1' }}
+    <dl
       className={cn(
-        'relative aspect-[4/3] w-full overflow-hidden rounded-2xl border border-surface-border bg-white/5 transition-opacity duration-500 ease-out',
-        isActive ? 'opacity-100' : 'opacity-0',
-        !reduceMotion && (isActive ? 'scale-100' : 'scale-[0.98]'),
-        !reduceMotion && 'motion-safe:transition-[opacity,transform]',
+        'mt-8 grid grid-cols-2 rounded-xl border border-white/10 bg-surface/70 backdrop-blur-md lg:mt-10 short:mt-4',
+        FIGURE_COLUMNS[total] ?? FIGURE_COLUMNS[4],
       )}
     >
-      {slide.imageUrl ? (
-        <img
-          src={slide.imageUrl}
-          alt=""
-          className="size-full object-cover"
-          /* The first slide is the largest element painted above the fold, so
-             it must not be deprioritised behind the rest of the page. */
-          loading={isFirst ? 'eager' : 'lazy'}
-          fetchPriority={isFirst ? 'high' : 'auto'}
-          decoding="async"
-        />
-      ) : (
-        /*
-         * A designed fallback, not a broken-image box. The client has not
-         * supplied hero artwork yet, and an empty panel reads as a bug in
-         * review. `CMS-3` puts a real upload behind `imageUrl`.
-         */
-        <div className="flex size-full items-center justify-center bg-gradient-to-br from-white/10 to-transparent">
-          <Icon className="size-28 text-accent/40" aria-hidden="true" strokeWidth={1.25} />
+      {figures.map((figure, figureIndex) => (
+        <div
+          key={`${figureIndex}-${figure.label}`}
+          className={cn(
+            'flex flex-col-reverse px-4 py-4 sm:px-6 sm:py-5 short:py-3',
+            // Hairline dividers: between columns, and between the two rows on a phone.
+            figureIndex % 2 === 1 && 'border-l border-white/10',
+            figureIndex >= 2 && 'border-t border-white/10 lg:border-t-0',
+            figureIndex > 0 && 'lg:border-l',
+            total % 2 === 1 && figureIndex === total - 1 && 'max-lg:col-span-2',
+          )}
+        >
+          {/* `flex-col-reverse` keeps the value on top visually while the
+              label stays first in the source, as a `<dt>` must be. */}
+          <dt className="mt-1.5 text-xs text-surface-foreground sm:text-sm">{figure.label}</dt>
+          <dd className="text-2xl font-semibold leading-none text-accent sm:text-3xl short:text-2xl">{figure.value}</dd>
         </div>
-      )}
-
-      {/* Floating figures — the reference's "500+ Active Students" motif. */}
-      <div className="absolute bottom-5 left-5 flex gap-3">
-        {slide.stats.map((stat) => (
-          <div key={stat.label} className="rounded-xl bg-background/95 px-4 py-2.5 text-center shadow-lg">
-            <p className="text-lg font-bold leading-none text-primary">{stat.value}</p>
-            <p className="mt-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-              {stat.label}
-            </p>
-          </div>
-        ))}
-      </div>
-    </div>
+      ))}
+    </dl>
   );
 }
 
@@ -336,7 +435,7 @@ function HeroControls({
   onTogglePause: () => void;
 }) {
   return (
-    <div className="mt-6 flex items-center gap-3">
+    <div className="mt-6 flex items-center gap-3 short:mt-4">
       <div className="flex gap-2" role="tablist" aria-label="Slides">
         {slides.map((item, itemIndex) => (
           <button
@@ -344,7 +443,7 @@ function HeroControls({
             type="button"
             role="tab"
             aria-selected={itemIndex === index}
-            /* The chip is the slide's name for a screen reader, but it is
+            /* The eyebrow is the slide's name for a screen reader, but it is
                optional content — an admin may leave it blank, and an unlabelled
                tab is unusable. The position is the honest fallback. */
             aria-label={item.eyebrow || `Slide ${itemIndex + 1}`}
@@ -358,14 +457,14 @@ function HeroControls({
             <span
               className={cn(
                 'block h-1 rounded-full transition-all',
-                itemIndex === index ? 'w-8 bg-accent' : 'w-4 bg-white/25 group-hover:bg-white/50',
+                itemIndex === index ? 'w-8 bg-accent' : 'w-4 bg-white/30 group-hover:bg-white/60',
               )}
             />
           </button>
         ))}
       </div>
 
-      <div className="ml-auto flex items-center gap-1">
+      <div className="flex items-center gap-1 sm:ml-4">
         {/* Nothing is moving under reduced motion, so there is nothing to pause. */}
         {reduceMotion ? null : (
           <Button

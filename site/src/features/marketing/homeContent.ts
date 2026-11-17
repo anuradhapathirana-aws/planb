@@ -46,13 +46,35 @@ export interface HeroSlide {
    */
   primaryCta: SiteCtaLink | null
   secondaryCta?: SiteCtaLink | null
-  /** Admin-uploaded artwork. Null draws the designed fallback panel. */
+  /** Admin-uploaded full-screen background. Null uses `HERO_BACKGROUND` in `HeroSlider`. */
   imageUrl: string | null
-  /** Drawn in the fallback panel, and as the slide's dot label for screen readers. */
+  /** Not drawn by the full-bleed hero; kept because the API mapping still supplies it. */
   icon: LucideIcon
-  /** Two small figures that float over the artwork. Presentation only. */
+  /** Per-slide figures. Not drawn by the full-bleed hero, which shows the shared `HeroFigure` strip. */
   stats: { value: string; label: string }[]
 }
+
+/** One figure in the strip along the bottom of the hero. */
+export interface HeroFigure {
+  value: string
+  label: string
+}
+
+/**
+ * The figures strip when the admin has never saved one (Website Configuration
+ * > Hero Slider > Figures strip). Shared by every slide.
+ *
+ * **SAMPLE FIGURES (2026-11-17), not confirmed by the client.** They repeat
+ * numbers already shown elsewhere on the site rather than inventing new claims.
+ * Once an admin saves the strip, theirs replace these — including an empty
+ * strip, which hides it.
+ */
+export const heroFigures: HeroFigure[] = [
+  { value: '500+', label: 'Students guided' },
+  { value: '12+', label: 'Professions covered' },
+  { value: '40+', label: 'Checklist steps to the UAE' },
+  { value: '2', label: 'Languages: English & Sinhala' },
+]
 
 /**
  * The designed fallback hero, shown when no admin slide is visible.

@@ -197,6 +197,8 @@ Route::prefix('v1/admin')->group(function () {
         Route::put('/company-settings/website', [CompanySettingController::class, 'updateWebsiteContent']);
         Route::post('/company-settings/community-poster', [CompanySettingController::class, 'uploadCommunityPoster']);
         Route::delete('/company-settings/community-poster', [CompanySettingController::class, 'deleteCommunityPoster']);
+        // The hero's figures strip — shared by every slide, so not a slide field.
+        Route::put('/company-settings/hero-figures', [CompanySettingController::class, 'updateHeroFigures']);
 
         Route::post('/site-hero-slides/reorder', [SiteHeroSlideController::class, 'reorder']);
         Route::post('/site-hero-slides/{site_hero_slide}/image', [SiteHeroSlideController::class, 'uploadImage']);

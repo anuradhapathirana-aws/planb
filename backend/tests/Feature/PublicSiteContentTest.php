@@ -206,4 +206,41 @@ class PublicSiteContentTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.hero_slides.0.heading', 'English heading');
     }
+
+    /** Null, not [] — the website keeps its built-in figures only for "never saved". */
+    public function test_figures_never_saved_are_null(): void
+    {
+        $this->getJson(self::URL)
+            ->assertOk()
+            ->assertJsonPath('data.hero_figures', null);
+    }
+
+    public function test_figures_arrive_in_the_visitors_language_without_the_raw_columns(): void
+    {
+        CompanySetting::query()->firstOrFail()->update([
+            'hero_figures' => [
+                ['value' => '500+', 'label' => 'Students guided', 'label_si' => 'සිසුන්'],
+                ['value' => '12+', 'label' => 'Professions covered', 'label_si' => null],
+            ],
+        ]);
+
+        $this->withHeaders(['Accept-Language' => 'si'])
+            ->getJson(self::URL)
+            ->assertOk()
+            // An exact match, so a `label_si` key leaking through fails too.
+            ->assertJsonPath('data.hero_figures', [
+                ['value' => '500+', 'label' => 'සිසුන්'],
+                // A blank Sinhala label falls back to English.
+                ['value' => '12+', 'label' => 'Professions covered'],
+            ]);
+    }
+
+    public function test_an_emptied_strip_is_an_empty_list(): void
+    {
+        CompanySetting::query()->firstOrFail()->update(['hero_figures' => []]);
+
+        $this->getJson(self::URL)
+            ->assertOk()
+            ->assertJsonPath('data.hero_figures', []);
+    }
 }

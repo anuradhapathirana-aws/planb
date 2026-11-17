@@ -2,6 +2,14 @@
 @import "tw-animate-css";
 
 /*
+ * `short:` — a laptop-width screen with little height: most laptops once the
+ * browser's own bars are taken off (1366×768 leaves ~650px; 1920×1080 at 125%
+ * leaves ~730px). The full-screen hero tightens itself under this so its
+ * figures strip stays on screen — see `HeroSlider`.
+ */
+@custom-variant short (@media (min-width: 1024px) and (max-height: 820px));
+
+/*
  * Plan B brand tokens. Mirrors `shared/src/theme/tokens.json` and `web/`'s
  * palette so the admin panel, the website and the app are visibly one product.
  *
@@ -154,6 +162,29 @@
   /* Radix Accordion's open/close. `tw-animate-css` does not ship these. */
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
+
+  /* The hero heading's typing cursor — see `TypingHeading`. `step-end` makes it
+     blink on/off like a real caret instead of fading. */
+  --animate-caret-blink: caret-blink 1s step-end infinite;
+
+  /* The Quick Chat avatar's slow bob — see `WhatsAppButton`. */
+  --animate-float: float 3.5s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes caret-blink {
+  50% {
+    opacity: 0;
+  }
 }
 
 @keyframes accordion-down {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { FocusEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Facebook, Linkedin, type LucideIcon } from 'lucide-react';
@@ -6,8 +6,14 @@ import { Facebook, Linkedin, type LucideIcon } from 'lucide-react';
 import { Container } from '@/components/shared/Container';
 import { SectionHeading } from '@/components/shared/SectionHeading';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { CAROUSEL_ITEM_CLASSES, CAROUSEL_TRACK_CLASSES } from '@/components/shared/SnapCarousel';
+import {
+  CAROUSEL_ITEM_CLASSES,
+  CAROUSEL_TRACK_CLASSES,
+  CarouselArrows,
+  useSnapCarousel,
+} from '@/components/shared/SnapCarousel';
 import { useLoopingCarousel } from '@/components/shared/useLoopingCarousel';
+import { useMediaQuery } from '@/lib/useMediaQuery';
 import { usePrefersReducedMotion } from '@/lib/usePrefersReducedMotion';
 import { cn } from '@/lib/utils';
 import type { TeamMember } from '@/features/marketing/homeContent';
@@ -18,9 +24,12 @@ import type { TeamMember } from '@/features/marketing/homeContent';
  *
  * **It rotates on its own** (client instruction, 2026-09-26): one card along
  * every 3 seconds, looping forever — see `useLoopingCarousel` for how the loop
- * stays seamless. **Whole cards only**: 5 on a laptop, 3 on a tablet, 2 on a
- * phone, no half-card peek. Still no dots or arrows; the row can be swiped or
- * dragged as before.
+ * stays seamless. **Whole cards**: 5 on a laptop, 3 on a tablet, no half-card
+ * peek, no dots or arrows; the row can be swiped or dragged as before.
+ *
+ * **On a phone it does not rotate** (client instruction, 2026-11-17): one and a
+ * half cards, swiped or stepped with the arrows and "2 / 6" counter under the
+ * strip, matching Our Programmes.
  *
  * **It stops** while the pointer is over the row, while anything in it has
  * keyboard focus (a link must not slide away from under the Tab key), while a
@@ -39,10 +48,30 @@ export function TeamSection({ id, members }: { id?: string; members: TeamMember[
   // The card a touch-screen visitor tapped to see its profile links.
   const [openId, setOpenId] = useState<number | null>(null);
 
-  const { trackRef, canLoop } = useLoopingCarousel({
+  /*
+   * Phones get arrows and a "2 / 6" counter instead of the auto-rotating loop
+   * (client instruction, 2026-11-17). The two cannot share a strip: the loop
+   * renders every person twice and wraps around, so a counter would read 7 / 12
+   * and jump back. Below `sm` the loop is switched off — no copies, no movement —
+   * and `useSnapCarousel` drives the strip one card at a time.
+   */
+  const isPhone = useMediaQuery('(max-width: 639px)');
+
+  const { trackRef: loopRef, canLoop } = useLoopingCarousel({
     itemCount: members.length,
     paused: reducedMotion || hovered || focused || openId !== null,
+    enabled: !isPhone,
   });
+  const { trackRef: snapRef, page, pageCount, goToPage } = useSnapCarousel({ by: 'item' });
+
+  // One element, two hooks measuring it.
+  const trackRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      loopRef(node);
+      snapRef(node);
+    },
+    [loopRef, snapRef],
+  );
 
   // A tap anywhere outside the open card closes it, which also resumes the row.
   useEffect(() => {
@@ -65,7 +94,7 @@ export function TeamSection({ id, members }: { id?: string; members: TeamMember[
   const toggle = (member: TeamMember) => setOpenId((current) => (current === member.id ? null : member.id));
 
   return (
-    <section id={id} className="scroll-mt-20 bg-muted/40 py-12 sm:py-14">
+    <section id={id} className="scroll-mt-20 bg-muted/40 py-9 sm:py-11">
       <Container>
         <SectionHeading align="center" title={t('site.team.heading')} body={t('site.team.body')} />
 
@@ -82,7 +111,7 @@ export function TeamSection({ id, members }: { id?: string; members: TeamMember[
           */
           <div
             ref={trackRef}
-            className={cn(CAROUSEL_TRACK_CLASSES, 'relative mt-8 pt-2 pb-10')}
+            className={cn(CAROUSEL_TRACK_CLASSES, 'relative mt-6 pt-2 pb-10')}
             role="list"
             aria-label={t('site.team.heading')}
             onMouseEnter={() => setHovered(true)}
@@ -105,6 +134,19 @@ export function TeamSection({ id, members }: { id?: string; members: TeamMember[
               : null}
           </div>
         )}
+
+        {/* Phones only: the same arrows and counter as Our Programmes. */}
+        {members.length > 0 ? (
+          <CarouselArrows
+            page={page}
+            pageCount={pageCount}
+            onGoTo={goToPage}
+            variant="bar"
+            // A small gap under the name plates, which hang into the track's
+            // bottom padding and otherwise sit right on top of the arrows.
+            className="mt-3 sm:hidden"
+          />
+        ) : null}
       </Container>
     </section>
   );

@@ -7,6 +7,7 @@ import {
   Image as ImageIcon,
   Pencil,
   Plus,
+  Ruler,
   Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -14,7 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { StatusBadge } from '@/components/shared/StatusBadge';
-import { SITE_HERO_ICON_GLYPHS } from '@/features/admin/website/heroIcons';
+import { HeroFiguresCard } from '@/features/admin/website/components/HeroFiguresCard';
 import {
   useDeleteSiteHeroSlide,
   useReorderSiteHeroSlides,
@@ -88,6 +89,17 @@ export function HeroSlidesPage() {
         </Button>
       </div>
 
+      <HeroFiguresCard />
+
+      <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+        <Ruler className="mt-0.5 size-3.5 shrink-0" />
+        <span>
+          Slide images fill the whole screen. Upload them at{' '}
+          <span className="font-semibold text-foreground">1920 × 1080 px</span> (JPG, PNG or WebP,
+          up to 8 MB), with the person on the right — the text sits on the left.
+        </span>
+      </p>
+
       {list.length === 0 ? (
         <EmptyState
           icon={ImageIcon}
@@ -156,7 +168,6 @@ function SlideCard({
   onEdit,
   onDelete,
 }: SlideCardProps) {
-  const FallbackIcon = SITE_HERO_ICON_GLYPHS[slide.icon];
   const primaryLabel = SITE_LINK_TARGETS.find(
     (option) => option.value === slide.primary_cta_target,
   )?.label;
@@ -170,10 +181,9 @@ function SlideCard({
 
   return (
     <div className="flex flex-col overflow-hidden rounded-lg border">
-      {/* 4:3 — the shape the website reserves and the shape uploads are cropped
-          to. A preview in a different ratio would show a crop the visitor never
-          gets. */}
-      <div className="relative aspect-4/3 bg-secondary">
+      {/* 16:9 — the full-screen shape uploads are cropped to. A preview in a
+          different ratio would show a crop the visitor never gets. */}
+      <div className="relative aspect-video bg-secondary">
         {slide.image_url ? (
           <img
             src={slide.image_url}
@@ -182,8 +192,10 @@ function SlideCard({
           />
         ) : (
           <div className="flex size-full flex-col items-center justify-center gap-1.5 text-muted-foreground">
-            <FallbackIcon className="size-7" />
-            <p className="px-3 text-center text-xs">No image — shows the designed panel</p>
+            <ImageIcon className="size-7" />
+            <p className="px-3 text-center text-xs">
+              No image — uses the website’s default banner photo
+            </p>
           </div>
         )}
 

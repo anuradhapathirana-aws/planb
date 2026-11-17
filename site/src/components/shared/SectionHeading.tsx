@@ -11,14 +11,15 @@ import { cn } from '@/lib/utils';
  * fourth heading size and knock the page's rhythm out.
  *
  * **The home page's vertical rhythm, tightened at the client's request
- * (2026-09-25).** A new section should match it rather than pick its own:
+ * (2026-09-25, and again 2026-11-17).** A new section should match it rather
+ * than pick its own:
  *
  * | Where | Value |
  * |---|---|
- * | Section wrapper | `py-12 sm:py-14` |
- * | Hero (taller by design) | `py-10 sm:py-14 lg:py-16` |
+ * | Section wrapper | `py-9 sm:py-11` |
+ * | Hero | full screen — see `HeroSlider` |
  * | Two-column grid gap | `gap-8 lg:gap-10` |
- * | Heading → content below | `mt-8` |
+ * | Heading → content below | `mt-6` |
  * | Inside this block | `gap-3`, title `mt-2.5`, body `mt-2` |
  *
  * The title's marked word is `--accent` (#f19f00) — see `Highlight`, which owns

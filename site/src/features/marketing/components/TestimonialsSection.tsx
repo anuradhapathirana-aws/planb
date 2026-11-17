@@ -27,7 +27,8 @@ const CLOSE_DELAY_MS = 180;
  * scales with the viewport. The field is full-bleed and clips, so the outermost
  * cards run off both edges and the wall reads as a crowd rather than a row.
  *
- * Below `lg` the canopy is abandoned entirely for a snap-scrolling strip.
+ * Below `lg` the canopy is abandoned for a swipeable row bent into an arch,
+ * placed under the title with the button beneath it — see `TestimonialCurve`.
  * Thirteen overlapping rotated cards cannot be shrunk into 360px — attempting
  * it produces either a pile or stamp-sized faces — and a horizontal strip is
  * the native way to show "lots of these" on a phone anyway.
@@ -74,33 +75,7 @@ export function TestimonialsSection({ id, testimonials }: { id?: string; testimo
   const cardProps = { openId, onOpen: open, onScheduleClose: scheduleClose, onCancelClose: cancelClose };
 
   return (
-    <section id={id} className="relative scroll-mt-20 overflow-hidden bg-background pb-12 sm:pb-14">
-      {/* --------------------------------------------- strip (below lg) */}
-      {/*
-        No `aria-hidden` on either the strip or the canopy, even though the two
-        render the same thirteen people. `lg:hidden` / `hidden lg:block` apply
-        `display: none`, which already removes the inactive one from the
-        accessibility tree, so exactly one copy is ever exposed. `aria-hidden`
-        would instead leave thirteen still-focusable buttons hidden from screen
-        readers — the "focusable but hidden" fault, not a fix for duplication.
-      */}
-      <div className="lg:hidden">
-        <div
-          // `gap-2` echoes the tight packing of the desktop wall.
-          className="flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 py-8"
-          // A horizontally scrolling row of people is a list, and saying so is
-          // what lets a screen reader announce "3 of 13" while moving through it.
-          role="list"
-          aria-label={t('site.testimonials.listLabel')}
-        >
-          {testimonials.map((person) => (
-            <div key={person.id} role="listitem" className="w-[5.5rem] shrink-0 snap-center sm:w-24">
-              <TestimonialCard person={person} {...cardProps} />
-            </div>
-          ))}
-        </div>
-      </div>
-
+    <section id={id} className="relative scroll-mt-20 overflow-hidden bg-background pb-9 sm:pb-11">
       {/*
         Everything below shares ONE `Container`, so the canopy spans exactly the
         same width as the Programmes grid and the About band — the page keeps a
@@ -157,8 +132,11 @@ export function TestimonialsSection({ id, testimonials }: { id?: string; testimo
             field's height is: the copy has to start at a consistent point
             relative to the canopy above it, at every width. 25% ≈ 72% of the
             way down the field, which is where the reference puts the chip.
+
+            Below `lg` there is no canopy above, so the top padding is the
+            ordinary section rhythm instead.
           */}
-          <div className="relative mx-auto max-w-2xl pt-4 text-center lg:pt-[25%]">
+          <div className="relative mx-auto max-w-2xl pt-9 text-center sm:pt-11 lg:pt-[25%]">
             <span className="inline-flex items-center rounded-full border bg-card px-3 py-1 text-xs font-semibold text-muted-foreground">
               {t('site.nav.testimonials')}
             </span>
@@ -182,11 +160,30 @@ export function TestimonialsSection({ id, testimonials }: { id?: string; testimo
             </p>
 
             {/*
+              Below `lg`: the faces under the title, on a curve, with the button
+              under them (client instruction, 2026-11-17).
+
+              No `aria-hidden` on either this or the canopy, even though the two
+              render the same people. `lg:hidden` / `hidden lg:block` apply
+              `display: none`, which already removes the inactive one from the
+              accessibility tree, so exactly one copy is ever exposed.
+              `aria-hidden` would instead leave still-focusable buttons hidden
+              from screen readers — the "focusable but hidden" fault.
+            */}
+            <TestimonialCurve
+              testimonials={testimonials}
+              label={t('site.testimonials.listLabel')}
+              {...cardProps}
+            />
+
+            {/*
               Points at Courses, not `/#success-stories` — that section is
               hidden for now, and a CTA that scrolls nowhere is worse than no
               CTA. See the note in HomePage.tsx.
             */}
-            <Button asChild size="lg" className="mt-6 rounded-full">
+            {/* No top margin below `lg`: the curve's own bottom padding already
+                holds room for its lowest cards, so the button sits right under it. */}
+            <Button asChild size="lg" className="rounded-full lg:mt-6">
               <Link to={paths.courses}>
                 {t('site.testimonials.cta')}
                 <ArrowRight className="size-4" aria-hidden="true" />
@@ -196,6 +193,152 @@ export function TestimonialsSection({ id, testimonials }: { id?: string; testimo
         </div>
       </Container>
     </section>
+  );
+}
+
+/** How far the outermost visible cards drop, in px, and how far they tilt. */
+const CURVE_DROP_PX = 60;
+const CURVE_TILT_DEG = 18;
+/** The middle card stays full size; the ones either side are about 85% of it. */
+const CURVE_SHRINK = 0.25;
+
+/**
+ * The faces on a phone or tablet: a swipeable row bent into an arch (client
+ * instruction, 2026-11-17). The card in the middle of the screen sits highest,
+ * largest and upright; cards further out drop, tilt away and shrink, and the
+ * arch moves with the finger.
+ *
+ * **Native scroll underneath, transforms on top.** The row is an ordinary
+ * scroll-snap strip, so swiping, momentum and keyboard scrolling all come from
+ * the browser. On each scroll frame every card is given a transform from its
+ * distance to the centre — written straight to the element rather than through
+ * React state, because re-rendering thirteen popovers sixty times a second to
+ * move them would stutter.
+ *
+ * The distance is measured from `offsetLeft`, never `getBoundingClientRect`:
+ * the rect includes the transform just applied, so it would feed each frame's
+ * tilt back into the next frame's measurement.
+ *
+ * It opens on the middle person, so the whole arch is on screen from the start
+ * rather than half of it hanging off the left edge, and both ends fade out.
+ * This is scroll-driven, not animation, so it stays under reduced motion: it
+ * only moves when the visitor moves it.
+ */
+function TestimonialCurve({
+  testimonials,
+  label,
+  ...cardProps
+}: {
+  testimonials: Testimonial[];
+  label: string;
+  openId: number | null;
+  onOpen: (id: number) => void;
+  onScheduleClose: () => void;
+  onCancelClose: () => void;
+}) {
+  const trackRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const track = trackRef.current;
+    if (!track) return;
+
+    let frame = 0;
+
+    const update = () => {
+      frame = 0;
+      const half = track.clientWidth / 2;
+      if (half === 0) return; // Hidden at `lg`; nothing to lay out.
+
+      for (const item of Array.from(track.children) as HTMLElement[]) {
+        const centre = item.offsetLeft + item.offsetWidth / 2 - track.scrollLeft;
+        // -1 at the left edge, 0 in the middle, 1 at the right edge. Capped a
+        // little past the edge so the cards peeking in do not drop out of the
+        // strip's clip and show a hard cut.
+        const d = Math.max(-1.15, Math.min(1.15, (centre - half) / half));
+        const scale = 1 - Math.abs(d) * CURVE_SHRINK;
+        // Shrinking about the centre opens a gap beside each card; slide it
+        // back towards the middle by the width it lost, so the row stays tight.
+        const pull = -Math.sign(d) * ((item.offsetWidth * (1 - scale)) / 2);
+
+        item.style.transform =
+          `translateX(${pull.toFixed(1)}px) ` +
+          `translateY(${(d * d * CURVE_DROP_PX).toFixed(1)}px) ` +
+          `rotate(${(d * CURVE_TILT_DEG).toFixed(2)}deg) ` +
+          `scale(${scale.toFixed(3)})`;
+      }
+    };
+
+    const schedule = () => {
+      if (!frame) frame = window.requestAnimationFrame(update);
+    };
+
+    // Start on the middle person, so the full arch shows on arrival.
+    track.scrollLeft = (track.scrollWidth - track.clientWidth) / 2;
+    update();
+
+    track.addEventListener('scroll', schedule, { passive: true });
+    // A rotation, or the section un-hiding below `lg`, changes the centre.
+    const observer = new ResizeObserver(schedule);
+    observer.observe(track);
+
+    return () => {
+      track.removeEventListener('scroll', schedule);
+      observer.disconnect();
+      if (frame) window.cancelAnimationFrame(frame);
+    };
+  }, [testimonials.length]);
+
+  return (
+    /* Full bleed: breaks out of the centred copy column to the screen edges,
+       so the arch can run off both sides. The section clips the overflow. */
+    <div className="mx-[calc(50%-50vw)] lg:hidden">
+      <div
+        ref={trackRef}
+        className={cn(
+          // `relative` makes the track the cards' `offsetParent` — the maths
+          // above depends on it.
+          'relative flex snap-x snap-mandatory gap-1 overflow-x-auto',
+          /*
+           * `overflow-y-hidden` is required, not tidying. Transformed cards
+           * count towards a scroll container's overflow, and `overflow-x: auto`
+           * alone makes the other axis `auto` too — so the dropped, tilted cards
+           * turned the strip into a small box that scrolled up and down on its
+           * own (client report, 2026-11-17). Clipping the vertical axis leaves
+           * only the sideways swipe, and a vertical swipe scrolls the page.
+           */
+          'overflow-y-hidden overscroll-x-contain',
+          '[scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+          // Side padding of half the screen minus half a card, so the first and
+          // last person can also be scrolled to the centre of the arch.
+          'px-[calc(50%-3.5rem)] sm:px-[calc(50%-4rem)]',
+          // Room above for the centre card's lift on tap, below for the side
+          // cards' drop — no more, so the button sits close under the curve.
+          'pt-6 pb-11',
+          // Both ends fade out well before the screen edge, which also hides
+          // the clip on the cards peeking in from either side.
+          '[mask-image:linear-gradient(to_right,transparent_4%,#000_24%,#000_76%,transparent_96%)]',
+        )}
+        // A scrolling row of people is a list, and saying so is what lets a
+        // screen reader announce "3 of 13" while moving through it.
+        role="list"
+        aria-label={label}
+      >
+        {testimonials.map((person) => (
+          <div
+            key={person.id}
+            role="listitem"
+            // 112px on a phone, 128px on a tablet (enlarged at the client's
+            // request, 2026-11-17). Only about three people fit across at this
+            // size, so `CURVE_DROP_PX` and `CURVE_TILT_DEG` are steeper to keep
+            // the arch visible across three cards. Change this and the track's
+            // side padding (half a card) with it.
+            className="w-28 shrink-0 snap-center will-change-transform sm:w-32"
+          >
+            <TestimonialCard person={person} {...cardProps} />
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 

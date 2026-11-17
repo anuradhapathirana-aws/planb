@@ -5,6 +5,7 @@ import type {
   CompanySettings,
   SaveAppIntroPayload,
   SaveBankDetailsPayload,
+  SaveHeroFiguresPayload,
 } from '@shared/types/companySettings';
 import type { SaveWebsiteContentPayload } from '@shared/types/siteContent';
 
@@ -42,6 +43,15 @@ export async function updateWebsiteContent(
 ): Promise<CompanySettings> {
   const { data } = await apiClient.put<ApiResource<CompanySettings>>(
     '/admin/company-settings/website',
+    payload,
+  );
+  return data.data;
+}
+
+/** The website hero's figures strip — shared by every slide, saved whole. */
+export async function updateHeroFigures(payload: SaveHeroFiguresPayload): Promise<CompanySettings> {
+  const { data } = await apiClient.put<ApiResource<CompanySettings>>(
+    '/admin/company-settings/hero-figures',
     payload,
   );
   return data.data;

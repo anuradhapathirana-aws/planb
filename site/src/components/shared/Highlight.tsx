@@ -1,4 +1,5 @@
 import { Fragment } from 'react';
+import { splitHighlight } from '@/lib/splitHighlight';
 import { cn } from '@/lib/utils';
 
 /**
@@ -30,8 +31,7 @@ import { cn } from '@/lib/utils';
  * nobody asked for it.
  */
 export function Highlight({ text, className }: { text: string; className?: string }) {
-  // Capturing group, so the delimited parts survive the split at odd indexes.
-  const parts = text.split(/\*\*(.+?)\*\*/g);
+  const parts = splitHighlight(text);
 
   return (
     <>

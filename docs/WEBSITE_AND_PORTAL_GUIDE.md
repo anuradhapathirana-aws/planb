@@ -633,7 +633,9 @@ ticked there too.
   section builder. Approved schema, migrated:
   - `site_hero_slides` — eyebrow/heading/body (+`_si`), two buttons (label +`_si`, target, course id,
     url), two stat pairs, `icon`, `sort_order`, `is_visible`; artwork via Media Library at
-    **1200×900 (4:3)**. **Not `home_banners`** — that is the mobile app's 64:27 carousel with one
+    **1200×900 (4:3)**. *(Superseded 2026-11-17 by the full-screen hero: images are now 1920×1080,
+    the stat pairs and `icon` are no longer edited or shown, and one shared figures strip lives in
+    `company_settings.hero_figures`.)* **Not `home_banners`** — that is the mobile app's 64:27 carousel with one
     headline and one tap target, and sharing a table would leave half the columns null for whichever
     client was not being edited. The rationale is in the migration's docblock.
   - `team_members` — `name`, `role`, `role_si`, `sort_order`, `is_visible`; photo via Media Library

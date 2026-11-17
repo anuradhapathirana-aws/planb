@@ -116,7 +116,10 @@ export function useUploadSiteHeroSlideImage() {
       seed(slide);
       toast.success('Slide image updated.');
     },
-    onError: () => toast.error('Could not upload that image.'),
+    // The server's own message when it refused the file ("Upload a JPG, PNG or
+    // WebP image.", "The image must be under 8 MB."), so the admin knows what to fix.
+    onError: (error) =>
+      toast.error(getValidationErrors(error)?.image?.[0] ?? 'Could not upload that image.'),
   });
 }
 

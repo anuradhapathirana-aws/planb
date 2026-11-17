@@ -9,26 +9,29 @@ import { cn } from '@/lib/utils';
 const APPEAR_DELAY_MS = 1400;
 
 /**
- * The floating "chat to us" button, bottom-right of every public page.
+ * The advisor's picture: a transparent cut-out made from the client-supplied
+ * `chat-girl.webp` (2026-11-17), whose white background was removed and which
+ * was scaled to about twice its largest display size.
+ */
+const CHAT_GIRL_IMAGE = '/images/chat-girl.png';
+
+/**
+ * The floating Quick Chat assistant, bottom-right of every public page: a
+ * Plan B advisor standing in the corner with a "Need help?" bubble, opening WhatsApp.
+ * Replaced the plain green WhatsApp circle at the client's request (2026-11-17).
  *
  * **It is an `<a>`, not a button.** `wa.me` opens the app on a phone and
  * WhatsApp Web on a desktop from the same URL, so this needs no platform
  * detection and no JavaScript to work — which also means middle-click and
  * "open in new tab" behave the way people expect.
  *
- * The animation is deliberately staged rather than constant:
- *
- *  - **It arrives late.** Popping in during the hero would compete with the
- *    thing the page is actually trying to say, so it waits ~1.4s and then
- *    scales up with a slight overshoot.
- *  - **Two staggered rings pulse outward**, which is what makes it read as
- *    "live" from the corner of the eye. Staggered rather than simultaneous —
- *    one ring is a throb, two offset rings are a radar sweep.
- *  - **The label slides out on hover and on keyboard focus**, so the control
- *    explains itself before it is clicked rather than relying on the glyph.
- *  - **`prefers-reduced-motion` kills the rings and the entrance outright.**
- *    A permanently pulsing element in a fixed corner is close to the worst case
- *    for motion sensitivity — it cannot be scrolled away from.
+ * - **It arrives late.** Popping in during the hero would compete with the
+ *   thing the page is actually trying to say, so it waits ~1.4s.
+ * - **She floats gently** — a slow 4px bob, which draws the eye without
+ *   flapping. The small WhatsApp badge on her corner says where the tap goes.
+ * - **`prefers-reduced-motion` stops the float and the entrance outright.** A
+ *   moving element in a fixed corner is close to the worst case for motion
+ *   sensitivity — it cannot be scrolled away from.
  *
  * Kept at `z-40`, below Radix's `z-50` overlays, so a dialog covers it rather
  * than floating a green circle over its own backdrop.
@@ -61,7 +64,7 @@ export function WhatsAppButton() {
       rel="noreferrer noopener"
       aria-label={label}
       className={cn(
-        'group fixed z-40 flex items-center outline-none',
+        'group fixed z-40 flex items-end outline-none',
         // `env(safe-area-inset-*)` keeps it clear of the iPhone home indicator
         // and of a browser's own floating UI.
         'bottom-[max(1.25rem,env(safe-area-inset-bottom))] right-[max(1.25rem,env(safe-area-inset-right))]',
@@ -69,45 +72,47 @@ export function WhatsAppButton() {
         shown ? 'scale-100 opacity-100' : 'pointer-events-none scale-0 opacity-0',
       )}
     >
-      {/* Label. Sits to the LEFT so it never expands past the screen edge. */}
+      {/* Speech bubble. Sits to the LEFT so it never runs past the screen edge,
+          and only from `sm` — on a phone it would cover the page's content. */}
       <span
+        aria-hidden="true"
         className={cn(
-          'pointer-events-none mr-3 hidden whitespace-nowrap rounded-full bg-surface px-4 py-2 text-sm font-medium text-surface-foreground shadow-lg sm:block',
-          'translate-x-3 opacity-0 transition-all duration-300',
-          'group-hover:translate-x-0 group-hover:opacity-100',
-          'group-focus-visible:translate-x-0 group-focus-visible:opacity-100',
+          'pointer-events-none mr-1 mb-16 hidden max-w-44 rounded-2xl rounded-br-sm bg-background px-3.5 py-2.5 text-sm font-medium leading-snug text-foreground shadow-lg sm:block',
+          'transition-transform duration-300 group-hover:-translate-y-0.5',
         )}
       >
-        {label}
+        <span className="mr-1.5 inline-block size-2 rounded-full bg-whatsapp align-middle" />
+        {t('site.whatsapp.greeting')}
       </span>
 
-      <span className="relative flex size-14 items-center justify-center">
+      {/* The float lives on this wrapper and the hover lift on the image
+          inside, so the two transforms never overwrite each other. */}
+      <span className={cn('relative block', !reduceMotion && 'animate-float')}>
         {/*
-          The pulse. Two rings, the second delayed, so the effect sweeps rather
-          than throbs. Behind the button and non-interactive — they are twice
-          its size at full extent and would otherwise steal the click.
+          A transparent cut-out, so she stands in the corner with no frame. The
+          drop shadow follows her outline (a box shadow would draw the image's
+          rectangle), which keeps her readable over white sections and the navy
+          footer alike.
         */}
-        {reduceMotion ? null : (
-          <>
-            <span
-              aria-hidden="true"
-              className="absolute inset-0 animate-ping rounded-full bg-whatsapp opacity-60 [animation-duration:2.5s]"
-            />
-            <span
-              aria-hidden="true"
-              className="absolute inset-0 animate-ping rounded-full bg-whatsapp opacity-40 [animation-delay:1.25s] [animation-duration:2.5s]"
-            />
-          </>
-        )}
-
-        <span
+        <img
+          src={CHAT_GIRL_IMAGE}
+          alt=""
+          width={221}
+          height={280}
+          loading="lazy"
+          decoding="async"
           className={cn(
-            'relative flex size-14 items-center justify-center rounded-full bg-whatsapp text-white shadow-xl',
-            'transition-all duration-300 group-hover:bg-whatsapp-dark group-hover:scale-110',
-            'group-focus-visible:ring-4 group-focus-visible:ring-whatsapp/40',
+            'h-20 w-auto sm:h-28 lg:h-32',
+            'filter-[drop-shadow(0_4px_10px_rgba(15,30,69,0.35))]',
+            'transition-transform duration-300 group-hover:-translate-y-1',
+            // Keyboard focus has no frame to colour, so it gets an outline instead.
+            'rounded-lg group-focus-visible:outline-3 group-focus-visible:outline-offset-2 group-focus-visible:outline-whatsapp',
           )}
-        >
-          <WhatsAppGlyph className="size-7" />
+        />
+
+        {/* The WhatsApp mark on her corner, so it is clear where the tap goes. */}
+        <span className="absolute -bottom-1 -left-1 flex size-7 items-center justify-center rounded-full bg-whatsapp text-white shadow-md ring-2 ring-white sm:size-8">
+          <WhatsAppGlyph className="size-4 sm:size-4.5" />
         </span>
       </span>
     </a>

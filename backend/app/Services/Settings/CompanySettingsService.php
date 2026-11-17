@@ -110,6 +110,45 @@ class CompanySettingsService
     }
 
     /**
+     * The website hero's figures strip, saved whole.
+     *
+     * A row with no figure is dropped, not stored blank. The strip draws only
+     * what is left, so the admin can run three figures by blanking the fourth.
+     * Saving four blanks stores an empty list, which hides the strip. That is
+     * different from null ("never saved"), where the website uses its built-in
+     * figures.
+     *
+     * @param  list<array{value?: string|null, label?: string|null, label_si?: string|null}>  $figures
+     */
+    public function updateHeroFigures(array $figures): CompanySetting
+    {
+        $settings = $this->current();
+
+        $rows = [];
+
+        foreach ($figures as $figure) {
+            $value = trim((string) ($figure['value'] ?? ''));
+
+            if ($value === '') {
+                continue;
+            }
+
+            $labelSi = trim((string) ($figure['label_si'] ?? ''));
+
+            $rows[] = [
+                'value' => $value,
+                'label' => trim((string) ($figure['label'] ?? '')),
+                // Blank means "not translated yet", the same as every other `_si` column.
+                'label_si' => $labelSi === '' ? null : $labelSi,
+            ];
+        }
+
+        $settings->fill(['hero_figures' => $rows])->save();
+
+        return $settings;
+    }
+
+    /**
      * Re-encoded before storing (root CLAUDE.md §7.4). JPEG, not PNG: this is a
      * photographic still, and the logo's transparency argument does not apply.
      */

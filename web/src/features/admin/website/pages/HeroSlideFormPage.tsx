@@ -5,16 +5,20 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import {
   AlertTriangle,
+  AlignLeft,
+  Ban,
   Globe,
-  Hash,
   Image as ImageIcon,
   Languages,
+  Laptop,
   Link2,
   Loader2,
   MousePointerClick,
+  Ruler,
   Save,
-  Shapes,
+  Smartphone,
   Type,
+  User,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,8 +37,9 @@ import { ImageDropzone } from '@/components/shared/ImageDropzone';
 import { PageLoader } from '@/components/shared/PageLoader';
 import { SegmentedToggle } from '@/components/shared/SegmentedToggle';
 import { applyServerValidationErrors } from '@shared/lib/serverErrors';
+import { cn } from '@/lib/utils';
 import { useCourseProgrammes } from '@/features/admin/courses/hooks/useCourses';
-import { SITE_HERO_ICON_GLYPHS } from '@/features/admin/website/heroIcons';
+import { useCompanySettings } from '@/features/admin/settings/hooks/useCompanySettings';
 import { plainHeading, renderHighlight } from '@/features/admin/website/highlight';
 import {
   useCreateSiteHeroSlide,
@@ -45,12 +50,29 @@ import {
 } from '@/features/admin/website/hooks/useSiteHeroSlides';
 import {
   heroSlideFormSchema,
-  SITE_HERO_ICONS,
   SITE_LINK_TARGETS,
   type HeroSlideFormSchema,
 } from '@/features/admin/website/websiteSchema';
 import { paths } from '@/routes/paths';
+import type { HeroFigure } from '@shared/types/companySettings';
 import type { SaveSiteHeroSlidePayload } from '@shared/types/siteContent';
+
+/**
+ * The size the backend stores every slide image at (`SiteHeroSlideService`).
+ * **One decision with that file** — change both together. The upload box warns
+ * the admin when a file is smaller than this.
+ */
+const HERO_IMAGE_SIZE = { width: 1920, height: 1080 };
+
+/** Mirrors `UploadSiteHeroSlideImageRequest`: JPG, PNG or WebP, up to 8 MB. */
+const HERO_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const HERO_IMAGE_MAX_BYTES = 8 * 1024 * 1024;
+
+/**
+ * Where the website anchors the crop (`HERO_FOCUS` in the website's
+ * `HeroSlider.tsx`), so the preview crops exactly as visitors' screens do.
+ */
+const HERO_FOCUS = '68% 40%';
 
 const FIELD_NAMES = [
   'eyebrow',
@@ -119,6 +141,13 @@ function blankSlide(): HeroSlideFormSchema {
  * word, the line breaks and a pale photo swallowing white text are all things
  * you can only judge by looking, and the alternative is publishing to the
  * company's front page and checking afterwards.
+ *
+ * **Since 2026-11 the image is the hero's full-screen background**, 1920×1080,
+ * so the preview shows both a laptop and a phone crop, and the upload box
+ * carries a size-and-layout guide. The figures strip is shared by every slide
+ * and is edited on the Hero slider list page, not here. The old per-slide
+ * figures and fallback icon are no longer shown; their stored values ride
+ * along unchanged in the form state (see `websiteSchema.ts`).
  *
  * **Creating stages the image; editing uploads it immediately.** Media Library
  * needs a saved record to attach a file to, so a new slide is saved first and
@@ -218,6 +247,10 @@ export function HeroSlideFormPage() {
    * keeps the admin from picking something that will be refused on save.
    */
   const { data: courses } = useCourseProgrammes({ status: 'published', per_page: 100 });
+
+  // The shared strip, so the preview shows what sits under this slide on the site.
+  const { data: settings } = useCompanySettings();
+  const figures = settings?.hero_figures ?? null;
 
   const imageUrl = isEditing ? (slide?.image_url ?? null) : stagedPreview;
   const saving = create.isPending || update.isPending || uploadImage.isPending;
@@ -325,15 +358,17 @@ export function HeroSlideFormPage() {
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
         <form onSubmit={submit} noValidate className="space-y-3">
-          <FormSection icon={ImageIcon} title="Image">
+          <FormSection icon={ImageIcon} title="Background image">
             <div className="space-y-2 sm:col-span-2">
               <ImageDropzone
-                label="Slide image"
+                label="Slide background image"
                 url={imageUrl}
-                aspect="photo"
+                aspect="video"
+                recommendedSize={HERO_IMAGE_SIZE}
+                acceptedTypes={HERO_IMAGE_TYPES}
                 busy={uploadImage.isPending || deleteImage.isPending}
-                hint="PNG or JPG. Upload at 1200×900 — anything else is centre-cropped to that shape."
-                maxBytes={5 * 1024 * 1024}
+                hint={`JPG, PNG or WebP · ${HERO_IMAGE_SIZE.width} × ${HERO_IMAGE_SIZE.height} px · up to 8 MB`}
+                maxBytes={HERO_IMAGE_MAX_BYTES}
                 onSelect={(file) => {
                   // Editing has a record to attach to; creating does not yet.
                   if (isEditing && slideId !== null) uploadImage.mutate({ id: slideId, file });
@@ -345,39 +380,7 @@ export function HeroSlideFormPage() {
                 }}
               />
 
-              <p className="text-xs text-muted-foreground">
-                Optional. Without an image the slide shows a designed Plan B panel with the icon
-                below — so you can write the words now and add the photo later.
-              </p>
-            </div>
-
-            <div className="space-y-1 sm:col-span-2">
-              <FieldLabel icon={Shapes}>Icon for the designed panel</FieldLabel>
-              <Select
-                value={values.icon}
-                onValueChange={(value) =>
-                  setValue('icon', value as HeroSlideFormSchema['icon'], { shouldDirty: true })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {SITE_HERO_ICONS.map((option) => {
-                    const Glyph = SITE_HERO_ICON_GLYPHS[option.value];
-
-                    return (
-                      <SelectItem key={option.value} value={option.value}>
-                        <Glyph className="size-4" />
-                        {option.label}
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                Only shown when there is no image.
-              </p>
+              <HeroImageGuide />
             </div>
           </FormSection>
 
@@ -495,91 +498,6 @@ export function HeroSlideFormPage() {
             courses={courses?.data ?? []}
           />
 
-          <FormSection icon={Hash} title="Figures over the image">
-            <div className="space-y-1">
-              <FieldLabel htmlFor="stat-one-value" icon={Hash}>
-                First figure
-              </FieldLabel>
-              <Input
-                id="stat-one-value"
-                placeholder="e.g. 500+"
-                aria-invalid={!!errors.stat_one_value}
-                {...register('stat_one_value')}
-              />
-              <FieldError message={errors.stat_one_value?.message} />
-            </div>
-
-            <div className="space-y-1">
-              <FieldLabel htmlFor="stat-one-label" icon={Type}>
-                What it counts
-              </FieldLabel>
-              <Input
-                id="stat-one-label"
-                placeholder="e.g. Students"
-                aria-invalid={!!errors.stat_one_label}
-                {...register('stat_one_label')}
-              />
-              <FieldError message={errors.stat_one_label?.message} />
-            </div>
-
-            <div className="space-y-1">
-              <FieldLabel htmlFor="stat-one-label-si" icon={Languages}>
-                What it counts (Sinhala)
-              </FieldLabel>
-              <Input
-                id="stat-one-label-si"
-                placeholder="උදා. සිසුන්"
-                aria-invalid={!!errors.stat_one_label_si}
-                {...register('stat_one_label_si')}
-              />
-              <FieldError message={errors.stat_one_label_si?.message} />
-            </div>
-
-            <div className="space-y-1">
-              <FieldLabel htmlFor="stat-two-value" icon={Hash}>
-                Second figure
-              </FieldLabel>
-              <Input
-                id="stat-two-value"
-                placeholder="e.g. 2"
-                aria-invalid={!!errors.stat_two_value}
-                {...register('stat_two_value')}
-              />
-              <FieldError message={errors.stat_two_value?.message} />
-            </div>
-
-            <div className="space-y-1">
-              <FieldLabel htmlFor="stat-two-label" icon={Type}>
-                What it counts
-              </FieldLabel>
-              <Input
-                id="stat-two-label"
-                placeholder="e.g. Languages"
-                aria-invalid={!!errors.stat_two_label}
-                {...register('stat_two_label')}
-              />
-              <FieldError message={errors.stat_two_label?.message} />
-            </div>
-
-            <div className="space-y-1">
-              <FieldLabel htmlFor="stat-two-label-si" icon={Languages}>
-                What it counts (Sinhala)
-              </FieldLabel>
-              <Input
-                id="stat-two-label-si"
-                placeholder="උදා. භාෂා"
-                aria-invalid={!!errors.stat_two_label_si}
-                {...register('stat_two_label_si')}
-              />
-              <FieldError message={errors.stat_two_label_si?.message} />
-            </div>
-
-            <p className="text-xs text-muted-foreground sm:col-span-2">
-              Optional. Both are small white cards that sit over the bottom of the image. Leave a
-              figure blank to hide that card.
-            </p>
-          </FormSection>
-
           <FormSection icon={Globe} title="Visibility">
             <div className="space-y-1 sm:col-span-2">
               <FieldLabel icon={Globe}>Show on the website</FieldLabel>
@@ -601,7 +519,7 @@ export function HeroSlideFormPage() {
         </form>
 
         <div className="space-y-3 lg:sticky lg:top-4 lg:self-start">
-          <SlidePreview values={values} imageUrl={imageUrl} />
+          <SlidePreview values={values} imageUrl={imageUrl} figures={figures} />
         </div>
       </div>
     </div>
@@ -755,19 +673,13 @@ function CtaSection({
 function SlidePreview({
   values,
   imageUrl,
+  figures,
 }: {
   values: HeroSlideFormSchema;
   imageUrl: string | null;
+  /** The shared strip. Null = never saved, so the website shows its built-in one. */
+  figures: HeroFigure[] | null;
 }) {
-  const FallbackIcon = SITE_HERO_ICON_GLYPHS[values.icon];
-
-  const stats = (
-    [
-      { value: values.stat_one_value.trim(), label: values.stat_one_label.trim() },
-      { value: values.stat_two_value.trim(), label: values.stat_two_label.trim() },
-    ] as const
-  ).filter((stat) => stat.value !== '');
-
   /* Switched on but visitors see nothing — it looks live from every angle but the one that matters. */
   const liveButEmpty = values.is_visible && values.heading.trim() === '';
 
@@ -782,15 +694,29 @@ function SlidePreview({
         </span>
       </div>
 
-      <div className="space-y-3 overflow-hidden rounded-2xl bg-[#0f1e45] p-4">
-        <div className="space-y-2">
+      <p className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+        <Laptop className="size-3.5" />
+        Laptop / desktop
+      </p>
+
+      {/* 16:10 — a typical laptop window. The photo fills it exactly the way the
+          website does (`object-cover`, same focus point), so a subject that is
+          cut off here is cut off for visitors too. */}
+      <div className="relative aspect-16/10 overflow-hidden rounded-xl bg-[#0f1e45]">
+        <PreviewBackground imageUrl={imageUrl} />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0f1e45]/90 from-0% via-[#0f1e45]/55 via-35% to-transparent to-60%" />
+
+        {/* The floating menu bar. */}
+        <div className="absolute inset-x-2 top-2 h-3.5 rounded-md border border-white/10 bg-[#0f1e45]/75" />
+
+        <div className="absolute inset-x-3 top-8 bottom-12 flex max-w-[58%] flex-col justify-center gap-1">
           {values.eyebrow.trim() !== '' && (
-            <span className="inline-flex rounded-full border border-white/15 bg-white/5 px-2.5 py-1 text-[10px] font-semibold tracking-wider text-[#f19f00] uppercase">
+            <span className="truncate text-[7px] font-semibold tracking-[0.2em] text-[#f19f00] uppercase">
               {values.eyebrow}
             </span>
           )}
 
-          <p className="text-lg leading-tight font-semibold text-balance text-white">
+          <p className="line-clamp-3 text-[13px] leading-tight font-bold text-white">
             {values.heading.trim() === '' ? (
               <span className="text-white/40">Your headline appears here</span>
             ) : (
@@ -799,51 +725,42 @@ function SlidePreview({
           </p>
 
           {values.body.trim() !== '' && (
-            <p className="text-xs leading-relaxed text-white/70">{values.body}</p>
+            <p className="line-clamp-2 text-[8px] leading-snug text-white/75">{values.body}</p>
           )}
 
-          <div className="flex flex-wrap gap-2 pt-1">
-            {values.primary_cta_target !== 'none' && values.primary_cta_label.trim() !== '' && (
-              <span className="rounded-md bg-[#f19f00] px-3 py-1.5 text-[11px] font-semibold text-[#0f1e45]">
-                {values.primary_cta_label}
-              </span>
-            )}
-            {values.secondary_cta_target !== 'none' && values.secondary_cta_label.trim() !== '' && (
-              <span className="rounded-md border border-white/25 px-3 py-1.5 text-[11px] font-semibold text-white">
-                {values.secondary_cta_label}
-              </span>
-            )}
+          <PreviewButtons values={values} />
+        </div>
+
+        <PreviewFigures figures={figures} />
+      </div>
+
+      <div className="flex items-end gap-3 pt-1">
+        <div className="shrink-0 space-y-1">
+          <p className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
+            <Smartphone className="size-3.5" />
+            Phone
+          </p>
+          {/* 9:19 — a phone screen. The same photo, cropped to its right-of-centre
+              strip; this is why the guide asks for the person on the right. */}
+          <div className="relative aspect-9/19 w-24 overflow-hidden rounded-xl border-2 border-slate-800 bg-[#0f1e45]">
+            <PreviewBackground imageUrl={imageUrl} />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0f1e45]/90 via-[#0f1e45]/60 to-[#0f1e45]/25" />
+            <div className="absolute inset-x-1.5 bottom-10 space-y-1">
+              <p className="line-clamp-3 text-[8px] leading-tight font-bold text-white">
+                {values.heading.trim() === ''
+                  ? 'Your headline'
+                  : renderHighlight(values.heading, 'text-[#f19f00]')}
+              </p>
+              <div className="h-1.5 w-10 rounded-sm bg-[#f19f00]" />
+            </div>
+            <div className="absolute inset-x-1.5 bottom-1.5 grid h-7 grid-cols-2 rounded-sm border border-white/10 bg-[#0f1e45]/70" />
           </div>
         </div>
 
-        {/* 4:3 — the frame the website reserves and the shape uploads are
-            cropped to. A preview in another ratio shows a crop nobody gets. */}
-        <div className="relative aspect-4/3 overflow-hidden rounded-xl border border-white/10 bg-white/5">
-          {imageUrl ? (
-            <img src={imageUrl} alt="" className="size-full object-cover" />
-          ) : (
-            <div className="flex size-full flex-col items-center justify-center gap-2 text-white/40">
-              <FallbackIcon className="size-8" />
-              <p className="text-[10px]">Designed panel — no image</p>
-            </div>
-          )}
-
-          {stats.length > 0 && (
-            <div className="absolute right-3 bottom-3 flex gap-2">
-              {stats.map((stat) => (
-                <div
-                  key={stat.value + stat.label}
-                  className="rounded-lg bg-white px-2.5 py-1.5 text-center shadow-lg"
-                >
-                  <p className="text-xs leading-none font-bold text-[#0f1e45]">{stat.value}</p>
-                  {stat.label !== '' && (
-                    <p className="mt-0.5 text-[9px] leading-none text-[#0f1e45]/60">{stat.label}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <p className="pb-1 text-xs text-muted-foreground">
+          Phones show the photo’s right-of-centre part, behind the text. Check the person is
+          still visible here.
+        </p>
       </div>
 
       {liveButEmpty && (
@@ -858,6 +775,154 @@ function SlidePreview({
       {!values.is_visible && (
         <p className="text-xs text-muted-foreground">Hidden — this slide is skipped on the website.</p>
       )}
+    </div>
+  );
+}
+
+/**
+ * The slide's photo, cropped the way the website crops it. With no upload the
+ * website uses its own default banner, which lives in the website's bundle and
+ * cannot be loaded from here — so the preview says so instead of guessing.
+ */
+function PreviewBackground({ imageUrl }: { imageUrl: string | null }) {
+  if (!imageUrl) {
+    return (
+      <div className="absolute inset-0 flex items-center justify-end bg-[linear-gradient(135deg,#1c2f66,#0f1e45)] pr-3">
+        <p className="max-w-[40%] text-right text-[9px] leading-snug text-white/50">
+          No image — the website’s default banner photo shows here
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={imageUrl}
+      alt=""
+      className="absolute inset-0 size-full object-cover"
+      style={{ objectPosition: HERO_FOCUS }}
+    />
+  );
+}
+
+/** Pill buttons, as on the website: gold first, glass outline second. */
+function PreviewButtons({ values }: { values: HeroSlideFormSchema }) {
+  const primary = values.primary_cta_target !== 'none' && values.primary_cta_label.trim() !== '';
+  const secondary =
+    values.secondary_cta_target !== 'none' && values.secondary_cta_label.trim() !== '';
+
+  if (!primary && !secondary) return null;
+
+  return (
+    <div className="flex flex-wrap gap-1 pt-0.5">
+      {primary && (
+        <span className="rounded-full bg-[#f19f00] px-2 py-0.5 text-[7px] font-semibold text-[#1f2937]">
+          {values.primary_cta_label}
+        </span>
+      )}
+      {secondary && (
+        <span className="rounded-full border border-white/40 bg-white/10 px-2 py-0.5 text-[7px] font-semibold text-white">
+          {values.secondary_cta_label}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** The shared figures strip along the bottom — edited on the Hero slider page, not here. */
+function PreviewFigures({ figures }: { figures: HeroFigure[] | null }) {
+  // Never saved: the website shows its built-in figures, so draw neutral cells.
+  const cells =
+    figures === null
+      ? Array.from({ length: 4 }, () => ({ value: '—', label: 'Figure' }))
+      : figures;
+
+  if (cells.length === 0) return null;
+
+  return (
+    <div
+      className="absolute inset-x-3 bottom-2 grid rounded-md border border-white/10 bg-[#0f1e45]/70"
+      style={{ gridTemplateColumns: `repeat(${cells.length}, minmax(0, 1fr))` }}
+    >
+      {cells.map((figure, index) => (
+        <div
+          key={`${index}-${figure.label}`}
+          className={cn('min-w-0 px-1.5 py-1', index > 0 && 'border-l border-white/10')}
+        >
+          <p className="text-[9px] leading-none font-semibold text-[#f19f00]">{figure.value}</p>
+          <p className="mt-0.5 truncate text-[6px] text-white/80">{figure.label}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * What a good hero photo looks like, next to the upload box.
+ *
+ * The admin has no crop tool (by design, same as every other upload), so the
+ * only way to get a good result is to be told the size and layout up front. The
+ * diagram is the website's own layout at 16:9: menu on top, text on the left,
+ * figures along the bottom — the free area on the right is where the person goes.
+ */
+function HeroImageGuide() {
+  return (
+    <div className="grid gap-3 rounded-lg border bg-secondary/40 p-3 sm:grid-cols-[180px_minmax(0,1fr)]">
+      <div
+        className="relative aspect-video overflow-hidden rounded-md border border-dashed border-slate-400 bg-background text-[8px] font-medium text-muted-foreground"
+        aria-hidden="true"
+      >
+        <div className="absolute inset-x-1 top-1 flex h-3 items-center justify-center rounded-sm bg-slate-200">
+          Menu
+        </div>
+        <div className="absolute top-5 bottom-6 left-1 flex w-[50%] items-center justify-center rounded-sm bg-slate-200 text-center">
+          Text
+        </div>
+        <div className="absolute top-5 right-[8%] bottom-6 flex w-[30%] items-center justify-center rounded-sm border border-primary bg-primary/10 text-center text-primary">
+          Person
+        </div>
+        <div className="absolute inset-x-1 bottom-1 flex h-4 items-center justify-center rounded-sm bg-slate-200">
+          Figures strip
+        </div>
+      </div>
+
+      <ul className="space-y-1.5 text-xs text-muted-foreground">
+        <li className="flex items-start gap-1.5">
+          <Ruler className="mt-0.5 size-3.5 shrink-0 text-primary" />
+          <span>
+            <span className="font-semibold text-foreground">
+              {HERO_IMAGE_SIZE.width} × {HERO_IMAGE_SIZE.height} px
+            </span>{' '}
+            (16:9, landscape). Bigger is fine. Smaller looks blurry on large screens, and other
+            shapes are cropped to 16:9.
+          </span>
+        </li>
+        <li className="flex items-start gap-1.5">
+          <User className="mt-0.5 size-3.5 shrink-0 text-primary" />
+          <span>
+            Put the person on the <span className="font-semibold text-foreground">right</span>,
+            about two-thirds across. Phones only show this part of the photo.
+          </span>
+        </li>
+        <li className="flex items-start gap-1.5">
+          <AlignLeft className="mt-0.5 size-3.5 shrink-0 text-primary" />
+          <span>
+            Keep the left half plain. The headline and buttons sit there, and the website darkens
+            it.
+          </span>
+        </li>
+        <li className="flex items-start gap-1.5">
+          <Ban className="mt-0.5 size-3.5 shrink-0 text-primary" />
+          <span>
+            No words or logos in the photo. The menu, text and figures cover the top, left and
+            bottom.
+          </span>
+        </li>
+        <li className="flex items-start gap-1.5">
+          <ImageIcon className="mt-0.5 size-3.5 shrink-0 text-primary" />
+          <span>Optional. Without one, the slide uses the website’s default banner photo.</span>
+        </li>
+      </ul>
     </div>
   );
 }

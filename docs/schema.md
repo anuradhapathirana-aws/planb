@@ -551,6 +551,7 @@ The logo is a **Media Library collection** (`logo`, single file, public disk), r
 | intro_greeting_en | string(160), nullable | Optional. Null means the intro shows the logo only. |
 | intro_greeting_si | string(160), nullable | Optional. The app falls back to English. |
 | intro_animation | string(32), default `fade` | PHP enum `App\Enums\IntroAnimation`: `fade`, `zoom`, `slide_up`, `pulse`. |
+| hero_figures | json, nullable | The website hero's figures strip: a list of up to four `{ value, label, label_si }`. **Null = never saved** (the website shows its built-in figures); **`[]` = hidden** by the admin. Read and written whole, never queried inside. |
 | created_at / updated_at | timestamps | `updated_at` is touched on a logo change so the app can tell its cached logo is stale. |
 
 **The bank details used to be `.env` keys** (`BANK_TRANSFER_ENABLED`, `BANK_TRANSFER_BANK_NAME` …). The migration copies any values it finds into the row once; the keys are gone from `config/payments.php`. Only `BANK_TRANSFER_MAX_RECEIPT_MB` stays in config.
@@ -566,6 +567,7 @@ The logo is a **Media Library collection** (`logo`, single file, public disk), r
 
 | Date | Change |
 |---|---|
+| 2026-11-17 | **Full-screen website hero.** Added `company_settings.hero_figures` (json, nullable) — the figures strip shared by every slide. Hero slide images are now stored at 1920×1080 (16:9) instead of 1200×900. The per-slide `site_hero_slides.stat_*` columns and `icon` are kept but no longer edited or shown, so no stored data is dropped. |
 | 2026-09-16 | **Student account deletion** (Google Play policy). Added `students.anonymised_at` (nullable) and `student_login_codes.purpose` (string, default `sign_in`, `App\Enums\LoginCodePurpose`) with index `login_codes_student_purpose_live_index`. Existing codes become `sign_in`. Deletion anonymises the row rather than deleting it, so finance records survive. |
 | 2026-09-21 | Added `course_programmes.name_si`, `course_topics.title_si` and `course_videos.title_si` — the Sinhala half of a course's titles. All nullable, no unique index, English is the record and the fallback. The student API picks between the two columns from `Accept-Language`; the admin panel always reads English. See the bilingual-titles note under `course_programmes`. The migration guards each column with `hasColumn` because the development database already had all three, added by hand. |
 | 2026-09-23 | **Course bundles** (client request). Added `course_categories.selling_mode` (`single` | `bundle`, default `single`) and the new table `order_items`. `EnrolmentSource` gains `bundle`. `CourseCategory` implements `Purchasable` for the bundle order. |

@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\UpdateAppIntroRequest;
 use App\Http\Requests\Settings\UpdateBankDetailsRequest;
+use App\Http\Requests\Settings\UpdateHeroFiguresRequest;
 use App\Http\Requests\Settings\UpdateWebsiteContentRequest;
 use App\Http\Requests\Settings\UploadCommunityPosterRequest;
 use App\Http\Requests\Settings\UploadCompanyLogoRequest;
@@ -56,6 +57,16 @@ class CompanySettingController extends Controller
     {
         return response()->json([
             'data' => new CompanySettingResource($this->settings->updateWebsiteContent($request->validated())),
+        ]);
+    }
+
+    public function updateHeroFigures(UpdateHeroFiguresRequest $request): JsonResponse
+    {
+        /** @var list<array<string, string|null>> $figures */
+        $figures = $request->validated('figures');
+
+        return response()->json([
+            'data' => new CompanySettingResource($this->settings->updateHeroFigures($figures)),
         ]);
     }
 

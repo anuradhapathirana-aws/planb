@@ -24,8 +24,10 @@ import type { ProgrammeCard as Programme } from '@/features/marketing/homeConten
  * count is whatever Plan B has published, and a grid has to choose between
  * truncating it and letting the home page grow without limit; a carousel shows
  * the whole catalogue in fixed vertical space. Four and a half cards across on a
- * laptop down to one and a half on a phone, so the sliced card at the edge says
- * "there is more" without a label.
+ * laptop down to two and a half on a tablet, so the sliced card at the edge says
+ * "there is more" without a label. **On a phone, one whole card at a time**, with
+ * arrows and a "2 / 6" counter under it (client instruction, 2026-11-17) — the
+ * counter says "there is more" there, and a swipe works as well.
  *
  * **There is no fallback content.** An empty or unreachable catalogue renders the
  * empty state below. Inventing a course would be inventing a product with a price
@@ -44,7 +46,7 @@ export function ProgrammesSection({
   const { trackRef, page, pageCount, goToPage } = useSnapCarousel();
 
   return (
-    <section id={id} className="scroll-mt-20 py-12 sm:py-14">
+    <section id={id} className="scroll-mt-20 py-9 sm:py-11">
       <Container>
         <SectionHeading
           title={t('site.programmes.heading')}
@@ -57,17 +59,17 @@ export function ProgrammesSection({
            * scrolls, and a link out of the section sitting above the cards asked
            * the visitor to leave before they had seen anything.
            *
-           * Hidden below `sm`: a phone swipes the strip, and two 32px buttons
-           * under a wrapped heading are clutter that duplicates the gesture.
+           * Hidden below `sm`: a phone gets its own larger pair under the strip
+           * (below), within reach of a thumb, with a page counter between them.
            */
           action={
             <CarouselArrows
               page={page}
               pageCount={pageCount}
               onGoTo={goToPage}
-              // Level with the title: the buttons are 32px and the `sm:text-3xl`
-              // line box is 36px, so 2px down centres them on it.
-              className="shrink-0 max-sm:hidden sm:mt-0.5"
+              // The buttons are 36px, the same as the `sm:text-3xl` line box,
+              // so they sit level with the title as they are.
+              className="shrink-0 max-sm:hidden"
             />
           }
         />
@@ -86,7 +88,9 @@ export function ProgrammesSection({
                 it the lift is clipped by the scroll container. */}
             <div
               ref={trackRef}
-              className={cn(CAROUSEL_TRACK_CLASSES, 'mt-8 pb-4 pt-2')}
+              // `max-sm:gap-0`: one full-width card per page on a phone — see
+              // `CAROUSEL_ITEM_CLASSES['4.5']` for why the gap has to go.
+              className={cn(CAROUSEL_TRACK_CLASSES, 'mt-6 pb-4 pt-2 max-sm:gap-0')}
               role="list"
               aria-label={t('site.programmes.listLabel')}
             >
@@ -96,6 +100,17 @@ export function ProgrammesSection({
                 </div>
               ))}
             </div>
+
+            {/* Phones only: the arrows and a "2 / 6" counter, centred under the
+                card (client instruction, 2026-11-17). Larger screens use the
+                pair beside the heading. */}
+            <CarouselArrows
+              page={page}
+              pageCount={pageCount}
+              onGoTo={goToPage}
+              variant="bar"
+              className="mt-1 sm:hidden"
+            />
 
             {/*
               No page dots here (client instruction, 2026-09-25): the arrows
@@ -115,9 +130,28 @@ export function ProgrammesSection({
               left the button sitting on the cards.
             */}
             <div className="relative mt-6 flex items-center justify-center">
-              <span className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-border" aria-hidden="true" />
+              {/* The hairline is for the centred pill on wider screens; on a
+                  phone the button spans the width, so there is nothing to sit on. */}
+              <span
+                className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-border max-sm:hidden"
+                aria-hidden="true"
+              />
 
-              <Button asChild size="lg" className="relative rounded-full px-7 shadow-sm">
+              {/*
+                On a phone: full width, transparent with a navy border (client
+                instruction, 2026-11-17) — a lighter close to the section than a
+                solid navy bar the width of the screen, which would outweigh the
+                course cards above it. From `sm`: the solid pill on the hairline.
+              */}
+              <Button
+                asChild
+                size="lg"
+                className={cn(
+                  'relative rounded-full px-7 shadow-sm',
+                  'max-sm:h-11 max-sm:w-full max-sm:border-[1.5px] max-sm:border-primary max-sm:bg-transparent',
+                  'max-sm:text-primary max-sm:shadow-none max-sm:hover:bg-primary-soft',
+                )}
+              >
                 <Link to={paths.courses}>
                   {t('site.programmes.viewAll')}
                   <ArrowRight className="size-4" aria-hidden="true" />
@@ -138,7 +172,7 @@ export function ProgrammesSection({
  */
 function ProgrammeSkeletons() {
   return (
-    <div className={cn(CAROUSEL_TRACK_CLASSES, 'mt-10 pb-4 pt-2')} aria-hidden="true">
+    <div className={cn(CAROUSEL_TRACK_CLASSES, 'mt-6 pb-4 pt-2 max-sm:gap-0')} aria-hidden="true">
       {Array.from({ length: 5 }, (_, index) => (
         <div key={index} className={CAROUSEL_ITEM_CLASSES['4.5']}>
           <div className="overflow-hidden rounded-xl border bg-card">

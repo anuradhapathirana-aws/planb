@@ -9,18 +9,29 @@ import { Container } from '@/components/shared/Container';
 import { Logo } from '@/components/layout/Logo';
 import { LanguageSwitcher } from '@/components/layout/LanguageSwitcher';
 import { publicNav } from '@/components/layout/siteNav';
+import { useHeroOverlayStore } from '@/stores/heroOverlayStore';
 import { useSessionStore } from '@/stores/sessionStore';
 import { paths } from '@/routes/paths';
 import { cn } from '@/lib/utils';
 
 /**
- * Sticky, solid **navy**, and the same height at every width.
+ * Sticky, **navy**, and the same height at every width.
  *
- * It is deliberately NOT a transparent header that turns solid over the hero:
- * the hero image is admin-uploaded, so there is no guarantee the logo and links
- * will have anything to contrast against. A solid bar is legible over whatever
- * the admin puts behind it. A border fades in on scroll so the bar separates
- * from the page without a shadow sitting there from the first pixel.
+ * **Two looks, one height.** Over a full-bleed hero (the home page) it is a
+ * floating rounded bar sitting on the photo — on a phone, a full-width bar on a
+ * navy fade, with no rounded plate; everywhere else, and once the hero has
+ * scrolled away, it is the solid full-width bar. `HeroSlider` says which
+ * through `useHeroOverlayStore`.
+ *
+ * The floating bar is still a **navy plate** (75% plus a blur), never bare
+ * links on the photo: the hero image will be admin-uploaded, so there is no
+ * guarantee the logo and links would have anything to contrast against. The
+ * switch moves the bar with `transform` and never changes its height, because
+ * the hero is pulled up underneath it by exactly `h-20` — a header that changed
+ * height would shift the whole page.
+ *
+ * In the solid look a border fades in on scroll so the bar separates from the
+ * page without a shadow sitting there from the first pixel.
  *
  * **Navy bar, white links** (client instruction, 2026-09-25) — the same
  * `--surface` the footer and the hero use, so the page opens and closes on the
@@ -37,6 +48,7 @@ export function PublicHeader({ onSignIn }: { onSignIn: () => void }) {
   const { t } = useTranslation();
   const { pathname, hash } = useLocation();
   const student = useSessionStore((s) => s.student);
+  const floating = useHeroOverlayStore((s) => s.isUnderHeader);
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -65,14 +77,37 @@ export function PublicHeader({ onSignIn }: { onSignIn: () => void }) {
   return (
     <header
       className={cn(
-        'sticky top-0 z-40 bg-surface text-surface-foreground transition-shadow',
-        scrolled ? 'border-b border-surface-border shadow-lg' : 'border-b border-transparent',
+        // No bottom border on phones (client instruction, 2026-11-17); the
+        // shadow on scroll separates the bar from the page on its own there.
+        'sticky top-0 z-40 border-b-0 text-surface-foreground md:border-b',
+        'transition-[background-color,border-color,box-shadow,transform] duration-300',
+        floating
+          ? cn(
+              'border-transparent',
+              /*
+               * Phones: no rounded plate (client instruction, 2026-11-17) — the
+               * bar runs full width straight on the photo. A navy fade from the
+               * top of the screen stands in for the plate, so the logo and
+               * buttons stay readable over any picture an admin uploads.
+               */
+              'bg-gradient-to-b from-surface/85 via-surface/50 to-transparent',
+              // From `md`: the floating rounded plate, inset from the edges.
+              'md:translate-y-3 md:bg-none md:px-4',
+            )
+          : cn('bg-surface', scrolled ? 'border-surface-border shadow-lg' : 'border-transparent'),
       )}
     >
       {/* `h-20`, up from `h-16`: the taller logo needs the room (client
           instruction, 2026-09-25). It stays one height at every width — a bar
-          that changes height between breakpoints moves the whole page with it. */}
-      <Container className="flex h-20 items-center gap-3">
+          that changes height between breakpoints moves the whole page with it.
+          The floating plate's border is inside that height (`border-box`). */}
+      <Container
+        className={cn(
+          'flex h-20 items-center gap-3 border border-transparent md:rounded-2xl',
+          'transition-[background-color,border-color,box-shadow] duration-300',
+          floating && 'md:border-white/10 md:bg-surface/75 md:shadow-lg md:backdrop-blur-md',
+        )}
+      >
         {/*
           The logo is TALLER THAN THE BAR and hangs below it (client
           instruction, 2026-09-26). Three things hold that up:

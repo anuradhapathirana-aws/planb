@@ -1,11 +1,11 @@
 import { z } from 'zod';
-import type { SiteHeroIcon, SiteLinkTarget } from '@shared/types/siteContent';
+import type { SiteLinkTarget } from '@shared/types/siteContent';
 
 /**
  * UX validation for Website Configuration.
  *
  * The backend (`SaveSiteHeroSlideRequest`, `SaveTeamMemberRequest`,
- * `UpdateWebsiteContentRequest`) is the enforcement point — these exist so the
+ * `UpdateWebsiteContentRequest`, `UpdateHeroFiguresRequest`) is the enforcement point — these exist so the
  * admin sees the problem before saving, and the two are kept deliberately in
  * step (root CLAUDE.md §8).
  */
@@ -120,6 +120,13 @@ export const heroSlideFormSchema = z
     secondary_cta_course_programme_id: ctaFields.course_id,
     secondary_cta_url: ctaFields.url,
 
+    /*
+     * The per-slide figures and the fallback icon are no longer edited — the
+     * full-screen hero (2026-11) shows the shared Figures strip and the default
+     * banner image instead. They stay in the form only so a save sends the
+     * stored values back unchanged rather than blanking them. No refinement may
+     * be added on them: an error on a field the admin cannot see blocks the save.
+     */
     stat_one_value: z.string().max(12, 'Keep this short — "500+" or "1:1".'),
     stat_one_label: z.string().max(24, 'Keep the label under 24 characters.'),
     stat_one_label_si: z.string().max(24, 'Keep the label under 24 characters.'),
@@ -142,27 +149,49 @@ export const heroSlideFormSchema = z
   .superRefine((values, ctx) => {
     refineCta(values, ctx, 'primary');
     refineCta(values, ctx, 'secondary');
-
-    /*
-     * A figure with no number is an empty white card floating over the
-     * artwork. The server drops the pair rather than rejecting it, so this is
-     * only here to stop the admin typing a label and wondering where it went.
-     */
-    for (const slot of ['one', 'two'] as const) {
-      const value = values[`stat_${slot}_value`].trim();
-      const label = values[`stat_${slot}_label`].trim();
-
-      if (value === '' && label !== '') {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: [`stat_${slot}_value`],
-          message: 'Enter the figure, or clear the label — a label alone is not shown.',
-        });
-      }
-    }
   });
 
 export type HeroSlideFormSchema = z.infer<typeof heroSlideFormSchema>;
+
+/** Always four rows on screen; a row with a blank figure is not shown on the website. */
+export const HERO_FIGURE_ROWS = 4;
+
+/** Mirrors `UpdateHeroFiguresRequest`. */
+export const heroFiguresFormSchema = z.object({
+  figures: z
+    .array(
+      z
+        .object({
+          value: z.string().max(12, 'Keep the figure short, like 500+.'),
+          label: z.string().max(40, 'Keep the label under 40 characters.'),
+          label_si: z.string().max(60, 'Keep the label under 60 characters.'),
+        })
+        .superRefine((figure, ctx) => {
+          const hasValue = figure.value.trim() !== '';
+          const hasLabel = figure.label.trim() !== '';
+
+          if (hasValue && !hasLabel) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ['label'],
+              message: 'Say what this figure counts.',
+            });
+          }
+
+          // The server would silently drop it — tell the admin instead.
+          if (!hasValue && hasLabel) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: ['value'],
+              message: 'Enter the figure, or clear the label.',
+            });
+          }
+        }),
+    )
+    .length(HERO_FIGURE_ROWS),
+});
+
+export type HeroFiguresFormSchema = z.infer<typeof heroFiguresFormSchema>;
 
 /** A pasted profile address: blank, or a full http(s) URL. */
 const profileUrl = z
@@ -247,21 +276,4 @@ export const SITE_LINK_TARGETS: readonly SiteLinkOption[] = [
   { value: 'contact', label: 'Contact', hint: 'Scrolls to the contact details in the footer.' },
   { value: 'course', label: 'A specific course', hint: 'Opens one course. It must be published.' },
   { value: 'url', label: 'Another web page', hint: 'Opens an address you enter.' },
-];
-
-export interface SiteHeroIconOption {
-  value: SiteHeroIcon;
-  label: string;
-}
-
-/** Shown only in the fallback panel, for a slide with wording but no artwork. */
-export const SITE_HERO_ICONS: readonly SiteHeroIconOption[] = [
-  { value: 'education', label: 'Education' },
-  { value: 'career', label: 'Career' },
-  { value: 'travel', label: 'Travel' },
-  { value: 'community', label: 'Community' },
-  { value: 'language', label: 'Language' },
-  { value: 'documents', label: 'Documents' },
-  { value: 'support', label: 'Support' },
-  { value: 'achievement', label: 'Achievement' },
 ];

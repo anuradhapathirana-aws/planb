@@ -6,6 +6,7 @@ import { SITE_HERO_ICON_GLYPHS } from '@/features/marketing/heroIcons';
 import { resolveSiteCta } from '@/features/marketing/siteLinks';
 import {
   community as fallbackCommunity,
+  heroFigures as fallbackHeroFigures,
   heroSlides as fallbackHeroSlides,
   type CommunityContent,
   type HeroSlide,
@@ -54,13 +55,17 @@ export function useSiteContent() {
       ? data.hero_slides.map(toHeroSlide)
       : fallbackHeroSlides;
 
+  // Null = the admin never saved a strip, so the built-in one shows. An empty
+  // list is the admin hiding it, and is respected — unlike an empty slide list.
+  const heroFigures = data?.hero_figures ?? fallbackHeroFigures;
+
   const community = data ? toCommunity(data.community) : fallbackCommunity;
 
   // Empty until the API answers, and empty is a valid answer. `TeamSection`
   // draws its own "coming soon" state — see the note above.
   const team = data?.team.map(toTeamMember) ?? [];
 
-  return { heroSlides, community, team, isLoading: query.isLoading };
+  return { heroSlides, heroFigures, community, team, isLoading: query.isLoading };
 }
 
 /* -------------------------------------------------------------------------- */

@@ -31,11 +31,19 @@ export function useLoopingCarousel({
   itemCount,
   paused,
   intervalMs = 3000,
+  enabled = true,
 }: {
   /** How many real items — not counting the copies. */
   itemCount: number;
   paused: boolean;
   intervalMs?: number;
+  /**
+   * False turns looping off entirely: `canLoop` stays false, so the section
+   * renders no copies and the strip never moves on its own. For a breakpoint
+   * where the strip is driven by arrows instead — a page counter cannot follow
+   * a strip that wraps around.
+   */
+  enabled?: boolean;
 }) {
   // A callback ref in state, for the reason given in `useSnapCarousel`.
   const [track, setTrack] = useState<HTMLDivElement | null>(null);
@@ -53,7 +61,7 @@ export function useLoopingCarousel({
     const measure = () => {
       const [first, second] = Array.from(track.children) as HTMLElement[];
 
-      if (itemCount < 2 || !first || !second) {
+      if (!enabled || itemCount < 2 || !first || !second) {
         setCanLoop(false);
         return;
       }
@@ -71,7 +79,7 @@ export function useLoopingCarousel({
     observer.observe(track);
 
     return () => observer.disconnect();
-  }, [itemCount, track]);
+  }, [enabled, itemCount, track]);
 
   useEffect(() => {
     if (!track) return;
