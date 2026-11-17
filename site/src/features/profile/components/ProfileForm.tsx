@@ -319,20 +319,26 @@ export function ProfileForm({ student }: { student: StudentProfile }) {
       </Section>
 
       {/*
-        Sticky on a phone, so a long form never hides its own Save button —
-        resting just above the floating tab bar, whose height PortalLayout publishes.
+        In the flow, directly under the last section, at every size (client
+        request): a bar floating over the page on a phone covered the fields it
+        saves. The leave-with-edits guard below still catches a student who
+        scrolls away without saving. On a phone the two buttons split the width
+        for an easy tap, with the unsaved note on its own line above them.
       */}
-      <div className="sticky bottom-[calc(var(--portal-tabbar-clearance)+0.5rem)] z-10 flex items-center justify-end gap-3 rounded-xl border bg-card/95 p-3 backdrop-blur md:static md:border-0 md:bg-transparent md:p-0">
-        {isDirty ? <p className="mr-auto text-xs text-muted-foreground">{t('site.portal.profile.unsavedHint')}</p> : null}
+      <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
+        {isDirty ? (
+          <p className="w-full text-xs text-muted-foreground md:mr-auto md:w-auto">{t('site.portal.profile.unsavedHint')}</p>
+        ) : null}
         <Button
           type="button"
-          variant="ghost"
+          variant="outline"
+          className="max-md:flex-1"
           disabled={!isDirty || save.isPending}
           onClick={() => form.reset(toValues(student))}
         >
           {t('common.cancel')}
         </Button>
-        <Button type="submit" disabled={!isDirty || save.isPending}>
+        <Button type="submit" className="max-md:flex-1" disabled={!isDirty || save.isPending}>
           {save.isPending ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Check aria-hidden="true" />}
           {t('common.save')}
         </Button>
