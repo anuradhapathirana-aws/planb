@@ -5,6 +5,7 @@ All notable changes to this project are documented here. Format loosely follows 
 ## Unreleased
 
 ### Added
+- **Profile page on phones: Cancel and Save now sit directly under the edit form**, instead of floating over the page above the tab bar. On phones the two buttons share the width evenly, with the "unsaved changes" note on its own line above them. Leaving the page with unsaved edits still asks first.
 - **Smaller, tidier text on the portal's lesson (video) page.** The lesson title is 17px (18px on laptops) instead of 20–24px; the "Lesson complete" box, its buttons, the no-skip note and the "Course lessons" heading are all a size smaller. The topic and lesson list (shared with the course page) now uses 14px topic names, 13px lesson names and 11px details, so more of the course fits on screen.
 - **Signed-in students now stay inside the portal for every course and category.**
   - **Courses not owned yet open in the portal.** Tapping one shows the same course page as an owned course (picture, name, lessons and topics), with every lesson locked. In place of the progress panel there is an enrol panel: "Start for free" or "Enrol now · price", "Coming soon · price" while payments are off, or "View Course Bundle" for a course sold in a bundle. Tapping a locked lesson says "Enrol to unlock this lesson." After a free enrol, the page refreshes and the course opens. The "view the public page" link is gone from the course page.
