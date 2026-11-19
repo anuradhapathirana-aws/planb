@@ -162,7 +162,7 @@ export default function RegisterScreen() {
         <Text
           variant="none"
           accessibilityRole="header"
-          className="text-center text-[28px] font-medium leading-[40px] text-white"
+          className="text-center text-[28px] font-normal leading-[40px] text-white"
         >
           {t('register.title')}
         </Text>
