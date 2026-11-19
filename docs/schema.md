@@ -354,7 +354,7 @@ There is at most one live code per student **per purpose** — requesting a new 
 
 ## `student_video_progress`
 
-How far a student has got through each lesson — and where the no-skip rule (FR-MOB-020) actually lives. One row per (student, lesson). Written only by `App\Services\Course\CourseProgressService`, which clamps every value before it lands.
+How far a student has got through each lesson. One row per (student, lesson). Written only by `App\Services\Course\CourseProgressService`, which caps every value before it lands. Since November 2026 students may skip (FR-MOB-020's no-skip rule was dropped at the client's request): `max_position_seconds` is the furthest point reached, and a lesson is watched once that passes 95%. `watched_seconds` is a statistic only.
 
 | Column | Type | Notes |
 |---|---|---|

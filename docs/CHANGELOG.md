@@ -4,7 +4,21 @@ All notable changes to this project are documented here. Format loosely follows 
 
 ## Unreleased
 
+### Changed
+- **Students can now skip through lesson videos, and open lessons in any order** (app and website portal). This replaces the old "no skipping" rule, at Plan B's request.
+  - **Skipping:** students can drag or tap anywhere on the video bar, and there is now a "forward 10 seconds" button next to "rewind 10 seconds". The "You can't skip ahead" message is gone.
+  - **When a lesson counts as watched:** once the student reaches 95% of it, whether they watched or skipped there. That ticks the lesson and moves the course progress.
+  - **No more lesson order:** on the course page, every lesson of a course the student owns opens straight away; the lock icon that said "Finish the previous lesson" is gone. Courses the student hasn't bought still show every lesson locked, with "Enrol to unlock this lesson."
+  - **The Q&A paper is unchanged:** it still opens only once every lesson in the course counts as watched.
+  - Lessons a student already watched stay watched. Playback time is still recorded for reports, but no longer decides anything.
+  - The website portal picks this up after the next server deploy. The app needs the backend deploy for lessons to unlock, plus the next app build for the skip controls.
+
 ### Added
+- **Mobile app: Baggage checklist and checking points.** The app now matches the portal.
+  - The Checklist screen has three tabs: Before arrival, Baggage and After arrival. The tab names and order come from the same shared list as the portal and admin panel.
+  - An item with checking points shows "2 of 4 points done". Opening it shows its description (if any) and then the points, each with its own tick and its description underneath. Each tick is saved for the student straight away. The item ticks itself once every point is done, and ticking the item's own box ticks (or clears) all its points.
+  - Ticks show instantly and are saved in the background. If saving fails, only that item goes back to how it was, and the student sees a message. If Plan B deleted the item or point in the meantime, the list reloads.
+  - Ships with the next app build (JavaScript only, no new native modules).
 - **Checklist tabs in the portal now look and move like the app's.** Before arrival, Baggage and After arrival sit in one rounded navy bar, and the open tab is a white bubble. Tapping another tab makes the bubble stretch across to it and settle, with no bounce. Visitors who turn on reduced motion see it jump straight there. The same design is used on phones and laptops. The small "3/10" counts on the tabs are gone, as in the app; the progress card under the tabs shows the numbers.
 - **New "Baggage" checklist**, for everything a student should pack in their travel bag. It is a third tab, between Before arrival and After arrival, and works exactly like them: items, checking points, descriptions and progress.
   - **Admin:** Checklists (renamed from "Arrival checklists") now has three tabs. Each tab is saved separately, as before.

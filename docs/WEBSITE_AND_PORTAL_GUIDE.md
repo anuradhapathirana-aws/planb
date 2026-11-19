@@ -209,6 +209,9 @@ instead is forbidden outright by root `CLAUDE.md` §13.12.
 The initial recommendation was to leave video on mobile only. That was **wrong**, and the reasoning
 is recorded so it is not re-raised:
 
+- *(Superseded November 2026: skipping is now allowed and lessons have no order — see root
+  `CLAUDE.md` §4 "Lesson Video Player". The point below still holds in its new form: "watched" is
+  decided on the server, the same for every client.)*
 - **No-skip enforcement is already client-agnostic.** `app/Services/Course/CourseProgressService.php`
   enforces monotonic position, the `elapsed × 2.0 + 5s` advance cap, and the two-gate "watched" rule
   (position ≥ 95% **and** accumulated `watched_seconds` ≥ 90%) **on the server**. It already assumes a
