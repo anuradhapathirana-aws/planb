@@ -701,3 +701,7 @@ register.panelHeading,Your path to the **UAE** starts here,**UAE** වෙත ඔ
 register.panelBody,Join students across Sri Lanka preparing for their next step abroad.,විදේශයේ ඊළඟ පියවරට සූදානම් වන ශ්‍රී ලංකාව පුරා සිසුන් සමඟ එක්වන්න.,,New: sign-up form
 register.journeyFrom,Sri Lanka,ශ්‍රී ලංකාව,,New: sign-up form
 register.journeyTo,UAE,UAE,,New: sign-up form
+auth.heroTitle,Welcome back,නැවතත් සාදරයෙන් පිළිගනිමු,,New: app sign-in screen title
+auth.heroSubtitle,Sign in with your email.,ඔබේ ඊමේල් ලිපිනයෙන් පිවිසෙන්න.,,New: app sign-in screen
+auth.orContinueWith,or continue with,නැතහොත් මෙයින් ඉදිරියට යන්න,,New: app sign-in — sits beside the Google icon
+register.heroSubtitle,Your journey to the UAE starts here.,ඔබේ UAE ගමන මෙතැනින් ආරම්භ වේ.,,New: app Create Account screen

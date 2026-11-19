@@ -5,6 +5,12 @@ All notable changes to this project are documented here. Format loosely follows 
 ## Unreleased
 
 ### Changed
+- **Mobile app: new Sign In and Create Account screens.** Both now show a full-length airport photo (a student with her travel bag and passport) across the whole screen, with the form on a see-through navy card.
+  - **Sign In:** "Welcome back", one email field, and a gold "Email me a sign-in code" button. The 6-digit code is entered in a small pop-up over the same screen, not a separate page. A correct code closes it and signs the student in. Closing the pop-up lets them fix the email address.
+  - **Create Account:** the four details and the terms tick box fit on one phone screen. Field names sit inside the fields, help text (such as "Include your country code") appears while a field is being typed in, and the step tracker and "No password needed" line were removed. The confirmation code is entered in the same kind of pop-up. Closing it goes back to the details, still filled in.
+  - **Google:** "Continue with Google" is now just the Google "G" in a white circle, next to "or continue with".
+  - Four new text strings have Sinhala drafts, added to the review sheet. Ships with the next app build (JavaScript and one bundled image, no new packages).
+- **Mobile app: the opening screen is now white, with the Plan B logo on it and no white circle behind it.** Before, the logo showed as a white disc on navy. Now the splash, the intro and the short loading moments before the language picker or sign-in screen are all white, and the logo is shown larger. The intro preview under Admin > Settings > App Intro matches. The home-screen icon is unchanged (the Plan B logo on navy). Ships with the next app build. The splash is part of the installed app, so an update over the air would not change it.
 - **Students can now skip through lesson videos, and open lessons in any order** (app and website portal). This replaces the old "no skipping" rule, at Plan B's request.
   - **Skipping:** students can drag or tap anywhere on the video bar, and there is now a "forward 10 seconds" button next to "rewind 10 seconds". The "You can't skip ahead" message is gone.
   - **When a lesson counts as watched:** once the student reaches 95% of it, whether they watched or skipped there. That ticks the lesson and moves the course progress.

@@ -24,6 +24,12 @@ interface GoogleButtonProps {
   loading?: boolean;
   disabled?: boolean;
   className?: string;
+  /**
+   * Just the "G" in a white circle, for the sign-in screens (client request).
+   * `label` is then the accessible name only. White is one of the two surfaces
+   * Google's guidelines allow behind their mark, so it still complies.
+   */
+  iconOnly?: boolean;
 }
 
 export function GoogleButton({
@@ -32,8 +38,28 @@ export function GoogleButton({
   loading = false,
   disabled = false,
   className,
+  iconOnly = false,
 }: GoogleButtonProps) {
   const isDisabled = disabled || loading;
+
+  if (iconOnly) {
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ disabled: isDisabled, busy: loading }}
+        accessibilityLabel={label}
+        disabled={isDisabled}
+        onPress={onPress}
+        className={cn(
+          'h-12 w-12 items-center justify-center rounded-full bg-card active:bg-muted',
+          isDisabled && 'opacity-60',
+          className,
+        )}
+      >
+        {loading ? <ActivityIndicator size="small" color="#14224b" /> : <GoogleMark size={22} />}
+      </Pressable>
+    );
+  }
 
   return (
     <Pressable
@@ -57,10 +83,10 @@ export function GoogleButton({
 }
 
 /** Google's "G", in its four brand colours. Do not recolour it. */
-function GoogleMark() {
+function GoogleMark({ size = 20 }: { size?: number }) {
   return (
-    <View className="h-5 w-5">
-      <Svg width={20} height={20} viewBox="0 0 48 48">
+    <View style={{ width: size, height: size }}>
+      <Svg width={size} height={size} viewBox="0 0 48 48">
         <Path
           fill="#4285F4"
           d="M45.12 24.5c0-1.56-.14-3.06-.4-4.5H24v8.51h11.84c-.51 2.75-2.06 5.08-4.39 6.64v5.52h7.11c4.16-3.83 6.56-9.47 6.56-16.17z"

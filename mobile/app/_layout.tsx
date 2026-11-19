@@ -433,7 +433,6 @@ export default function RootLayout() {
               {/* No swipe-back: the store is the only way out of this one. */}
               <Stack.Screen name="update-required" options={{ gestureEnabled: false }} />
               <Stack.Screen name="sign-in" />
-              <Stack.Screen name="verify" />
               <Stack.Screen name="register" />
               <Stack.Screen name="(tabs)" />
             </Stack>

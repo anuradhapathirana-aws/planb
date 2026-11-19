@@ -12,11 +12,17 @@ import { Text } from './Text';
  * touchable area past the visual bounds for the smaller sizes.
  */
 
-type Variant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'destructive';
+/*
+ * `accent` is the gold call to action for dark surfaces (the photo-backed
+ * sign-in screens), where a navy button would disappear into the navy tint.
+ * Dark text on gold, never white: white on `--accent` fails contrast.
+ */
+type Variant = 'primary' | 'accent' | 'secondary' | 'outline' | 'ghost' | 'destructive';
 type Size = 'sm' | 'md' | 'lg';
 
 const CONTAINER: Record<Variant, string> = {
   primary: 'bg-primary active:bg-primary-tint',
+  accent: 'bg-accent active:opacity-90',
   secondary: 'bg-primary-soft active:bg-border',
   outline: 'border border-border bg-card active:bg-muted',
   ghost: 'bg-transparent active:bg-muted',
@@ -25,6 +31,7 @@ const CONTAINER: Record<Variant, string> = {
 
 const LABEL: Record<Variant, string> = {
   primary: 'text-primary-foreground',
+  accent: 'text-accent-foreground',
   secondary: 'text-primary',
   outline: 'text-foreground',
   ghost: 'text-primary',
@@ -51,6 +58,7 @@ const ICON_SIZE: Record<Size, number> = { sm: 16, md: 18, lg: 20 };
 
 const ICON_COLOR: Record<Variant, string> = {
   primary: '#ffffff',
+  accent: '#1f2937',
   secondary: '#14224b',
   outline: '#0f172a',
   ghost: '#14224b',

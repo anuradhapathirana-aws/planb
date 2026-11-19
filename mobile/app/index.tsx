@@ -98,8 +98,8 @@ export default function LaunchScreen() {
     }
   }, [introDone, languageChosen, updateRequired, hasSession, isSuccess, isError, data, setStudent]);
 
-  // Navy while the redirect lands, so the intro does not flash for one frame.
-  if (!languageChosen) return <View className="flex-1 bg-primary" />;
+  // Blank while the redirect lands, so the intro does not flash for one frame.
+  if (!languageChosen) return <View className="flex-1 bg-background" />;
 
   if (showIntro && intro) {
     // Sinhala falls back to English when the admin has not translated it. The
@@ -118,10 +118,9 @@ export default function LaunchScreen() {
   }
 
   /*
-   * Navy for every wait, continuing the native splash. Both places this screen
-   * hands over to — the intro and the sign-in screen — are navy too, so a white
-   * placeholder here flashed between two navy screens whenever the config
-   * request failed or the session check was slow.
+   * White for every wait, continuing the native splash and matching the intro.
+   * A navy placeholder here would flash between those two white screens
+   * whenever the config request or the session check was slow.
    */
-  return <View className="flex-1 bg-primary" />;
+  return <View className="flex-1 bg-background" />;
 }

@@ -21,6 +21,8 @@ export interface DateFieldProps {
   hint?: string;
   minimumDate?: Date;
   maximumDate?: Date;
+  /** `glass` matches `Input`'s glass tone: underline, white text, no label row. */
+  tone?: 'default' | 'glass';
 }
 
 /** Doubles as the row height, so every item clears the 44px touch minimum. */
@@ -63,6 +65,7 @@ export function DateField({
   hint,
   minimumDate,
   maximumDate,
+  tone = 'default',
 }: DateFieldProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -166,33 +169,73 @@ export function DateField({
     setOpen(false);
   }
 
+  const glass = tone === 'glass';
+
   return (
     <View className="w-full">
-      <Text variant="label" className="mb-1.5 text-foreground">
-        {label}
-      </Text>
+      {glass ? null : (
+        <Text variant="label" className="mb-1.5 text-foreground">
+          {label}
+        </Text>
+      )}
 
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`${label}. ${valid ? formatDate(value) : placeholder}`}
+        accessibilityHint={glass ? hint : undefined}
         onPress={openSheet}
         className={cn(
-          'min-h-[52px] w-full flex-row items-center gap-2 rounded-lg border bg-card px-3.5 py-3 active:bg-muted',
-          error ? 'border-destructive' : 'border-border',
+          'min-h-[52px] w-full flex-row items-center',
+          glass
+            ? cn('gap-3 border-b py-3', error ? 'border-destructive' : 'border-white/40')
+            : cn(
+                'gap-2 rounded-lg border bg-card px-3.5 py-3 active:bg-muted',
+                error ? 'border-destructive' : 'border-border',
+              ),
         )}
       >
-        <Calendar size={18} color={error ? colors.destructive : colors['muted-foreground']} />
+        <Calendar
+          size={glass ? 20 : 18}
+          color={
+            error
+              ? glass
+                ? colors['destructive-soft']
+                : colors.destructive
+              : glass
+                ? colors['primary-foreground']
+                : colors['muted-foreground']
+          }
+        />
 
-        <Text className={cn('flex-1', valid ? 'text-foreground' : 'text-muted-foreground')}>
-          {valid ? formatDate(value) : placeholder}
+        <Text
+          variant={glass ? 'none' : 'body'}
+          className={cn(
+            'flex-1',
+            glass && 'text-[16px] font-normal leading-6',
+            valid
+              ? glass
+                ? 'text-white'
+                : 'text-foreground'
+              : glass
+                ? 'text-surface-muted'
+                : 'text-muted-foreground',
+          )}
+        >
+          {valid ? formatDate(value) : glass ? label : placeholder}
         </Text>
       </Pressable>
 
-      {(error ?? hint) && (
+      {/* Glass shows errors only — its hint is read out as the accessibility hint. */}
+      {(error ?? (glass ? undefined : hint)) && (
         <Text
+          variant={glass ? 'none' : 'body'}
           className={cn(
-            'mt-1.5 text-[13px] leading-5',
-            error ? 'text-destructive' : 'text-muted-foreground',
+            glass ? 'mt-1 text-[12px] leading-5' : 'mt-1.5 text-[13px] leading-5',
+            error
+              ? glass
+                ? 'font-medium text-destructive-soft'
+                : 'text-destructive'
+              : 'text-muted-foreground',
           )}
         >
           {error ?? hint}

@@ -282,12 +282,19 @@ const config: ExpoConfig = {
         microphonePermission: false,
       },
     ],
+    /*
+     * White, not navy: the badge is itself a white disc, and on navy it read as
+     * the logo sitting inside a white circle. On white the disc disappears and
+     * only the gold rim and artwork show (client request, Nov 2026). The intro
+     * and the launch wait screens in `app/index.tsx` are white to match.
+     */
     [
       'expo-splash-screen',
       {
         image: './assets/splash-icon.png',
+        imageWidth: 220,
         resizeMode: 'contain',
-        backgroundColor: '#14224b',
+        backgroundColor: '#ffffff',
       },
     ],
     /*

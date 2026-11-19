@@ -21,9 +21,11 @@ import { useAuthStore } from '@/stores/authStore';
 interface GoogleSignInButtonProps {
   /** True while the email path is mid-flight, so the two can't race. */
   disabled?: boolean;
+  /** Draw only the "G" — see `GoogleButton`. */
+  iconOnly?: boolean;
 }
 
-export function GoogleSignInButton({ disabled = false }: GoogleSignInButtonProps) {
+export function GoogleSignInButton({ disabled = false, iconOnly = false }: GoogleSignInButtonProps) {
   const { t } = useTranslation();
   const toast = useToast();
   const storeSignIn = useAuthStore((state) => state.signIn);
@@ -53,6 +55,7 @@ export function GoogleSignInButton({ disabled = false }: GoogleSignInButtonProps
       loading={google.isPending}
       disabled={disabled || !google.ready}
       onPress={google.start}
+      iconOnly={iconOnly}
     />
   );
 }

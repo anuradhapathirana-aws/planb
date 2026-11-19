@@ -41,8 +41,8 @@ export function IntroPreview({ logoUrl, greeting, animation, replayKey }: IntroP
   };
 
   return (
-    // Navy, like the app: its intro continues the native splash, which is navy.
-    <div className="mx-auto aspect-9/16 w-full max-w-60 overflow-hidden rounded-3xl border-4 border-slate-800 bg-primary">
+    // White, like the app: its intro continues the native splash, which is white.
+    <div className="mx-auto aspect-9/16 w-full max-w-60 overflow-hidden rounded-3xl border-4 border-slate-800 bg-white">
 
       <div
         key={`${replayKey}-${animation}`}
@@ -51,7 +51,7 @@ export function IntroPreview({ logoUrl, greeting, animation, replayKey }: IntroP
         <motion.img
           src={logoUrl}
           alt="Plan B logo"
-          className="size-24 rounded-full bg-white object-cover"
+          className="size-32 object-contain"
           variants={LOGO_VARIANTS[animation]}
           initial="from"
           animate="to"
@@ -59,7 +59,7 @@ export function IntroPreview({ logoUrl, greeting, animation, replayKey }: IntroP
 
         {greeting.trim() !== '' && (
           <motion.p
-            className="text-sm leading-snug font-semibold text-white"
+            className="text-sm leading-snug font-semibold text-primary"
             variants={greetingVariants}
             initial="from"
             animate="to"
