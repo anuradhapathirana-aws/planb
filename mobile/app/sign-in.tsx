@@ -122,7 +122,7 @@ export default function SignInScreen() {
         <Text
           variant="none"
           accessibilityRole="header"
-          className="mt-1 text-center text-[30px] font-medium leading-[40px] text-white"
+          className="mt-1 text-center text-[30px] font-normal leading-[40px] text-white"
         >
           {t('auth.heroTitle')}
         </Text>
