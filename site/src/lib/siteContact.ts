@@ -9,8 +9,11 @@
  */
 export const siteContact = {
   email: 'planbinternationalpvt@gmail.com',
-  /** Display form, with spaces. Never use this to build a link. */
-  phone: '+94 71 999 6997',
+  /**
+   * Display form, spaced exactly as the client asked (2026-11-19). Never use
+   * this to build a link — it has no country code; `telHref()` adds it.
+   */
+  phone: '071 99 96 997',
   address: 'Colombo, Sri Lanka',
 
   /**
@@ -22,9 +25,12 @@ export const siteContact = {
   whatsappNumber: '94719996997',
 } as const;
 
-/** `tel:` needs the digits and the `+`, but no spaces. */
+/**
+ * `tel:` in international form, so the link works from a foreign SIM too
+ * (students in the UAE). Built from the same number WhatsApp uses.
+ */
 export function telHref(): string {
-  return `tel:${siteContact.phone.replace(/[^\d+]/g, '')}`;
+  return `tel:+${siteContact.whatsappNumber}`;
 }
 
 /**
