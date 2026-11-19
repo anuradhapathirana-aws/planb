@@ -3,13 +3,13 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { PartyPopper } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 
+import { checklistPhaseHint, checklistPhaseLabel } from '@shared/lib/checklistPhases';
 import type { ChecklistPhase } from '@shared/types/checklist';
 import type { ChecklistProgress } from '@shared/types/studentChecklist';
 import { colors } from '@shared/theme/tokens';
 import { Card } from '@/components/ui/Card';
 import { ProgressRing } from '@/components/ui/ProgressRing';
 import { Text } from '@/components/ui/Text';
-import { phaseLabel } from './useChecklists';
 
 export interface PhaseProgressCardProps {
   phase: ChecklistPhase;
@@ -32,8 +32,7 @@ export function PhaseProgressCard({ phase, progress }: PhaseProgressCardProps) {
   const finished = progress.total > 0 && progress.completed === progress.total;
   const remaining = progress.total - progress.completed;
 
-  const hint =
-    phase === 'before_arrival' ? t('checklist.beforeArrivalHint') : t('checklist.afterArrivalHint');
+  const hint = checklistPhaseHint(phase, t);
 
   if (finished) {
     return (
@@ -64,7 +63,7 @@ export function PhaseProgressCard({ phase, progress }: PhaseProgressCardProps) {
 
       <View className="flex-1">
         <Text variant="label" className="text-[10px] leading-4 text-surface-muted">
-          {phaseLabel(phase, t)}
+          {checklistPhaseLabel(phase, t)}
         </Text>
 
         <Text className="text-[14px] font-semibold leading-5 text-white">

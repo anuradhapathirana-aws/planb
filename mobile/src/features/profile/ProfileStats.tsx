@@ -48,7 +48,7 @@ export function ProfileStats({ phases, courses, purchases, loading = false }: Pr
   }
 
   /*
-   * Both phases counted as one list. A student thinks in "how much of this is
+   * Every phase counted as one list. A student thinks in "how much of this is
    * left", not "how much of Before Arrival is left" — the split matters on the
    * Checklists tab, where they are actually working, not in a summary.
    */

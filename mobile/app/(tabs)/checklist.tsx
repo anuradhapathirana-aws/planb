@@ -5,6 +5,7 @@ import { ListChecks, WifiOff } from '@/components/icons';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { CHECKLIST_PHASES, checklistPhaseLabel } from '@shared/lib/checklistPhases';
 import type { ChecklistPhase } from '@shared/types/checklist';
 import { colors } from '@shared/theme/tokens';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -13,12 +14,12 @@ import { Text } from '@/components/ui/Text';
 import { ChecklistItemCard } from '@/features/checklist/ChecklistItemCard';
 import { PhaseProgressCard } from '@/features/checklist/PhaseProgressCard';
 import { PhaseSwitch } from '@/features/checklist/PhaseSwitch';
-import { phaseLabel, useChecklists } from '@/features/checklist/useChecklists';
+import { useChecklists } from '@/features/checklist/useChecklists';
 
 /**
- * The arrival checklists.
+ * The arrival checklists: Before arrival, Baggage, After arrival.
  *
- * Two phases, one at a time. Both come down in a single request, so switching
+ * One phase at a time. All of them come down in a single request, so switching
  * tabs is instant — the same reasoning as the Courses screen's All/Enrolled
  * split, and it matters more here because a student flips between "what's left
  * before I fly" and "what happens when I land" while planning.
@@ -32,7 +33,7 @@ export default function ChecklistScreen() {
   // The tab bar floats over this screen; see `useTabBarClearance`.
   const tabBarClearance = useTabBarClearance();
 
-  const { phases, isLoading, isError, refetch, toggle } = useChecklists();
+  const { phases, isLoading, isError, refetch, tick } = useChecklists();
 
   const [phase, setPhase] = useState<ChecklistPhase>('before_arrival');
   const [refreshing, setRefreshing] = useState(false);
@@ -86,7 +87,7 @@ export default function ChecklistScreen() {
             onToggleExpanded={() =>
               setExpandedId((current) => (current === item.id ? null : item.id))
             }
-            onToggleCompleted={(isCompleted) => toggle(item.id, isCompleted)}
+            onTick={tick}
           />
         )}
         ListHeaderComponent={
@@ -154,10 +155,10 @@ function Header({ phase, onChange }: HeaderProps) {
       <PhaseSwitch
         value={phase}
         onChange={onChange}
-        options={[
-          { value: 'before_arrival', label: phaseLabel('before_arrival', t) },
-          { value: 'after_arrival', label: phaseLabel('after_arrival', t) },
-        ]}
+        options={CHECKLIST_PHASES.map((value) => ({
+          value,
+          label: checklistPhaseLabel(value, t),
+        }))}
       />
     </View>
   );

@@ -33,11 +33,12 @@ export interface PhaseSwitchProps {
 }
 
 /**
- * The Before / After arrival switch, animated as a moving bubble.
+ * The checklist phase switch (Before arrival / Baggage / After arrival),
+ * animated as a moving bubble.
  *
  * Not `SegmentedToggle`: that is a form input whose pill jumps instantly, which
- * is right inside a form. Here the switch is navigation between two halves of
- * one journey, so the white pill flows across the track — its front edge runs
+ * is right inside a form. Here the switch is navigation between stages of one
+ * journey, so the white pill flows across the track — its front edge runs
  * ahead, its back edge follows, and it settles exactly in place. Deliberately no
  * spring: a bounce on every phase change was too much for a control the student
  * flips back and forth while planning.
@@ -147,7 +148,8 @@ function SwitchOption({ index, label, selected, left, right, onPress }: SwitchOp
       onPress={onPress}
       // 36 visible + the track's padding and slop keeps the target at 44.
       hitSlop={{ top: 6, bottom: 6 }}
-      className="min-h-[36px] flex-1 items-center justify-center px-3 py-1.5"
+      // Three labels share a phone-width track, so horizontal padding stays slim.
+      className="min-h-[36px] flex-1 items-center justify-center px-1.5 py-1.5"
     >
       <Animated.View style={offPillStyle}>
         <Text
