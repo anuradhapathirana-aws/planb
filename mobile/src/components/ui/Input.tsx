@@ -19,6 +19,15 @@ export interface InputProps extends Omit<TextInputProps, 'className' | 'style'> 
    * minimum touch target. `cn` is a plain join, so sizes branch rather than append.
    */
   size?: 'default' | 'sm';
+  /**
+   * `glass` is for the photo-backed sign-in screens: white text on a single
+   * underline, no box. The label is not drawn — `placeholder` (falling back to
+   * the label) names the field instead, and the leading icon stays visible
+   * once typing starts — but it remains the accessible name. The hint shows
+   * only while the field is focused, which keeps a four-field form on one
+   * screen without hiding the help when it is needed.
+   */
+  tone?: 'default' | 'glass';
 }
 
 /**
@@ -35,9 +44,11 @@ export function Input({
   icon: Icon,
   required = false,
   size = 'default',
+  tone = 'default',
   multiline = false,
   onFocus,
   onBlur,
+  placeholder,
   ...props
 }: InputProps) {
   const { t } = useTranslation();
@@ -45,7 +56,61 @@ export function Input({
   const fontFamily = useFontFamily(400);
   const hasError = Boolean(error);
   const isSmall = size === 'sm';
-  const fontSize = (isSmall ? 13 : 15) * useFontScale();
+  const fontScale = useFontScale();
+  const fontSize = (isSmall ? 13 : 15) * fontScale;
+
+  if (tone === 'glass') {
+    const message = error ?? (focused ? hint : undefined);
+
+    return (
+      <View className="w-full">
+        <View
+          className={cn(
+            'min-h-[52px] w-full flex-row items-center gap-3 border-b',
+            hasError ? 'border-destructive' : focused ? 'border-accent' : 'border-white/40',
+          )}
+        >
+          {Icon && (
+            <Icon
+              size={20}
+              color={hasError ? colors['destructive-soft'] : focused ? colors.accent : colors['primary-foreground']}
+            />
+          )}
+
+          <TextInput
+            accessibilityLabel={hasError ? t('common.fieldError', { label, error }) : label}
+            accessibilityHint={hint}
+            placeholder={placeholder ?? label}
+            placeholderTextColor={colors['surface-muted']}
+            selectionColor={colors.accent}
+            style={{ fontFamily, fontSize: 16 * fontScale }}
+            className="flex-1 py-3 leading-6 text-white"
+            onFocus={(event) => {
+              setFocused(true);
+              onFocus?.(event);
+            }}
+            onBlur={(event) => {
+              setFocused(false);
+              onBlur?.(event);
+            }}
+            {...props}
+          />
+        </View>
+
+        {message ? (
+          <Text
+            variant="none"
+            className={cn(
+              'mt-1 text-[12px] leading-5',
+              hasError ? 'font-medium text-destructive-soft' : 'font-normal text-surface-muted',
+            )}
+          >
+            {message}
+          </Text>
+        ) : null}
+      </View>
+    );
+  }
 
   return (
     <View className="w-full">
@@ -98,6 +163,7 @@ export function Input({
            */
           accessibilityLabel={hasError ? t('common.fieldError', { label, error }) : label}
           accessibilityHint={hint}
+          placeholder={placeholder}
           placeholderTextColor={colors['muted-foreground']}
           multiline={multiline}
           // Android centres multiline text vertically without this; iOS ignores it.

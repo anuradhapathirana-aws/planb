@@ -68,7 +68,10 @@
     "signOutConfirm": "Sign out of Plan B on this device?",
     "legalConsent": "By continuing, you agree to our <terms>Terms of Use</terms> and <privacy>Privacy Policy</privacy>, and confirm you are 18 or older.",
     "newToPlanB": "New to Plan B?",
-    "createAccount": "Create an account"
+    "createAccount": "Create an account",
+    "heroTitle": "Welcome back",
+    "heroSubtitle": "Sign in with your email.",
+    "orContinueWith": "or continue with"
   },
   "register": {
     "eyebrow": "Join Plan B",
@@ -79,6 +82,7 @@
     "stepStart": "Start learning",
     "stepOf": "Step {{current}} of {{total}}",
     "orEmail": "or sign up with email",
+    "heroSubtitle": "Your journey to the UAE starts here.",
     "fullName": "Full name",
     "fullNamePlaceholder": "e.g. Nimal Perera",
     "fullNameHint": "As it appears on your passport.",

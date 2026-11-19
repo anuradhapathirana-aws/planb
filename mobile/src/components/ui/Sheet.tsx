@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Modal, Pressable, ScrollView, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Pressable, ScrollView, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { X } from '@/components/icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,6 +17,16 @@ export interface SheetProps {
    * list nested in a vertical list fights for the same gesture on Android.
    */
   scroll?: boolean;
+  /**
+   * Lift the sheet above the keyboard, for a sheet whose main job is typing
+   * (the sign-in code). `padding` on both platforms on purpose: the app is
+   * edge-to-edge on Android, so the window no longer resizes for the keyboard,
+   * and `KeyboardAvoidingView` measures the real overlap — where the OS did
+   * resize, that overlap is zero and nothing is added twice.
+   */
+  avoidKeyboard?: boolean;
+  /** One line under the title, for context the student needs before acting. */
+  description?: string;
 }
 
 /**
@@ -26,7 +36,15 @@ export interface SheetProps {
  * centred-dialog variant. It rises from the thumb end of the screen rather than
  * the middle, which is where a one-handed user can actually reach it.
  */
-export function Sheet({ visible, title, onClose, children, scroll = true }: SheetProps) {
+export function Sheet({
+  visible,
+  title,
+  onClose,
+  children,
+  scroll = true,
+  avoidKeyboard = false,
+  description,
+}: SheetProps) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
 
@@ -39,7 +57,11 @@ export function Sheet({ visible, title, onClose, children, scroll = true }: Shee
       onRequestClose={onClose}
       statusBarTranslucent
     >
-      <View className="flex-1 justify-end bg-black/40">
+      <KeyboardAvoidingView
+        className="flex-1 justify-end bg-black/40"
+        behavior="padding"
+        enabled={avoidKeyboard}
+      >
         {/* Tapping the scrim closes, as every native sheet does. */}
         <Pressable
           accessibilityRole="button"
@@ -58,9 +80,14 @@ export function Sheet({ visible, title, onClose, children, scroll = true }: Shee
           </View>
 
           <View className="flex-row items-center justify-between px-5 py-4">
-            <Text variant="heading" className="flex-1">
-              {title}
-            </Text>
+            <View className="flex-1">
+              <Text variant="heading">{title}</Text>
+              {description ? (
+                <Text variant="caption" className="mt-1 leading-5">
+                  {description}
+                </Text>
+              ) : null}
+            </View>
 
             <Pressable
               accessibilityRole="button"
@@ -85,7 +112,7 @@ export function Sheet({ visible, title, onClose, children, scroll = true }: Shee
             <View className="px-5">{children}</View>
           )}
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

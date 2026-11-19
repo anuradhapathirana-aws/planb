@@ -69,7 +69,10 @@
     "signOutConfirm": "මෙම උපාංගයෙන් Plan B වෙතින් පිටවෙනවාද?",
     "legalConsent": "ඉදිරියට යාමෙන් ඔබ අපගේ <terms>භාවිත නියම</terms> සහ <privacy>පෞද්ගලිකත්ව ප්‍රතිපත්තිය</privacy> පිළිගන්නා අතර, ඔබේ වයස අවුරුදු 18ට වැඩි බව තහවුරු කරයි.",
     "newToPlanB": "Plan B වෙත අලුත්ද?",
-    "createAccount": "ගිණුමක් සාදන්න"
+    "createAccount": "ගිණුමක් සාදන්න",
+    "heroTitle": "නැවතත් සාදරයෙන් පිළිගනිමු",
+    "heroSubtitle": "ඔබේ ඊමේල් ලිපිනයෙන් පිවිසෙන්න.",
+    "orContinueWith": "නැතහොත් මෙයින් ඉදිරියට යන්න"
   },
   "register": {
     "eyebrow": "Plan B හා එක්වන්න",
@@ -80,6 +83,7 @@
     "stepStart": "ඉගෙනීම අරඹන්න",
     "stepOf": "පියවර {{total}}න් {{current}}",
     "orEmail": "නැතහොත් ඊමේල් මගින් ලියාපදිංචි වන්න",
+    "heroSubtitle": "ඔබේ UAE ගමන මෙතැනින් ආරම්භ වේ.",
     "fullName": "සම්පූර්ණ නම",
     "fullNamePlaceholder": "උදා: නිමල් පෙරේරා",
     "fullNameHint": "ඔබේ ගමන් බලපත්‍රයේ ඇති පරිදි.",

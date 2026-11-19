@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import * as Device from 'expo-device';
-import { ChevronLeft, Info } from '@/components/icons';
+import { Info } from '@/components/icons';
 
 import { colors } from '@shared/theme/tokens';
 import { OTP_LENGTH } from '@shared/schemas/studentAuth';
@@ -21,19 +21,20 @@ import { useToast } from '@/components/ui/Toast';
  * The hint at the bottom carries what the API will not say — an address that
  * already has an account gets a sign-in reminder instead of a code, behind an
  * identical response (backend/CLAUDE.md §4). Never read more out of the reply.
+ *
+ * Shown in a sheet over the details form; closing the sheet is how a student
+ * goes back to edit their details, which stay filled in underneath.
  */
 export function RegisterCodeForm({
   email,
   resendAfterSeconds,
   resend,
-  onBack,
   onRegistered,
 }: {
   email: string;
   resendAfterSeconds: number;
   /** Sends the same details again for a fresh code. */
   resend: () => Promise<RequestCodeResponse>;
-  onBack: () => void;
   onRegistered: (session: StudentSession) => Promise<void>;
 }) {
   const { t } = useTranslation();
@@ -87,7 +88,7 @@ export function RegisterCodeForm({
   }
 
   return (
-    <View className="gap-5">
+    <View className="gap-4 pb-2">
       <OtpInput
         value={code}
         onChange={(value) => {
@@ -109,7 +110,7 @@ export function RegisterCodeForm({
         onPress={() => submit(code)}
       />
 
-      <View className="items-center">
+      <View className="min-h-[44px] items-center justify-center">
         {secondsLeft > 0 ? (
           <Text variant="caption">{t('auth.resendIn', { seconds: secondsLeft })}</Text>
         ) : (
@@ -128,14 +129,6 @@ export function RegisterCodeForm({
         <Text className="flex-1 text-[13px] leading-5 text-foreground">{t('register.codeHint')}</Text>
       </View>
 
-      <Button
-        label={t('register.editDetails')}
-        variant="ghost"
-        size="sm"
-        icon={ChevronLeft}
-        onPress={onBack}
-        disabled={verify.isPending}
-      />
     </View>
   );
 }

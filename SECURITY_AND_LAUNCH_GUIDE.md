@@ -645,8 +645,9 @@ No automated test: `mobile/` has no test runner (adding Jest is an ASK). `npx ts
    every screen shows B only — no flash of A — and Edit Profile is prefilled with B's details.
 2. Signed in, press Android back on Home: the app closes, it does not show sign-in.
 3. Signed out, press back on sign-in: the app closes, it does not show A's screens.
-4. Signed in, open `adb shell am start -a android.intent.action.VIEW -d "planb://verify?email=x@y.z"`:
-   the code screen closes straight back to where you were.
+4. Signed in, open `adb shell am start -a android.intent.action.VIEW -d "planb://sign-in"`:
+   the sign-in screen closes straight back to where you were. (`planb://verify` no longer exists —
+   since Nov 2026 the code is entered in a sheet on the sign-in screen.)
 5. While A is on Home, delete A's tokens in `php artisan tinker`
    (`App\Models\Student::where('email', 'A…')->first()->tokens()->delete();`), then pull to refresh:
    lands on sign-in once (no flicker loop), and signing in as B shows B's data. (Blocking A is not
