@@ -89,7 +89,7 @@ const config: ExpoConfig = {
    * Both platforms' ids are listed so a single build config serves either.
    */
   scheme: ['planb', androidPackage, iosBundleId],
-  version: '1.0.0',
+  version: '1.1.0',
   /*
    * 'default', not 'portrait' — and the app is still portrait everywhere but the
    * player. A native app can only rotate into orientations its manifest/plist
