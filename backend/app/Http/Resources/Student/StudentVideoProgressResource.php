@@ -11,8 +11,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
 /**
  * The server's view of how far a student has got through a lesson.
  *
- * The player seeds its forward-seek clamp from `max_position_seconds` — never
- * from zero, or a returning student would be locked back to the start.
+ * The player resumes from `max_position_seconds`, the furthest point the
+ * student has reached, so a returning student keeps their place.
  *
  * @mixin StudentVideoProgress
  */

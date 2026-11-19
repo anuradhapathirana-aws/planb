@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useMutation } from '@tanstack/react-query';
-import { Lock } from 'lucide-react';
 import videojs from 'video.js';
 import type Player from 'video.js/dist/types/player';
 import 'video.js/dist/video-js.css';
@@ -11,21 +9,19 @@ import { recordLessonProgress, recordLessonProgressOnExit, type LessonStream } f
 import type { VideoProgress } from '@shared/types/progress';
 
 /*
- * The no-skip player for the browser — the web twin of the mobile app's
- * `useNoSkipPlayer`, with the same rules and the same reasons for them.
+ * The lesson player for the browser — the web twin of the mobile app's
+ * `useLessonPlayer`, with the same rules.
  *
- * **The rule is enforced on the server** (`CourseProgressService`, backend
- * CLAUDE.md §5). Everything here is UX, built so an honest student never has
- * to fight it and a tampered one is simply re-seeded from the server's answer:
+ * Students may seek anywhere (a client decision, November 2026 — the old
+ * no-skip rule is gone). The server counts a lesson as watched once the
+ * furthest point reached passes 95% of it, skipping included
+ * (`CourseProgressService`, backend CLAUDE.md §5).
  *
- *  1. The high-water mark is seeded from the SERVER, never from 0 — or a
- *     returning student is locked back to the start of a half-watched lesson.
- *  2. Forward seeks past it snap back, however they were made (the bar, the
- *     keyboard, devtools). Rewinding is always free.
- *  3. Watched time accrues from the wall clock while actually playing, never
- *     from the media position — which is also why there is no speed menu: the
- *     server credits at most ~2x real time, so faster playback only loses credit.
- *  4. The signed link lasts 30 minutes and lessons can run longer, so it is
+ *  1. The furthest point reached is seeded from the SERVER, never from 0, so a
+ *     returning student resumes where they stopped.
+ *  2. Watched time accrues from the wall clock while actually playing. It is a
+ *     statistic now, not a gate.
+ *  3. The signed link lasts 30 minutes and lessons can run longer, so it is
  *     refreshed before it expires, keeping the student's place.
  *
  * Hardening for the browser (`SEC-7`): no download button, no picture-in-
@@ -34,8 +30,6 @@ import type { VideoProgress } from '@shared/types/progress';
  * visible in the network tab for its short life. True DRM is out of scope.
  */
 
-/** Buffering jitter can nudge the position slightly past the mark; not a skip. */
-const SEEK_GRACE_SECONDS = 1.5;
 /** How often progress is sent while playing. */
 const FLUSH_INTERVAL_MS = 15_000;
 /** Re-fetch the signed link this long before it expires. */
@@ -75,10 +69,6 @@ export function LessonPlayer({
   const { t } = useTranslation();
   const hostRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<Player | null>(null);
-  const unlockedRef = useRef<HTMLDivElement | null>(null);
-  const [overlayHost, setOverlayHost] = useState<HTMLElement | null>(null);
-  const [blockedSeek, setBlockedSeek] = useState(false);
-  const blockedTimer = useRef<number | undefined>(undefined);
 
   // Seeded once, from the server — see (1) above.
   const maxReached = useRef(stream.progress.max_position_seconds);
@@ -111,7 +101,7 @@ export function LessonPlayer({
     },
     onSuccess: (server) => {
       confirmed.current = server.max_position_seconds;
-      // Re-seed: a no-op for an honest client, the snap-back for a tampered one.
+      // Re-seed from the server's answer — normally a no-op, since it agreed.
       maxReached.current = Math.max(maxReached.current, server.max_position_seconds);
       onProgressRef.current(server);
     },
@@ -139,12 +129,6 @@ export function LessonPlayer({
   flushRef.current = flushImpl;
   const flush = useCallback((force = false) => flushRef.current(force), []);
 
-  const showBlocked = useCallback(() => {
-    setBlockedSeek(true);
-    window.clearTimeout(blockedTimer.current);
-    blockedTimer.current = window.setTimeout(() => setBlockedSeek(false), 2500);
-  }, []);
-
   /* ------------------------------------------------------------ the player */
   useEffect(() => {
     const host = hostRef.current;
@@ -163,7 +147,7 @@ export function LessonPlayer({
       playbackRates: [],
       disablePictureInPicture: true,
       controlBar: {
-        skipButtons: { backward: 10 },
+        skipButtons: { backward: 10, forward: 10 },
         pictureInPictureToggle: false,
         playbackRateMenuButton: false,
         remainingTimeDisplay: false,
@@ -180,38 +164,6 @@ export function LessonPlayer({
 
     const suppressMenu = (event: Event) => event.preventDefault();
     player.el().addEventListener('contextmenu', suppressMenu);
-    setOverlayHost(player.el() as HTMLElement);
-
-    // The unlocked stretch, drawn inside video.js's own bar so it shows in fullscreen too.
-    player.ready(() => {
-      const holder = player.el().querySelector('.vjs-progress-holder');
-      if (holder) {
-        const unlocked = document.createElement('div');
-        unlocked.className = 'pb-vjs-unlocked';
-        holder.prepend(unlocked);
-        unlockedRef.current = unlocked;
-      }
-    });
-
-    const paintUnlocked = () => {
-      const duration = player.duration() ?? 0;
-      if (unlockedRef.current && duration > 0) {
-        unlockedRef.current.style.width = `${Math.min(100, (maxReached.current / duration) * 100)}%`;
-      }
-    };
-
-    const clamp = () => {
-      const now = player.currentTime() ?? 0;
-      if (now > maxReached.current + SEEK_GRACE_SECONDS) {
-        player.currentTime(maxReached.current);
-        lastTick.current = null;
-        showBlocked();
-
-        return true;
-      }
-
-      return false;
-    };
 
     player.on('loadedmetadata', () => {
       const target = resumeAt.current;
@@ -221,17 +173,11 @@ export function LessonPlayer({
       if (target !== null && target > 0 && (!(duration > 0) || target < duration)) {
         player.currentTime(target);
       }
-
-      paintUnlocked();
     });
 
-    player.on('seeking', clamp);
-
     player.on('timeupdate', () => {
-      if (clamp()) return;
-
+      // The furthest point reached — a skip ahead moves it too.
       maxReached.current = Math.max(maxReached.current, player.currentTime() ?? 0);
-      paintUnlocked();
 
       const now = Date.now();
       const playing = !player.paused();
@@ -255,7 +201,6 @@ export function LessonPlayer({
       const duration = player.duration() ?? 0;
       if (duration > 0) maxReached.current = Math.max(maxReached.current, duration);
       lastTick.current = null;
-      paintUnlocked();
       flush(true);
     });
 
@@ -264,7 +209,6 @@ export function LessonPlayer({
       flush(true);
       player.dispose();
       playerRef.current = null;
-      unlockedRef.current = null;
     };
     // Built once per lesson; the page remounts this component for a new lesson.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- deliberately once
@@ -334,27 +278,9 @@ export function LessonPlayer({
     return () => window.clearTimeout(timer);
   }, [expiresAt]);
 
-  useEffect(() => () => window.clearTimeout(blockedTimer.current), []);
-
   return (
     <div className="overflow-hidden rounded-xl bg-black" data-vjs-player>
       <div ref={hostRef} />
-
-      {overlayHost && blockedSeek
-        ? createPortal(
-            // Inside the player's own element, so it shows in fullscreen too.
-            <div
-              role="status"
-              className="pointer-events-none absolute inset-x-0 top-4 z-10 flex justify-center px-4"
-            >
-              <p className="flex max-w-md items-center gap-2 rounded-full bg-black/80 px-4 py-2 text-sm text-white shadow-lg">
-                <Lock className="size-4 shrink-0" aria-hidden="true" />
-                {t('player.noSkip')}
-              </p>
-            </div>,
-            overlayHost,
-          )
-        : null}
     </div>
   );
 }

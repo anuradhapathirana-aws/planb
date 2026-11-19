@@ -10,25 +10,22 @@ import { fetchLessonStream, recordLessonProgress } from '@/api/courses.api';
 import { queryClient } from '@/lib/queryClient';
 
 /**
- * The no-skip player.
+ * The lesson player.
  *
- * The rule is enforced on the server (`CourseProgressService`) — everything here
- * is UX, designed so a student never *wants* to fight it, and so an honest
- * viewer is never punished by it.
+ * Students may seek anywhere, forwards or back (a client decision, November
+ * 2026 — the old no-skip rule is gone). The server counts a lesson as watched
+ * once the furthest point reached (`maxReached`) passes 95% of it, so skipping
+ * to the end completes it too; see `CourseProgressService`.
  *
- * Three things this gets right that a naive implementation does not:
+ * Three things this still gets right:
  *
- *  1. `maxReached` is seeded from the SERVER's high-water mark, never from 0.
- *     Seeding from 0 would lock a returning student back to the start of a
- *     lesson they had already half-watched.
- *  2. Watched time only accrues while the player is actually playing, so
- *     leaving the app open on a paused lesson earns nothing.
+ *  1. `maxReached` is seeded from the SERVER's mark, never from 0, so a
+ *     returning student resumes where they stopped.
+ *  2. Watched time only accrues while the player is actually playing. It is a
+ *     statistic now, not a gate, but it should still mean what it says.
  *  3. The signed URL is refreshed *before* it expires. Links last 30 minutes
  *     and lessons run longer, so this is a certainty, not an edge case.
  */
-
-/** Buffering jitter can nudge currentTime slightly past the mark; not a skip. */
-const SEEK_GRACE_SECONDS = 1.5;
 
 /** How often progress is sent while playing. */
 const FLUSH_INTERVAL_MS = 15_000;
@@ -46,7 +43,7 @@ const RESUME_REWIND_SECONDS = 3;
  */
 export type StreamErrorKind = 'none' | 'not-ready' | 'blocked' | 'offline' | 'unknown';
 
-export interface NoSkipPlayerState {
+export interface LessonPlayerState {
   player: VideoPlayer;
   isLoading: boolean;
   isError: boolean;
@@ -55,19 +52,15 @@ export interface NoSkipPlayerState {
   retry: () => void;
   /** Server-confirmed progress; the UI renders this, not the local guess. */
   progress: VideoProgress | null;
-  /** Furthest point the student may seek to, in seconds. */
-  maxReachedSeconds: number;
   durationSeconds: number;
   currentSeconds: number;
   isPlaying: boolean;
-  /** Set briefly when a forward seek was clamped, so the UI can explain. */
-  blockedSeek: boolean;
   togglePlay: () => void;
-  /** Rewind is unrestricted; forward past the high-water mark is refused. */
+  /** Jump to any point in the lesson; clamped only to its start and end. */
   seekTo: (seconds: number) => void;
 }
 
-export function useNoSkipPlayer(lessonId: number): NoSkipPlayerState {
+export function useLessonPlayer(lessonId: number): LessonPlayerState {
   const stream = useQuery({
     queryKey: ['lesson', lessonId, 'stream'],
     queryFn: () => fetchLessonStream(lessonId),
@@ -107,7 +100,6 @@ export function useNoSkipPlayer(lessonId: number): NoSkipPlayerState {
   const [currentSeconds, setCurrentSeconds] = useState(0);
   const [durationSeconds, setDurationSeconds] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [blockedSeek, setBlockedSeek] = useState(false);
 
   const maxReached = useRef(0);
   /** Seconds of genuine playback not yet reported. */
@@ -133,26 +125,22 @@ export function useNoSkipPlayer(lessonId: number): NoSkipPlayerState {
        * without this a single failed write — a dropped connection, a 429 from
        * the progress limiter — permanently erases that stretch of watching.
        * Lose enough of them and a lesson watched right through never reaches
-       * the 90% time gate, which is the "I had to watch it again" bug.
+       * the stats an admin reads.
        */
       pendingWatched.current += variables.delta;
     },
     onSuccess: (serverProgress) => {
       setProgress(serverProgress);
 
-      /*
-       * Re-seed from the server's answer. If a tampered client had pushed the
-       * local mark too far, this is where it snaps back — and for an honest
-       * client it is simply a no-op, because the server agreed.
-       */
+      // Re-seed from the server's answer — normally a no-op, since it agreed.
       maxReached.current = Math.max(maxReached.current, serverProgress.max_position_seconds);
 
       /*
-       * Completing a lesson changes data this screen does not own: the NEXT
-       * lesson's `is_locked`, the topic's completion badge, the course progress
-       * ring, and whether the assessment has unlocked. Without this the student
-       * finishes a lesson, goes back, and finds the next one still locked —
-       * because the course query is still serving its cached pre-watch copy.
+       * Completing a lesson changes data this screen does not own: the topic's
+       * completion badge, the course progress ring, and whether the assessment
+       * has unlocked. Without this the student finishes a lesson, goes back,
+       * and finds it unticked — the course query is still serving its cached
+       * pre-watch copy.
        */
       if (serverProgress.is_watched && !wasWatched.current) {
         wasWatched.current = true;
@@ -212,10 +200,8 @@ export function useNoSkipPlayer(lessonId: number): NoSkipPlayerState {
     setProgress(stream.data.progress);
 
     /*
-     * Continue where they stopped. Without this every lesson reopened at 0:00
-     * with the already-watched stretch still tappable on the bar, which both
-     * lost the student's place and looked exactly like skipping ahead. A
-     * finished lesson opens at the start: reopening it is a rewatch.
+     * Continue where they stopped. A finished lesson opens at the start:
+     * reopening it is a rewatch.
      */
     const { max_position_seconds: reached, is_watched: finished } = stream.data.progress;
     resumeAt.current = finished ? null : Math.max(0, reached - RESUME_REWIND_SECONDS);
@@ -252,19 +238,10 @@ export function useNoSkipPlayer(lessonId: number): NoSkipPlayerState {
     return () => clearTimeout(timer);
   }, [stream.data?.expires_at, stream, player]);
 
-  /* The clamp. */
   useEventListener(player, 'timeUpdate', ({ currentTime }) => {
     setCurrentSeconds(currentTime);
 
-    if (currentTime > maxReached.current + SEEK_GRACE_SECONDS) {
-      // A forward seek past what has been watched. Put them back.
-      player.currentTime = maxReached.current;
-      setBlockedSeek(true);
-      setTimeout(() => setBlockedSeek(false), 2500);
-      lastTick.current = null;
-      return;
-    }
-
+    // The furthest point reached — a skip ahead moves it too.
     maxReached.current = Math.max(maxReached.current, currentTime);
 
     /*
@@ -376,14 +353,9 @@ export function useNoSkipPlayer(lessonId: number): NoSkipPlayerState {
 
   const seekTo = useCallback(
     (seconds: number) => {
-      const target = Math.max(0, Math.min(seconds, maxReached.current));
-
-      // Rewinding is always allowed; the cap above is what refuses a skip.
-      if (seconds > maxReached.current + SEEK_GRACE_SECONDS) {
-        setBlockedSeek(true);
-        setTimeout(() => setBlockedSeek(false), 2500);
-        return;
-      }
+      const total = player.duration;
+      const end = Number.isFinite(total) && total > 0 ? total : seconds;
+      const target = Math.max(0, Math.min(seconds, end));
 
       player.currentTime = target;
       setCurrentSeconds(target);
@@ -402,11 +374,9 @@ export function useNoSkipPlayer(lessonId: number): NoSkipPlayerState {
       void stream.refetch();
     },
     progress,
-    maxReachedSeconds: maxReached.current,
     durationSeconds,
     currentSeconds,
     isPlaying,
-    blockedSeek,
     togglePlay,
     seekTo,
   };

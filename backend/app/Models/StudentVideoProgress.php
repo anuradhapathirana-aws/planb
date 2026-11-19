@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * One student's progress through one lesson.
  *
  * Written only by {@see CourseProgressService}, which
- * clamps every value before it lands here.
+ * caps every value before it lands here.
  */
 class StudentVideoProgress extends Model
 {

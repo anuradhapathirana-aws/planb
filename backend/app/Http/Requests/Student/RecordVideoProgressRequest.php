@@ -14,9 +14,9 @@ class RecordVideoProgressRequest extends FormRequest
     }
 
     /**
-     * These bounds only keep nonsense out of the service; they are not the
-     * no-skip rule. That is enforced in `CourseProgressService`, which treats
-     * both numbers as claims and clamps them against the wall clock.
+     * These bounds only keep nonsense out of the service. `CourseProgressService`
+     * caps the position at the lesson's length and clamps the watched time
+     * against the wall clock.
      *
      * The 24h ceiling is a sanity bound, not a policy — no lesson is that long.
      *

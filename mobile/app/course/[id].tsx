@@ -101,9 +101,9 @@ export default function CourseDetailScreen() {
   const proof = useMemo(() => courseSocialProof(courseId), [courseId]);
 
   /**
-   * The lesson the action bar opens: the first unwatched one the student is
-   * allowed into, falling back to the first unlocked one so a fully-watched
-   * course still offers a rewatch.
+   * The lesson the action bar opens: the first unwatched one, falling back to
+   * the first lesson so a fully-watched course still offers a rewatch. Any
+   * lesson can be opened from the list; this is only a suggestion.
    */
   const nextLesson = useMemo(() => {
     if (!data) return null;
@@ -132,12 +132,8 @@ export default function CourseDetailScreen() {
 
   function openLesson(lesson: StudentCourseVideo) {
     if (lesson.is_locked) {
-      /*
-       * Two different locks, and telling them apart is the whole point: one is
-       * "watch the previous lesson", the other is "buy the course". A single
-       * message would send paying students hunting for a lesson to finish.
-       */
-      toast.info(isEnrolled ? t('courses.locked') : t('enrol.lockedLesson'));
+      // Lessons have no order, so a lock only ever means "buy the course".
+      toast.info(t('enrol.lockedLesson'));
 
       return;
     }

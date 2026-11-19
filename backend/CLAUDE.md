@@ -107,15 +107,19 @@ same 200 as a new one — its owner is emailed a "you already have an account" n
 code — so never add a `unique:students,email` rule to `RequestRegistrationCodeRequest`. The student
 row is written only when the code comes back (`StudentRegistrationService`).
 
-## 5. The no-skip rule lives here
+## 5. Lesson progress lives here
 
-`app/Services/Course/CourseProgressService.php` is the enforcement point. Client-side clamping in the
-player is UX only (root §7.3, §7.12) and is assumed hostile.
+`app/Services/Course/CourseProgressService.php` decides what counts as watched. **Skipping is
+allowed** (client decision, November 2026 — this replaced the old no-skip rule; don't bring it back
+unasked), and an enrolled student may open lessons in any order: `StudentCourseService` sets
+`is_locked` only for a course the student hasn't bought.
 
-- `max_position_seconds` is **monotonic** and may only advance by `elapsed_wall_clock × 2.0 + 5s`.
-  You cannot be at 5:00 of a lesson sixty seconds after last being seen at 0:30.
-- "Watched" needs **two** gates: position ≥ 95% of duration **and** accumulated `watched_seconds` ≥ 90%.
-  Position alone is beatable by a client that lies slowly.
+- `max_position_seconds` is the **furthest point reached**: monotonic (rewinding never loses it),
+  free to jump forward, capped at the lesson's duration.
+- "Watched" is one gate: `max_position_seconds` ≥ 95% of duration. Skipping to the end counts.
+- `watched_seconds` is still accrued and clamped to `elapsed_wall_clock × 2.0 + 5s`, but it is a
+  statistic only — it gates nothing.
+- The course paper still requires every lesson watched.
 - The endpoint returns the **server's** numbers and the client re-seeds from them.
 - A video with `duration_seconds = null` cannot be gated, which is why `CourseProgrammeService::publish()`
   refuses to publish a programme whose videos lack a file or a duration.

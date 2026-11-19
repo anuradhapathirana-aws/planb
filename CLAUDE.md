@@ -57,7 +57,7 @@ Anything describing the API contract — types mirroring an API Resource, a Zod 
 
 **Shared (`shared/`):** TypeScript source only — API types, Zod schemas, `serverErrors.ts`, brand tokens, i18n strings. No dependencies of its own.
 
-**Video player:** `expo-video` on mobile; `video.js` or `plyr` on web. Both with custom no-skip logic (see Section 4), and the rule is enforced **server-side** in `CourseProgressService` regardless of client.
+**Video player:** `expo-video` on mobile; `video.js` or `plyr` on web. Both with custom controls (see Section 4); "watched" is decided **server-side** in `CourseProgressService` regardless of client.
 
 **Infrastructure:** Contabo Cloud VPS 20 (Mumbai), Bunny Stream (video hosting with signed URLs), Firebase Cloud Messaging (Web Push, where supported), SendGrid (email), PayHere (payment gateway), Backblaze B2 (backups).
 
@@ -118,14 +118,22 @@ Students will access primarily from phones. **Design mobile-first, enhance for d
 5. **Video player** goes fullscreen on mobile.
 6. **Modals become bottom sheets on mobile**, centered dialogs on desktop.
 
-### No-Skip Video Player
+### Lesson Video Player
+
+**Changed November 2026, at the client's request:** students may skip freely, and lessons have no
+order. This replaces the original no-skip rule (SRS FR-MOB-020) — do not reintroduce a forward-seek
+clamp or a "watch the previous lesson" lock without the client asking.
 
 1. **Player:** `video.js` with custom controls, or `plyr` (simpler).
-2. **Disable seek bar seeking forward.** Only allow rewind. Hide fast-forward button.
-3. **Track `currentTime` on `timeupdate`.** Store max reached position; clamp forward seeks back.
-4. **Mark video "Watched" when `currentTime >= duration * 0.95`.**
+2. **Seeking is free in both directions.** A forward 10s button sits beside rewind.
+3. **Track the furthest point reached** on `timeupdate` and report it; the server stores it as
+   `max_position_seconds` and the player resumes from it.
+4. **A video is "Watched" once the furthest point reached is >= 95% of its duration** — skipping to
+   the end counts. Decided on the server, never the client.
 5. **Video URLs are signed URLs from Bunny Stream** — never expose raw URLs. Fetch fresh from `/api/v1/videos/{id}/stream` returning a short-lived signed URL.
-6. **Assessment button disabled** until all videos in the topic are Watched.
+6. **Assessment button disabled** until every lesson in the course is Watched.
+7. **Any lesson opens at any time for an enrolled student.** `is_locked` now means only "course not
+   bought"; the stream endpoint's 403 is the paywall.
 
 ## 5. Coding Style
 

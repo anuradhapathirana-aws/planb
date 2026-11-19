@@ -275,10 +275,11 @@ class StudentCourseService
 
         $progressByVideo = $this->progress->progressForProgramme($student, $programme);
 
-        // Lessons unlock in order across the whole programme, not per topic —
-        // finishing topic 1 is what opens topic 2's first lesson.
-        $previousWatched = true;
-
+        /*
+         * No lesson order: an enrolled student may open any lesson at any time
+         * (a client decision, November 2026). The only lock left is the paywall
+         * below, for a course the student has not bought.
+         */
         foreach ($programme->topics as $topic) {
             $watchedInTopic = 0;
 
@@ -286,11 +287,9 @@ class StudentCourseService
                 $row = $progressByVideo->get($video->id);
 
                 $video->setAttribute('student_progress', $row);
-                $video->setAttribute('is_locked', ! $previousWatched);
+                $video->setAttribute('is_locked', false);
 
-                $isWatched = (bool) ($row?->is_watched);
-                $watchedInTopic += $isWatched ? 1 : 0;
-                $previousWatched = $isWatched;
+                $watchedInTopic += $row?->is_watched ? 1 : 0;
             }
 
             $topic->setAttribute('videos_watched', $watchedInTopic);
@@ -315,8 +314,8 @@ class StudentCourseService
 
         /*
          * A student browsing a course they have not bought still sees the syllabus
-         * — that is how they decide to buy it — but every lesson is locked
-         * regardless of watch order. The catalogue is public; the content is not.
+         * — that is how they decide to buy it — but every lesson is locked.
+         * The catalogue is public; the content is not.
          */
         if (! $programme->getAttribute('is_enrolled')) {
             foreach ($programme->topics as $topic) {
@@ -330,8 +329,8 @@ class StudentCourseService
     }
 
     /**
-     * A student-scoped playback link plus the progress the player must seed its
-     * clamp from — sending them together saves a round trip before playback.
+     * A student-scoped playback link plus the progress the player resumes
+     * from — sending them together saves a round trip before playback.
      *
      * @return array{url: string, expires_at: string, progress: StudentVideoProgress}
      */

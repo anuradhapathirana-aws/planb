@@ -193,7 +193,6 @@
     "loadFailedBody": "Check your connection and try again.",
     "topics": "Topics",
     "lessons": "Lessons",
-    "locked": "Finish the previous lesson to unlock this one",
     "watched": "Watched",
     "myTitle": "My Courses",
     "tabEnrolled": "My courses",
@@ -299,7 +298,6 @@
     "saveFailed": "We couldn't save that. Check your connection and try again."
   },
   "player": {
-    "noSkip": "You can't skip ahead — watch the lesson to unlock the next one.",
     "expired": "Reconnecting to the lesson…",
     "loadFailed": "This lesson couldn't be loaded. Check your connection and try again.",
     "needsConnection": "Lessons need an internet connection.",
@@ -312,6 +310,7 @@
     "unknownTitle": "This lesson couldn’t be loaded",
     "unknownBody": "Something went wrong on our side. Please try again in a moment.",
     "rewind": "Rewind {{seconds}} seconds",
+    "forward": "Forward {{seconds}} seconds",
     "position": "Lesson position"
   },
   "paper": {
@@ -789,9 +788,9 @@
       "nextLesson": "Next lesson",
       "backToCourse": "Back to course",
       "lessonComplete": "Lesson complete",
-      "lessonCompleteBody": "The next lesson is unlocked.",
+      "lessonCompleteBody": "Go on to the next lesson whenever you're ready.",
       "courseLessons": "Lessons in this course",
-      "noSkipHint": "You can rewind freely. Skipping ahead opens up as you watch.",
+      "skipHint": "Skip ahead or go back whenever you like. Reach the end of the lesson to mark it watched.",
       "videoLabel": "Lesson video: {{title}}"
     },
     "checklist": {

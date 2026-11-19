@@ -72,7 +72,7 @@ class CourseController extends Controller
 
     /**
      * A short-lived, student-scoped playback link plus the progress the player
-     * seeds its clamp from. Re-calling this is also how the player refreshes a
+     * resumes from. Re-calling this is also how the player refreshes a
      * link that expires mid-lesson.
      */
     public function stream(Request $request, CourseVideo $lesson, CourseVideoService $videos): JsonResponse
@@ -99,8 +99,8 @@ class CourseController extends Controller
     }
 
     /**
-     * Record a progress flush. What comes back is the SERVER's view, clamped —
-     * the player re-seeds from it, so an over-reporting client snaps back.
+     * Record a progress flush. What comes back is the SERVER's view, and the
+     * player re-seeds from it.
      */
     public function recordProgress(
         RecordVideoProgressRequest $request,

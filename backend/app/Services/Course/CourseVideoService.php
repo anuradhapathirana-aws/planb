@@ -120,7 +120,7 @@ class CourseVideoService
         $video->update([
             'processing_status' => $remote['status'],
             // Bunny's own measurement beats the browser's estimate, and the
-            // no-skip rule is computed against this number.
+            // "watched" (95% reached) is computed against this number.
             'duration_seconds' => $remote['duration_seconds'] ?? $video->duration_seconds,
         ]);
 

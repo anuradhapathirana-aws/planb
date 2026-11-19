@@ -13,11 +13,15 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
- * Where the no-skip rule is actually enforced.
+ * Records how far a student has got through each lesson.
  *
- * The player clamps forward seeks too, but that is UX (CLAUDE.md §7.3, §7.12):
- * the client is assumed hostile, and everything it reports is treated as a
- * *claim* to be checked against what the clock allows.
+ * Students may skip freely (a client decision, November 2026 — the old no-skip
+ * rule is gone). A lesson counts as watched once the student has *reached* 95%
+ * of it, by playing or by skipping; that is what ticks it, moves the course
+ * progress, and — once every lesson is ticked — opens the course paper.
+ *
+ * `watched_seconds` is still accrued, clamped to what the wall clock allows,
+ * but only as a statistic: it no longer gates anything.
  */
 class CourseProgressService
 {
@@ -27,21 +31,13 @@ class CourseProgressService
     /** Absorbs buffering hiccups, batched flushes and minor clock drift. */
     private const CLOCK_GRACE_SECONDS = 5;
 
-    /** Reached the end of the lesson (CLAUDE.md §4 "no-skip video player"). */
+    /** Reached the end of the lesson — the one thing "watched" requires. */
     private const WATCHED_POSITION_RATIO = 0.95;
-
-    /**
-     * ...and actually sat through it. Two gates, not one: position alone is
-     * beatable by a client that lies slowly, whereas accumulated playback time
-     * makes the lie cost exactly as long as watching would have.
-     */
-    private const WATCHED_TIME_RATIO = 0.90;
 
     /**
      * Record a progress flush and return the server's own view of it.
      *
-     * The caller renders what comes back rather than what it sent, so a client
-     * that over-reports simply snaps back on the next flush.
+     * The caller renders what comes back rather than what it sent.
      */
     public function recordVideoProgress(
         Student $student,
@@ -58,21 +54,18 @@ class CourseProgressService
         $allowance = $this->allowance($progress->last_seen_at, $now);
 
         /*
-         * The high-water mark can only move forward, and only by as much as the
-         * elapsed wall clock could plausibly have covered. You cannot be at 5:00
-         * of a lesson sixty seconds after last being seen at 0:30 — that is a
-         * skip, whether it came from a dragged scrubber or a scripted client.
+         * The furthest point reached. Skipping is allowed, so a jump forward is
+         * believed; the mark still never moves backwards, so rewatching an early
+         * section keeps the student's place, and it is capped at the lesson's end.
          */
-        $claimedAdvance = max(0, $claimedPosition - $progress->max_position_seconds);
-        $advance = min($claimedAdvance, $allowance);
-
-        $position = $progress->max_position_seconds + $advance;
+        $position = max($progress->max_position_seconds, $claimedPosition);
 
         if ($video->duration_seconds !== null) {
             $position = min($position, $video->duration_seconds);
         }
 
         $progress->max_position_seconds = $position;
+        // A statistic only — still clamped, so a misbehaving client can't inflate it.
         $progress->watched_seconds += min(max(0, $watchedDelta), $allowance);
         $progress->last_seen_at = $now;
 
@@ -90,11 +83,12 @@ class CourseProgressService
     }
 
     /**
-     * How many seconds of lesson the elapsed wall clock could account for.
+     * How many seconds of playback time the elapsed wall clock could account for
+     * — the cap on `watched_seconds`.
      *
      * A brand-new row has no `last_seen_at` to measure against. Rather than
      * granting an unbounded allowance — which would let a first write claim the
-     * whole lesson — the first flush is capped at the grace window.
+     * whole lesson as played — the first flush is capped at the grace window.
      */
     private function allowance(?Carbon $lastSeenAt, Carbon $now): int
     {
@@ -119,8 +113,7 @@ class CourseProgressService
             return false;
         }
 
-        return $progress->max_position_seconds >= $video->duration_seconds * self::WATCHED_POSITION_RATIO
-            && $progress->watched_seconds >= $video->duration_seconds * self::WATCHED_TIME_RATIO;
+        return $progress->max_position_seconds >= $video->duration_seconds * self::WATCHED_POSITION_RATIO;
     }
 
     /** Keeps "Continue learning" and programme completion in step. */

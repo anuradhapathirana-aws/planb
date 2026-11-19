@@ -38,9 +38,9 @@ export function PortalCourseDetailPage() {
   const course = useStudentCourse(id);
 
   /*
-   * The lesson the main button opens: the first unwatched one the student is
-   * allowed into; else the first unlocked one, so a finished course still
-   * offers a rewatch. The same rule as the mobile app.
+   * The lesson the main button opens: the first unwatched one; else the first
+   * lesson, so a finished course still offers a rewatch. Any lesson can be
+   * opened from the list — this is only a suggestion. The same rule as the app.
    */
   const nextLesson = useMemo(() => {
     const lessons = course.data?.topics.flatMap((topic) => topic.videos) ?? [];
@@ -192,7 +192,6 @@ export function PortalCourseDetailPage() {
               courseId={data.id}
               topics={data.topics}
               nextLessonId={data.is_enrolled ? (nextLesson?.id ?? null) : null}
-              isEnrolled={data.is_enrolled}
             />
           )}
         </section>

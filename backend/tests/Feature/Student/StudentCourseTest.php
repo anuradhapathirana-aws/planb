@@ -106,9 +106,9 @@ class StudentCourseTest extends TestCase
         $response = $this->getJson("/api/v1/student/courses/{$programme->id}")->assertOk();
 
         $response->assertJsonPath('data.topics.0.videos.0.id', $first->id);
-        // Nothing watched yet: the first lesson is open, the second is locked.
+        // No lesson order: with nothing watched yet, every lesson is already open.
         $response->assertJsonPath('data.topics.0.videos.0.is_locked', false);
-        $response->assertJsonPath('data.topics.0.videos.1.is_locked', true);
+        $response->assertJsonPath('data.topics.0.videos.1.is_locked', false);
         $response->assertJsonPath('data.topics.0.videos.0.progress.max_position_seconds', 0);
         $response->assertJsonPath('data.progress.videos_total', 2);
         $response->assertJsonPath('data.progress.videos_watched', 0);
@@ -130,7 +130,7 @@ class StudentCourseTest extends TestCase
             ->assertJsonPath('data.total_duration_seconds', 200);
     }
 
-    public function test_watching_a_lesson_unlocks_the_next(): void
+    public function test_watching_a_lesson_counts_towards_progress(): void
     {
         [$programme, $first, $second] = $this->publishedProgrammeWithTwoLessons();
 
@@ -144,7 +144,6 @@ class StudentCourseTest extends TestCase
 
         $this->getJson("/api/v1/student/courses/{$programme->id}")
             ->assertOk()
-            ->assertJsonPath('data.topics.0.videos.1.is_locked', false)
             ->assertJsonPath('data.topics.0.videos_watched', 1)
             ->assertJsonPath('data.topics.0.is_complete', false)
             ->assertJsonPath('data.progress.videos_watched', 1)

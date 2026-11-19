@@ -29,8 +29,8 @@ class StudentCourseVideoResource extends JsonResource
             'title' => $this->translated('title'),
             'duration_seconds' => $this->duration_seconds,
             'thumbnail_url' => PublicUrl::forRequest($this->thumbnail_url, $request),
-            // Locked until the previous lesson is watched. The app greys the row
-            // out rather than hiding it, so the student can see what is next.
+            // True only when the student hasn't bought the course — lessons have no
+            // order. Presentation: the stream endpoint's 403 is the real paywall.
             'is_locked' => (bool) $this->is_locked,
             'progress' => [
                 'course_video_id' => $this->id,

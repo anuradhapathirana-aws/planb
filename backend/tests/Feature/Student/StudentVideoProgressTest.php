@@ -19,11 +19,9 @@ use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
- * The no-skip rule (CLAUDE.md §4 "No-Skip Video Player").
- *
- * The player clamps forward seeks too, but that is UX. These tests exercise the
- * server, which treats everything the client reports as a claim — because a
- * modified client, or a plain `curl`, will happily claim anything.
+ * Lesson progress. Students may skip freely; a lesson counts as watched once
+ * they have reached 95% of it, by playing or by skipping. Playback time is
+ * still recorded, clamped to the wall clock, but gates nothing.
  */
 class StudentVideoProgressTest extends TestCase
 {
@@ -71,37 +69,30 @@ class StudentVideoProgressTest extends TestCase
         ]);
     }
 
-    /**
-     * The headline case: claiming the end of the lesson on the very first flush
-     * must buy roughly the grace window, not ten minutes.
-     */
-    public function test_a_huge_first_claim_advances_only_by_the_grace_window(): void
+    /** Skipping ahead is allowed: a jump forward is believed. */
+    public function test_a_forward_skip_is_accepted(): void
     {
-        $response = $this->flush(600, 600)->assertOk();
+        $response = $this->flush(300, 0)->assertOk();
 
-        $this->assertLessThanOrEqual(
-            10,
-            $response->json('data.max_position_seconds'),
-            'A first flush claiming the whole lesson must not be believed.',
-        );
+        $this->assertSame(300, $response->json('data.max_position_seconds'));
         $this->assertFalse($response->json('data.is_watched'));
     }
 
-    public function test_progress_advances_no_faster_than_wall_clock_allows(): void
+    /** "Reaching the end" is the rule, however the student got there. */
+    public function test_skipping_to_the_end_marks_the_lesson_watched(): void
     {
-        Carbon::setTestNow(now());
+        $response = $this->flush(600, 0)->assertOk();
 
-        $this->flush(5, 5)->assertOk();
+        $this->assertSame(600, $response->json('data.max_position_seconds'));
+        $this->assertTrue($response->json('data.is_watched'));
+    }
 
-        // A minute later, claim we are five minutes further in. At 2x plus grace,
-        // 60 seconds of wall clock buys at most 125 seconds of lesson.
-        Carbon::setTestNow(now()->addSeconds(60));
+    public function test_stopping_short_of_95_percent_does_not_mark_it_watched(): void
+    {
+        // 95% of 600 is 570.
+        $response = $this->flush(560, 0)->assertOk();
 
-        $response = $this->flush(305, 300)->assertOk();
-
-        $this->assertLessThanOrEqual(130, $response->json('data.max_position_seconds'));
-
-        Carbon::setTestNow();
+        $this->assertFalse($response->json('data.is_watched'));
     }
 
     public function test_progress_never_decreases(): void
@@ -138,18 +129,7 @@ class StudentVideoProgressTest extends TestCase
         Carbon::setTestNow();
     }
 
-    /**
-     * The regression this pair of tests exists for.
-     *
-     * `allowance()` has no `last_seen_at` to measure against on a brand-new row,
-     * so it falls back to the 5-second grace window — which capped the FIRST
-     * flush of every lesson at 5 seconds of credit and threw the rest away.
-     * With the 90% time gate that made completion impossible in one pass for
-     * anything shorter than about 100 seconds, however honestly it was watched.
-     *
-     * Opening the lesson is now what starts the clock (see
-     * `StudentCourseService::playback()`), which is what this row stands in for.
-     */
+    /** Opening the lesson starts the clock (`StudentCourseService::playback()`). */
     public function test_a_short_lesson_completes_in_a_single_honest_pass(): void
     {
         Carbon::setTestNow(now());
@@ -174,62 +154,26 @@ class StudentVideoProgressTest extends TestCase
         }
 
         $response->assertOk();
-        $this->assertTrue(
-            $response->json('data.is_watched'),
-            'A 90-second lesson watched straight through must complete on the first pass.',
-        );
+        $this->assertTrue($response->json('data.is_watched'));
+        $this->assertSame(90, $response->json('data.watched_seconds'));
 
         Carbon::setTestNow();
     }
 
-    /** Without that baseline the first flush is still held to the grace window. */
-    public function test_the_grace_window_still_applies_without_a_baseline(): void
+    /** Playback time is a statistic, but still can't be inflated past the clock. */
+    public function test_watched_time_is_still_clamped_to_the_wall_clock(): void
     {
-        Carbon::setTestNow(now());
+        $response = $this->flush(600, 600)->assertOk();
 
-        $short = CourseVideo::factory()->for($this->video->topic, 'topic')
-            ->create(['duration_seconds' => 90]);
-
-        $response = $this->postJson("/api/v1/student/lessons/{$short->id}/progress", [
-            'position_seconds' => 90,
-            'watched_delta_seconds' => 90,
-        ])->assertOk();
-
-        $this->assertLessThanOrEqual(10, $response->json('data.max_position_seconds'));
-        $this->assertFalse($response->json('data.is_watched'));
-
-        Carbon::setTestNow();
-    }
-
-    /**
-     * Position alone is not enough. A client that advances its *position* at a
-     * plausible rate but reports no actual playback still must not complete the
-     * lesson — that is what the second gate is for.
-     */
-    public function test_position_without_playback_time_does_not_complete_the_lesson(): void
-    {
-        Carbon::setTestNow(now());
-
-        for ($elapsed = 15; $elapsed <= 600; $elapsed += 15) {
-            Carbon::setTestNow(now()->addSeconds(15));
-            $response = $this->flush($elapsed, 0);
-        }
-
-        $this->assertGreaterThanOrEqual(570, $response->json('data.max_position_seconds'));
-        $this->assertFalse(
-            $response->json('data.is_watched'),
-            'Reaching the end without accumulating playback time must not count as watched.',
-        );
-
-        Carbon::setTestNow();
+        $this->assertLessThanOrEqual(10, $response->json('data.watched_seconds'));
     }
 
     public function test_the_response_is_the_servers_numbers_not_the_clients(): void
     {
         $response = $this->flush(9999, 9999)->assertOk();
 
-        // The player re-seeds its clamp from this, so an over-reporting client snaps back.
-        $this->assertLessThan(9999, $response->json('data.max_position_seconds'));
+        // Capped at the lesson's length, and the player re-seeds from this.
+        $this->assertSame(600, $response->json('data.max_position_seconds'));
         $this->assertLessThan(9999, $response->json('data.watched_seconds'));
     }
 
@@ -238,7 +182,6 @@ class StudentVideoProgressTest extends TestCase
         Carbon::setTestNow(now());
         $this->flush(5, 5);
 
-        // An hour of wall clock would otherwise allow far more than the lesson's length.
         Carbon::setTestNow(now()->addHour());
         $response = $this->flush(5000, 3600)->assertOk();
 

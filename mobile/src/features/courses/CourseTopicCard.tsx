@@ -37,8 +37,7 @@ export function CourseTopicCard({
   const { t } = useTranslation();
 
   const lessons = topic.videos;
-  // A topic every one of whose lessons is locked is either unbought or not yet
-  // reached; either way there is nothing in it to open.
+  // Lessons have no order, so a fully locked topic means the course isn't bought.
   const allLocked = lessons.length > 0 && lessons.every((lesson) => lesson.is_locked);
   const length = formatCourseLength(
     lessons.reduce((total, lesson) => total + (lesson.duration_seconds ?? 0), 0),
@@ -156,7 +155,7 @@ function LessonRow({
       accessibilityRole="button"
       accessibilityLabel={
         lesson.is_locked
-          ? `${lesson.title}. ${t('courses.locked')}`
+          ? `${lesson.title}. ${t('enrol.lockedLesson')}`
           : watched
             ? `${lesson.title}. ${t('courses.watched')}`
             : lesson.title
@@ -177,7 +176,7 @@ function LessonRow({
       >
         {/*
           Lessons carry a video camera; the play glyph belongs to the topic row
-          above. A locked lesson (not enrolled, or not reached yet) shows the lock
+          above. A locked lesson (course not bought) shows the lock
           instead, so the reason it will not open is visible before the tap.
           Watched is the same camera in green — the tick on the right says it too.
         */}

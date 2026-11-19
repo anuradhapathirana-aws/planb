@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, View, type GestureResponderEvent } from 'react-native';
 import { VideoView } from 'expo-video';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -11,6 +11,7 @@ import {
   Pause,
   Play,
   RotateCcw,
+  RotateCw,
   VideoOff,
   WifiOff,
 } from '@/components/icons';
@@ -21,19 +22,19 @@ import { formatDuration } from '@shared/lib/formatters';
 import { colors } from '@shared/theme/tokens';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Text } from '@/components/ui/Text';
-import { useNoSkipPlayer } from '@/features/player/useNoSkipPlayer';
+import { useLessonPlayer } from '@/features/player/useLessonPlayer';
 import { useRotationUnlocked } from '@/lib/useRotationUnlocked';
 
 /**
- * The lesson player.
+ * The lesson player. Students may skip anywhere — drag or tap the bar, or use
+ * the 10-second buttons.
  *
- * `nativeControls={false}` is mandatory, not stylistic: VideoView's native
- * controls include a drag-anywhere scrubber, which makes no-skip impossible.
- * Everything below is our own.
+ * `nativeControls={false}` stays: the native controls differ per platform and
+ * bring their own fullscreen and picture-in-picture, and our own controls are
+ * what keep the screen consistent and branded. Everything below is our own.
  *
- * Note there is no call to `player.enterFullscreen()` either — expo-video
- * re-enables native controls in fullscreen on every platform, which would hand
- * the student the same scrubber. Landscape is handled as an in-app layout
+ * There is no call to `player.enterFullscreen()` either — expo-video
+ * re-enables native controls in fullscreen. Landscape is handled as an in-app layout
  * change instead: this screen is the only one in the app that follows the
  * phone's rotation, and the video simply fills whatever shape it lands in.
  */
@@ -43,6 +44,8 @@ export default function LessonScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
 
   const [controlsVisible, setControlsVisible] = useState(true);
+  // While a finger is on the seek bar the controls must not auto-hide under it.
+  const [scrubbing, setScrubbing] = useState(false);
 
   const {
     player,
@@ -51,14 +54,12 @@ export default function LessonScreen() {
     errorKind,
     retry,
     progress,
-    maxReachedSeconds,
     durationSeconds,
     currentSeconds,
     isPlaying,
-    blockedSeek,
     togglePlay,
     seekTo,
-  } = useNoSkipPlayer(Number(id));
+  } = useLessonPlayer(Number(id));
 
   // A lesson is 5–10 minutes of not touching the screen; without this the
   // device dims and locks mid-sentence.
@@ -70,16 +71,14 @@ export default function LessonScreen() {
 
   /* Auto-hide the controls while playing, the way every video app behaves. */
   useEffect(() => {
-    if (!isPlaying || !controlsVisible) return;
+    if (!isPlaying || !controlsVisible || scrubbing) return;
 
     const timer = setTimeout(() => setControlsVisible(false), 3000);
 
     return () => clearTimeout(timer);
-  }, [isPlaying, controlsVisible]);
+  }, [isPlaying, controlsVisible, scrubbing]);
 
   const duration = durationSeconds || 0;
-  const playedPercent = duration > 0 ? (currentSeconds / duration) * 100 : 0;
-  const unlockedPercent = duration > 0 ? Math.min((maxReachedSeconds / duration) * 100, 100) : 0;
 
   if (isError) {
     /*
@@ -157,21 +156,6 @@ export default function LessonScreen() {
           </View>
         )}
 
-        {/* Explains the clamp the moment it happens, so it reads as a rule, not a bug. */}
-        {blockedSeek && (
-          <View
-            className="absolute left-4 right-4 items-center"
-            style={{ top: insets.top + 56 }}
-            pointerEvents="none"
-          >
-            <View className="rounded-lg bg-black/80 px-4 py-2.5">
-              <Text className="text-center text-[13px] leading-5 text-white">
-                {t('player.noSkip')}
-              </Text>
-            </View>
-          </View>
-        )}
-
         {controlsVisible && (
           <>
             {/* Top bar */}
@@ -227,11 +211,15 @@ export default function LessonScreen() {
                   )}
                 </Pressable>
 
-                {/*
-                  Deliberately no "forward 10s" button. Offering a control that
-                  is refused most of the time teaches students the app is broken.
-                */}
-                <View className="h-14 w-14" />
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t('player.forward', { seconds: 10 })}
+                  hitSlop={12}
+                  onPress={() => seekTo(currentSeconds + 10)}
+                  className="h-14 w-14 items-center justify-center rounded-full bg-black/40 active:bg-black/60"
+                >
+                  <RotateCw size={24} color="#ffffff" />
+                </Pressable>
               </View>
             </View>
 
@@ -245,21 +233,11 @@ export default function LessonScreen() {
               }}
             >
               <SeekBar
-                playedPercent={playedPercent}
-                unlockedPercent={unlockedPercent}
+                currentSeconds={currentSeconds}
                 duration={duration}
-                maxReachedSeconds={maxReachedSeconds}
                 onSeek={seekTo}
+                onScrubbingChange={setScrubbing}
               />
-
-              <View className="mt-2 flex-row justify-between">
-                <Text className="text-[12px] font-medium text-white">
-                  {formatDuration(currentSeconds)}
-                </Text>
-                <Text className="text-[12px] font-medium text-white/70">
-                  {formatDuration(duration)}
-                </Text>
-              </View>
             </View>
           </>
         )}
@@ -269,72 +247,115 @@ export default function LessonScreen() {
 }
 
 /**
- * The seek bar.
+ * The seek bar: tap anywhere to jump, or drag the playhead.
  *
- * The locked region is not merely styled differently — it is a separate,
- * non-interactive view. Only the watched portion accepts a tap, so dragging
- * ahead is physically impossible rather than possible-then-corrected. The
- * clamp in the hook is the fallback for anything that slips through.
+ * Built on the responder system rather than a slider package (none is in the
+ * stack). While a finger is down the bar previews the drag position and only
+ * seeks on release, so the video isn't asked to seek dozens of times a second.
+ * Positions come from `pageX` against the bar's own left edge, measured at the
+ * touch, so a finger that drifts off the bar keeps scrubbing correctly.
  */
 function SeekBar({
-  playedPercent,
-  unlockedPercent,
+  currentSeconds,
   duration,
-  maxReachedSeconds,
   onSeek,
+  onScrubbingChange,
 }: {
-  playedPercent: number;
-  unlockedPercent: number;
+  currentSeconds: number;
   duration: number;
-  maxReachedSeconds: number;
   onSeek: (seconds: number) => void;
+  onScrubbingChange: (scrubbing: boolean) => void;
 }) {
   const { t } = useTranslation();
   const [trackWidth, setTrackWidth] = useState(0);
+  const [dragRatio, setDragRatio] = useState<number | null>(null);
+  // Mirrors `dragRatio` for the release handler, which must not read a stale render.
+  const dragRatioRef = useRef<number | null>(null);
+  const trackLeft = useRef(0);
+
+  const ratioAt = (pageX: number) =>
+    trackWidth > 0 ? Math.min(1, Math.max(0, (pageX - trackLeft.current) / trackWidth)) : 0;
+
+  const setDrag = (ratio: number | null) => {
+    dragRatioRef.current = ratio;
+    setDragRatio(ratio);
+  };
+
+  const onGrant = (event: GestureResponderEvent) => {
+    const { pageX, locationX } = event.nativeEvent;
+    trackLeft.current = pageX - locationX;
+    setDrag(ratioAt(pageX));
+    onScrubbingChange(true);
+  };
+
+  const onRelease = () => {
+    const ratio = dragRatioRef.current;
+    if (ratio !== null) onSeek(ratio * duration);
+    setDrag(null);
+    onScrubbingChange(false);
+  };
+
+  const onCancel = () => {
+    setDrag(null);
+    onScrubbingChange(false);
+  };
+
+  const shownSeconds = dragRatio !== null ? dragRatio * duration : currentSeconds;
+  const shownPercent = duration > 0 ? Math.min(100, (shownSeconds / duration) * 100) : 0;
+  const ready = trackWidth > 0 && duration > 0;
 
   return (
-    <View
-      className="h-8 justify-center"
-      onLayout={(event) => setTrackWidth(event.nativeEvent.layout.width)}
-    >
-      {/* Full track — the part beyond `unlockedPercent` never receives touches. */}
-      <View className="h-1.5 w-full overflow-hidden rounded-full bg-white/25" />
-
-      {/* Watched-and-therefore-seekable region */}
-      <Pressable
+    <View>
+      <View
+        className="h-8 justify-center"
+        onLayout={(event) => setTrackWidth(event.nativeEvent.layout.width)}
+        onStartShouldSetResponder={() => ready}
+        onMoveShouldSetResponder={() => ready}
+        // Once scrubbing, keep the gesture — don't let the screen take it back.
+        onResponderTerminationRequest={() => false}
+        onResponderGrant={onGrant}
+        onResponderMove={(event) => setDrag(ratioAt(event.nativeEvent.pageX))}
+        onResponderRelease={onRelease}
+        onResponderTerminate={onCancel}
+        accessible
         accessibilityRole="adjustable"
         accessibilityLabel={t('player.position')}
         accessibilityValue={{
           min: 0,
           max: Math.round(duration),
-          now: Math.round(maxReachedSeconds),
+          now: Math.round(currentSeconds),
+          text: `${formatDuration(currentSeconds)} / ${formatDuration(duration)}`,
         }}
-        onPress={(event) => {
-          if (trackWidth <= 0 || duration <= 0) return;
-
-          const ratio = event.nativeEvent.locationX / trackWidth;
-
-          onSeek(ratio * duration);
-        }}
-        style={{ width: `${unlockedPercent}%` }}
-        className="absolute left-0 h-8 justify-center"
+        accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
+        onAccessibilityAction={(event) =>
+          onSeek(currentSeconds + (event.nativeEvent.actionName === 'increment' ? 10 : -10))
+        }
       >
-        <View className="h-1.5 w-full rounded-full bg-white/45" />
-      </Pressable>
+        {/* Children never take touches, so every touch lands on the bar itself. */}
+        <View pointerEvents="none" className="h-1.5 w-full rounded-full bg-white/30" />
 
-      {/* Played fill */}
-      <View
-        pointerEvents="none"
-        style={{ width: `${playedPercent}%` }}
-        className="absolute left-0 h-1.5 rounded-full bg-accent"
-      />
+        <View
+          pointerEvents="none"
+          style={{ width: `${shownPercent}%` }}
+          className="absolute left-0 h-1.5 rounded-full bg-accent"
+        />
 
-      {/* Playhead */}
-      <View
-        pointerEvents="none"
-        style={{ left: `${playedPercent}%` }}
-        className="absolute -ml-1.5 h-3 w-3 rounded-full bg-accent"
-      />
+        {/* Playhead — grows while held, so the student can see what they're dragging. */}
+        <View
+          pointerEvents="none"
+          style={{ left: `${shownPercent}%` }}
+          className={
+            dragRatio !== null
+              ? 'absolute -ml-2.5 h-5 w-5 rounded-full bg-accent'
+              : 'absolute -ml-1.5 h-3 w-3 rounded-full bg-accent'
+          }
+        />
+      </View>
+
+      <View className="mt-2 flex-row justify-between">
+        <Text className="text-[12px] font-medium text-white">{formatDuration(shownSeconds)}</Text>
+        <Text className="text-[12px] font-medium text-white/70">{formatDuration(duration)}</Text>
+      </View>
     </View>
   );
 }

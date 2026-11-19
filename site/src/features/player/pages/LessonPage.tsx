@@ -174,7 +174,7 @@ export function LessonPage() {
           ) : stream.data ? (
             <p className="flex items-start gap-2 text-[12px] leading-[18px] text-muted-foreground">
               <Info className="mt-px size-3.5 shrink-0" aria-hidden="true" />
-              {t('site.player.noSkipHint')}
+              {t('site.player.skipHint')}
             </p>
           ) : null}
         </div>

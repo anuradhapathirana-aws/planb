@@ -278,7 +278,7 @@ Notes:
 
 Every course row on the student API — list, detail and wishlist — carries **`is_wishlisted`**: whether *this* student saved it. It gates nothing; it only fills the heart. Save and unsave are two verbs rather than a toggle so a retried request lands on the state asked for instead of flipping it back.
 | GET | `/student/lessons/{lesson}/stream` | `{ url, expires_at, progress }` — a signed link valid 30 minutes. |
-| POST | `/student/lessons/{lesson}/progress` | `{ position_seconds, watched_delta_seconds }` → the **server's** clamped view. Throttled 60/min. |
+| POST | `/student/lessons/{lesson}/progress` | `{ position_seconds, watched_delta_seconds }` → the **server's** view. Throttled 60/min. |
 
 **Note the parameter names `{course}` and `{lesson}`, not `{programme}` and `{video}`.** `Route::bind()` registers a binder *globally* on the router, not per route file — reusing the admin names would apply this published-only filter to `/api/v1/admin/*` too and hide every draft course from the people writing them.
 
@@ -286,7 +286,7 @@ Every course row on the student API — list, detail and wishlist — carries **
 
 **Titles are already in the student's language.** `name` on a course row, `title` on a topic and on a lesson, and `matched_topic` on a search hit all come back in whichever language `Accept-Language` asked for, falling back to English where no Sinhala title was entered. There is no `name_si` / `title_si` on any student payload.
 
-**`is_locked`** is true until the previous lesson in the programme is watched — ordering runs across topics, so finishing topic 1 opens topic 2's first lesson. The app greys the row out rather than hiding it.
+**`is_locked`** is true only when the student hasn't bought the course. Lessons have no order (client decision, November 2026): an enrolled student may open any lesson at any time. A locked row is greyed out rather than hidden, so the syllabus still shows.
 
 ### Course search (Home)
 
@@ -301,13 +301,14 @@ Every course row on the student API — list, detail and wishlist — carries **
 
 The app's Home dropdown filters these results into three tabs client-side — **Available** (not enrolled, any age), **Enrolled**, **Unfinished** (enrolled, not completed). `unfinished` is a subset of `enrolled`, not a sibling; they are filters over one result set. Switching tabs never costs a round trip, and an empty search box reuses the `GET /student/courses` response Home has already fetched.
 
-### Progress and the no-skip rule
+### Progress
 
-Client-side clamping in the player is UX only. The server treats both numbers as *claims*:
+Students may skip freely (client decision, November 2026 — this replaced the original no-skip rule).
 
-- `max_position_seconds` is **monotonic** — rewinding never loses ground — and may advance by at most `elapsed_wall_clock × 2 + 5s`. A first flush with no prior `last_seen_at` is capped at the grace window, so claiming the end of the lesson immediately buys ~5 seconds, not the whole thing.
-- "Watched" needs **two** gates: position ≥ 95% of duration **and** accumulated `watched_seconds` ≥ 90%. Position alone is beatable by a client that lies slowly; the second gate makes the lie cost as long as watching.
-- The response is the server's numbers. **The player must re-seed its clamp from them** rather than from its own state, and must seed `maxReached` from `max_position_seconds` on load — never from 0, or a returning student is locked back to the start.
+- `max_position_seconds` is the **furthest point reached**: monotonic — rewinding never loses ground — free to jump forward, and capped at the lesson's duration.
+- "Watched" is position ≥ 95% of duration, however the student got there. It ticks the lesson, moves course progress, and — once every lesson is watched — opens the course paper.
+- `watched_seconds` is still accrued, clamped to `elapsed_wall_clock × 2 + 5s` (a first flush with no `last_seen_at` gets only the 5s grace), but it is a statistic and gates nothing.
+- The response is the server's numbers. The player re-seeds from them, and seeds `maxReached` from `max_position_seconds` on load — never from 0 — so a returning student resumes where they stopped.
 - A lesson with `duration_seconds = null` can never be completed, which is why `POST /admin/course-programmes/{programme}/publish` now **refuses to publish** a programme with no lessons, or any lesson missing a file or duration (422 on `status`). This is a behaviour change to a previously permissive endpoint.
 
 Playback bytes are still served by the existing `GET /api/v1/course-videos/{video}/playback` (`signed` middleware only). A student link carries their id inside the signature, so the byte route re-checks the block flag at play time and a student blocked after their link was issued stops playing immediately. **Residual risk, stated plainly:** anyone holding that URL can play it for its 30-minute lifetime. That is inherent to handing a URL to a platform video player; the real fix is Bunny Stream token auth.

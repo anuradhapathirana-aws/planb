@@ -19,27 +19,23 @@ import type { StudentCourseTopic, StudentCourseVideo } from '@shared/types/stude
  * at where they left off rather than at topic 1 of a course they are halfway
  * through. The rest start closed, so the whole outline fits on screen.
  *
- * A lesson locks until the one before it is watched (enforced server-side on
- * the stream endpoint). A locked row is still shown, greyed with a lock, so the
- * student can see what comes next — pressing it explains why it will not open.
+ * Lessons have no order: an enrolled student may open any of them. A lesson is
+ * locked only on a course not bought yet (enforced server-side on the stream
+ * endpoint); its row is still shown, greyed with a lock, so the student can see
+ * the syllabus — pressing it says to enrol.
  */
-/** Why a locked lesson will not open: not watched in order yet, or not enrolled at all. */
-type LockedMessageKey = 'courses.locked' | 'enrol.lockedLesson';
 
 export function CourseTopicList({
   courseId,
   topics,
   nextLessonId,
   activeLessonId = null,
-  isEnrolled = true,
 }: {
   courseId: number;
   topics: StudentCourseTopic[];
   nextLessonId: number | null;
   /** The lesson being played, on the player page. Its topic opens and its row is marked. */
   activeLessonId?: number | null;
-  /** False on a course not owned yet: a locked lesson then says "enrol", not "watch the one before". */
-  isEnrolled?: boolean;
 }) {
   const focusId = activeLessonId ?? nextLessonId;
   const nextTopic = topics.find((topic) => topic.videos.some((lesson) => lesson.id === focusId));
@@ -55,7 +51,6 @@ export function CourseTopicList({
           index={index}
           nextLessonId={nextLessonId}
           activeLessonId={activeLessonId}
-          lockedMessage={isEnrolled ? 'courses.locked' : 'enrol.lockedLesson'}
         />
       ))}
     </Accordion>
@@ -68,14 +63,12 @@ function TopicItem({
   index,
   nextLessonId,
   activeLessonId,
-  lockedMessage,
 }: {
   courseId: number;
   topic: StudentCourseTopic;
   index: number;
   nextLessonId: number | null;
   activeLessonId: number | null;
-  lockedMessage: LockedMessageKey;
 }) {
   const { t } = useTranslation();
   const lessons = topic.videos;
@@ -129,7 +122,6 @@ function TopicItem({
                   lesson={lesson}
                   isNext={lesson.id === nextLessonId && lesson.id !== activeLessonId}
                   isActive={lesson.id === activeLessonId}
-                  lockedMessage={lockedMessage}
                 />
               </li>
             ))}
@@ -145,13 +137,11 @@ function LessonRow({
   lesson,
   isNext,
   isActive,
-  lockedMessage,
 }: {
   courseId: number;
   lesson: StudentCourseVideo;
   isNext: boolean;
   isActive: boolean;
-  lockedMessage: LockedMessageKey;
 }) {
   const { t } = useTranslation();
   const watched = lesson.progress.is_watched;
@@ -203,11 +193,11 @@ function LessonRow({
       <button
         type="button"
         aria-disabled="true"
-        onClick={() => toast.info(t(lockedMessage))}
+        onClick={() => toast.info(t('enrol.lockedLesson'))}
         className={cn(rowClass, 'cursor-not-allowed')}
       >
         {body}
-        <span className="sr-only">{t(lockedMessage)}</span>
+        <span className="sr-only">{t('enrol.lockedLesson')}</span>
       </button>
     );
   }

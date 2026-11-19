@@ -64,20 +64,20 @@ If a pattern is used by more than one feature it belongs in `components/shared/`
 - **Every failed mutation surfaces a toast** (`sonner-native`). Never fail silently.
 - **`npx expo install <pkg>`, never `npm install <pkg>`** — Expo pins the SDK-compatible version.
 
-## 3. The no-skip player
+## 3. The lesson player
 
-The full contract is server-side (`backend/CLAUDE.md` §5); the client's job is to make skipping
-*feel* impossible, not to be the enforcement.
+Students may skip freely and open lessons in any order (client decision, November 2026 — the old
+no-skip rule is gone; root §4 "Lesson Video Player"). The hook is `useLessonPlayer`.
 
-- **`nativeControls={false}` is mandatory.** `VideoView`'s native controls include a draggable
-  scrubber, and no-skip is impossible with them on. Custom controls only (root §8 already requires this).
-- `maxReached` is seeded from the server's `max_position_seconds`, **not from 0**.
-- On `timeUpdate`: if `currentTime > maxReached + 1.5s` grace, set `player.currentTime = maxReached`
-  and toast. **Rewind is unrestricted.**
-- The progress bar renders the locked region with `pointerEvents: 'none'` so it cannot be dragged into
-  at all. Clamping is the fallback, not the primary UX.
-- Flush progress every 15s while playing, on pause, on `AppState` → background, and on unmount. The
-  server's response re-seeds `maxReached`, so a tampered client snaps back.
+- **`nativeControls={false}` stays.** Native controls differ per platform and bring their own
+  fullscreen and picture-in-picture; our own controls keep the screen consistent. Root §8 requires it.
+- The seek bar is tap-or-drag anywhere (a responder-based scrubber, no slider package); rewind and
+  forward 10s buttons sit either side of play.
+- `maxReached` is the furthest point reached, seeded from the server's `max_position_seconds`
+  (**not from 0**) so a returning student resumes in place. It is what gets reported; the server marks
+  the lesson watched once it passes 95%, so skipping to the end completes it.
+- Flush progress every 15s while playing, on pause, on `AppState` → background, on `playToEnd`, and
+  on unmount.
 - **Signed playback URLs expire after 30 minutes and lessons are longer than that** — a timer must
   re-fetch the stream URL 5 minutes before `expires_at`, `player.replaceAsync()`, and restore
   `currentTime`. Handle it reactively on a playback error too, for clock drift.
