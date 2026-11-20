@@ -4,26 +4,27 @@ import { Trans, useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, KeyRound, Loader2, Mail } from 'lucide-react';
+import { Loader2, Mail, X } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { Logo } from '@/components/layout/Logo';
+import { OtpInput } from '@/components/shared/OtpInput';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { requestLoginCode, signInWithGoogle, verifyLoginCode } from '@/api/auth.api';
 import { fieldError, isHandledByClient, signInErrorMessage, useSecondsUntil } from '@/features/auth/authHelpers';
-import { GoogleSignInButton } from '@/features/auth/components/GoogleSignInButton';
-import { GOOGLE_SIGN_IN_AVAILABLE } from '@/features/auth/googleIdentity';
+import { AuthPhoto, GlassCard, GlassGoogleRow, GlassInput } from '@/features/auth/components/AuthGlass';
 import { sessionQueryKey } from '@/features/auth/hooks/useSession';
 import { useSessionStore } from '@/stores/sessionStore';
 import { safeReturnPath } from '@/lib/safeReturnPath';
+import { cn } from '@/lib/utils';
 import { paths } from '@/routes/paths';
 import { OTP_LENGTH, requestCodeSchema, type RequestCodeValues } from '@shared/schemas/studentAuth';
 import type { StudentWebSession } from '@shared/types/studentAuth';
@@ -31,10 +32,18 @@ import type { StudentWebSession } from '@shared/types/studentAuth';
 /** The server's own value arrives with the ticket; this covers the gap before it. */
 const DEFAULT_RESEND_SECONDS = 60;
 
-type Step = { name: 'email' } | { name: 'code'; email: string; expiresInMinutes: number };
+type CodeRequest = { email: string; expiresInMinutes: number };
 
 /**
  * Sign in — email code or Google — from anywhere on the website.
+ *
+ * **Drawn as the app's sign-in screen** (client request, Nov 2026): the
+ * airport photo under a navy shade, logo and title on top, a see-through card
+ * holding the email field, a gold "Send code" and an icon-only Google button.
+ * Full-screen on a phone, so it *is* the app's screen; a phone-shaped card from
+ * `sm` up. The emailed code goes in a second dialog over it — a bottom sheet on
+ * a phone, like the app's — and closing that is "use a different email", the
+ * address still in the field underneath.
  *
  * **Where it lands:** the student portal (`/app`), unless the visitor was on
  * their way somewhere specific — a deep link into `/app/*` that bounced them
@@ -65,18 +74,20 @@ export function SignInDialog({
   const queryClient = useQueryClient();
   const setStudent = useSessionStore((s) => s.setStudent);
 
-  const [step, setStep] = useState<Step>({ name: 'email' });
+  const [codeRequest, setCodeRequest] = useState<CodeRequest | null>(null);
   const [resendAt, setResendAt] = useState(0);
 
-  // Back to the start whenever the dialog closes, so reopening it later never
-  // lands on a stale code screen for an address typed an hour ago.
+  // Closing drops any open code step, so reopening later never lands on a
+  // stale code sheet for an address typed an hour ago.
   const handleOpenChange = useCallback(
     (next: boolean) => {
-      if (!next) setStep({ name: 'email' });
+      if (!next) setCodeRequest(null);
       onOpenChange(next);
     },
     [onOpenChange],
   );
+
+  const close = useCallback(() => handleOpenChange(false), [handleOpenChange]);
 
   const finish = useCallback(
     (session: StudentWebSession) => {
@@ -106,110 +117,136 @@ export function SignInDialog({
   const { mutate: googleSignIn } = google;
   const onGoogleCredential = useCallback((idToken: string) => googleSignIn(idToken), [googleSignIn]);
 
-  const title = step.name === 'code' ? t('auth.codeTitle') : t('auth.signInTitle');
-  const description =
-    step.name === 'code'
-      ? t('auth.codeSubtitle', {
-          length: OTP_LENGTH,
-          email: step.email,
-          minutes: step.expiresInMinutes,
-        })
-      : t('auth.signInSubtitle');
+  const legalLink = 'font-medium text-white underline underline-offset-2 hover:text-accent';
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription className="wrap-break-word">{description}</DialogDescription>
-        </DialogHeader>
+      <DialogContent
+        showCloseButton={false}
+        className={cn(
+          // Phone: the whole screen, like the app.
+          'inset-0 h-dvh max-h-none gap-0 overflow-hidden rounded-none border-0 bg-surface p-0',
+          /*
+           * sm and up: a compact card only as tall as its content (~630px), never
+           * taller than the window. A full phone-height card was too tall on a
+           * desktop (client feedback, Nov 2026).
+           */
+          'sm:h-auto sm:max-h-[calc(100dvh-2rem)] sm:max-w-[420px] sm:rounded-2xl sm:p-0',
+        )}
+      >
+        {/*
+          On the compact card the photo is pulled up (`45%`) so the student's
+          face lands in the gap between the title and the form, as on the app.
+        */}
+        <AuthPhoto className="sm:object-[50%_45%]" />
 
-        {step.name === 'email' ? (
-          <>
-            {GOOGLE_SIGN_IN_AVAILABLE ? (
-              <>
-                <GoogleSignInButton onCredential={onGoogleCredential} disabled={google.isPending} />
+        <DialogClose
+          className="absolute top-[max(0.5rem,env(safe-area-inset-top))] right-2 z-10 flex size-11 items-center justify-center rounded-full text-white/80 transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:outline-none"
+        >
+          <X className="size-5" aria-hidden="true" />
+          <span className="sr-only">{t('common.close')}</span>
+        </DialogClose>
 
-                {google.isPending ? (
-                  <p className="flex items-center justify-center gap-2 text-sm text-muted-foreground" role="status">
-                    <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-                    {t('auth.finishingSignIn')}
-                  </p>
-                ) : null}
+        {/* Scrolls only on a short screen, or with a phone keyboard up. */}
+        <div className="relative flex h-full flex-col overflow-y-auto px-5 pt-[calc(env(safe-area-inset-top)+0.75rem)] pb-[calc(env(safe-area-inset-bottom)+0.75rem)] sm:h-auto sm:max-h-[calc(100dvh-2rem)]">
+          <DialogHeader className="items-center gap-0 pt-4 text-center sm:pt-2">
+            <Logo size="auth" onClick={close} />
+            <DialogTitle className="mt-1 text-[30px] leading-10 font-normal text-white">
+              {t('auth.heroTitle')}
+            </DialogTitle>
+            <DialogDescription className="text-[13px] leading-5 text-surface-foreground">
+              {t('auth.heroSubtitle')}
+            </DialogDescription>
+          </DialogHeader>
 
-                <div className="flex items-center gap-3" aria-hidden="true">
-                  <span className="h-px flex-1 bg-border" />
-                  <span className="text-xs text-muted-foreground">{t('auth.or')}</span>
-                  <span className="h-px flex-1 bg-border" />
-                </div>
-              </>
-            ) : null}
+          {/* The clear band where the photo's subject shows through. */}
+          <div className="min-h-24 flex-1 sm:h-24 sm:flex-none" />
 
-            <EmailStep
+          <GlassCard>
+            <EmailForm
               disabled={google.isPending}
               onCodeSent={(email, ticket) => {
                 setResendAt(Date.now() + ticket.resend_after_seconds * 1000);
-                setStep({
-                  name: 'code',
+                setCodeRequest({
                   email,
                   expiresInMinutes: Math.max(1, Math.round(ticket.expires_in_seconds / 60)),
                 });
               }}
             />
 
-            <p className="text-center text-sm text-muted-foreground">
-              {t('auth.newToPlanB')}{' '}
-              <Link
-                to={paths.register}
-                onClick={() => handleOpenChange(false)}
-                className="font-semibold text-primary underline-offset-2 hover:underline"
-              >
-                {t('auth.createAccount')}
-              </Link>
-            </p>
+            <GlassGoogleRow onCredential={onGoogleCredential} disabled={google.isPending} />
 
-            {/*
-              Signing in with Google can create an account, so this is where a
-              new student agrees to the terms. `Trans` so Sinhala can place the
-              links in its own word order.
-            */}
-            <p className="text-center text-xs leading-5 text-muted-foreground">
-              <Trans
-                i18nKey="auth.legalConsent"
-                components={{
-                  terms: (
-                    <Link
-                      to={paths.terms}
-                      onClick={() => handleOpenChange(false)}
-                      className="font-medium text-primary underline underline-offset-2"
-                    />
-                  ),
-                  privacy: (
-                    <Link
-                      to={paths.privacy}
-                      onClick={() => handleOpenChange(false)}
-                      className="font-medium text-primary underline underline-offset-2"
-                    />
-                  ),
-                }}
+            {google.isPending ? (
+              <p
+                className="mt-3 flex items-center justify-center gap-2 text-[12px] text-surface-foreground"
+                role="status"
+              >
+                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                {t('auth.finishingSignIn')}
+              </p>
+            ) : null}
+          </GlassCard>
+
+          <p className="mt-3 flex min-h-11 flex-wrap items-center justify-center gap-x-1 text-[13px] leading-[22px] text-surface-foreground">
+            {t('auth.newToPlanB')}
+            <Link
+              to={paths.register}
+              onClick={close}
+              className="px-1 font-semibold text-accent underline-offset-2 hover:underline"
+            >
+              {t('auth.createAccount')}
+            </Link>
+          </p>
+
+          {/*
+            Signing in with Google can create an account, so this is where a
+            new student agrees to the terms. `Trans` so Sinhala can place the
+            links in its own word order.
+          */}
+          <p className="px-2 text-center text-[11px] leading-[18px] text-surface-muted">
+            <Trans
+              i18nKey="auth.legalConsent"
+              components={{
+                terms: <Link to={paths.terms} onClick={close} className={legalLink} />,
+                privacy: <Link to={paths.privacy} onClick={close} className={legalLink} />,
+              }}
+            />
+          </p>
+        </div>
+
+        <Dialog open={codeRequest !== null} onOpenChange={(next) => (next ? undefined : setCodeRequest(null))}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader className="pr-6">
+              <DialogTitle>{t('auth.codeTitle')}</DialogTitle>
+              <DialogDescription className="wrap-break-word">
+                {codeRequest
+                  ? t('auth.codeSubtitle', {
+                      length: OTP_LENGTH,
+                      email: codeRequest.email,
+                      minutes: codeRequest.expiresInMinutes,
+                    })
+                  : null}
+              </DialogDescription>
+            </DialogHeader>
+
+            {/* Mounted per request, so every new code starts with a clean form. */}
+            {codeRequest ? (
+              <CodeForm
+                key={codeRequest.email}
+                email={codeRequest.email}
+                resendAt={resendAt}
+                onResent={(seconds) => setResendAt(Date.now() + seconds * 1000)}
+                onSignedIn={finish}
               />
-            </p>
-          </>
-        ) : (
-          <CodeStep
-            email={step.email}
-            resendAt={resendAt}
-            onResent={(seconds) => setResendAt(Date.now() + seconds * 1000)}
-            onBack={() => setStep({ name: 'email' })}
-            onSignedIn={finish}
-          />
-        )}
+            ) : null}
+          </DialogContent>
+        </Dialog>
       </DialogContent>
     </Dialog>
   );
 }
 
-function EmailStep({
+function EmailForm({
   disabled,
   onCodeSent,
 }: {
@@ -248,48 +285,26 @@ function EmailStep({
   const busy = send.isPending || disabled;
 
   return (
-    <form
-      noValidate
-      className="space-y-3"
-      onSubmit={form.handleSubmit((values) => send.mutate(values.email))}
-    >
-      <div className="space-y-1.5">
-        <Label htmlFor="sign-in-email">{t('auth.emailLabel')}</Label>
-        <div className="relative">
-          <Mail
-            className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
-            aria-hidden="true"
-          />
-          <Input
-            id="sign-in-email"
-            type="email"
-            inputMode="email"
-            autoComplete="email"
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-            // Typing is the only thing to do on this step.
-            autoFocus
-            placeholder={t('auth.emailPlaceholder')}
-            className="h-11 pl-9"
-            aria-invalid={error ? true : undefined}
-            aria-describedby={error ? 'sign-in-email-error' : undefined}
-            disabled={busy}
-            {...form.register('email')}
-          />
-        </div>
-        {error ? (
-          <p id="sign-in-email-error" className="text-xs text-destructive">
-            {error}
-          </p>
-        ) : null}
-      </div>
+    <form noValidate onSubmit={form.handleSubmit((values) => send.mutate(values.email))}>
+      <GlassInput
+        id="sign-in-email"
+        icon={Mail}
+        label={t('auth.emailLabel')}
+        type="email"
+        inputMode="email"
+        autoComplete="email"
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
+        disabled={busy}
+        error={error}
+        {...form.register('email')}
+      />
 
       <Button
         type="submit"
-        size="lg"
-        className="w-full"
-        variant={GOOGLE_SIGN_IN_AVAILABLE ? 'outline' : 'default'}
+        variant="accent"
+        className="mt-5 h-[54px] w-full rounded-lg text-base font-semibold"
         disabled={busy}
       >
         {send.isPending ? <Loader2 className="animate-spin" aria-hidden="true" /> : null}
@@ -299,17 +314,15 @@ function EmailStep({
   );
 }
 
-function CodeStep({
+function CodeForm({
   email,
   resendAt,
   onResent,
-  onBack,
   onSignedIn,
 }: {
   email: string;
   resendAt: number;
   onResent: (seconds: number) => void;
-  onBack: () => void;
   onSignedIn: (session: StudentWebSession) => void;
 }) {
   const { t } = useTranslation();
@@ -371,68 +384,50 @@ function CodeStep({
         submit(code);
       }}
     >
-      <div className="space-y-1.5">
-        <Label htmlFor="sign-in-code" className="flex items-center gap-1.5">
-          <KeyRound className="size-3.5 text-muted-foreground" aria-hidden="true" />
-          {t('site.auth.codeLabel')}
-        </Label>
-        {/*
-          ONE input, not six boxes. `autocomplete="one-time-code"` lets the
-          browser and phone keyboards offer the code straight from the email,
-          paste works in one go, and a screen reader hears one field rather
-          than six unlabelled ones.
-        */}
-        <Input
+      <div>
+        <OtpInput
           id="sign-in-code"
+          label={t('site.auth.codeLabel')}
           value={code}
-          onChange={(event) => {
-            const digits = event.target.value.replace(/\D/g, '').slice(0, OTP_LENGTH);
-            setCode(digits);
+          onChange={(value) => {
+            setCode(value);
             if (error) setError(undefined);
-            if (digits.length === OTP_LENGTH) submit(digits);
           }}
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          pattern="[0-9]*"
-          maxLength={OTP_LENGTH}
-          autoFocus
-          placeholder={t('auth.codePlaceholder')}
-          className="h-14 text-center text-2xl font-semibold tracking-[0.5em] tabular-nums sm:text-2xl"
-          aria-invalid={error ? true : undefined}
-          aria-describedby={error ? 'sign-in-code-error sign-in-code-hint' : 'sign-in-code-hint'}
+          onComplete={submit}
+          invalid={Boolean(error)}
           disabled={verify.isPending}
+          describedBy={error ? 'sign-in-code-error sign-in-code-hint' : 'sign-in-code-hint'}
         />
         {error ? (
-          <p id="sign-in-code-error" className="text-xs text-destructive" role="alert">
+          <p id="sign-in-code-error" className="mt-2 text-[13px] leading-5 text-destructive" role="alert">
             {error}
           </p>
         ) : null}
       </div>
 
-      <Button type="submit" size="lg" className="w-full" disabled={code.length !== OTP_LENGTH || verify.isPending}>
+      <Button
+        type="submit"
+        className="h-[54px] w-full rounded-lg text-base font-semibold"
+        disabled={code.length !== OTP_LENGTH || verify.isPending}
+      >
         {verify.isPending ? <Loader2 className="animate-spin" aria-hidden="true" /> : null}
         {t('auth.verify')}
       </Button>
 
-      <div className="flex flex-col items-center gap-1 text-sm">
+      <div className="flex min-h-11 items-center justify-center text-sm">
         {secondsLeft > 0 ? (
           <p className="text-muted-foreground" aria-live="polite">
             {t('auth.resendIn', { seconds: secondsLeft })}
           </p>
         ) : (
-          <Button type="button" variant="link" size="sm" disabled={resend.isPending} onClick={() => resend.mutate()}>
+          <Button type="button" variant="ghost" className="text-primary" disabled={resend.isPending} onClick={() => resend.mutate()}>
             {resend.isPending ? <Loader2 className="animate-spin" aria-hidden="true" /> : null}
             {t('auth.resend')}
           </Button>
         )}
-
-        <Button type="button" variant="ghost" size="sm" className="text-muted-foreground" onClick={onBack}>
-          <ArrowLeft aria-hidden="true" />
-          {t('site.auth.changeEmail')}
-        </Button>
       </div>
 
-      <p id="sign-in-code-hint" className="rounded-md bg-muted px-3 py-2.5 text-xs leading-5 text-muted-foreground">
+      <p id="sign-in-code-hint" className="text-center text-xs leading-5 text-muted-foreground">
         {t('site.auth.checkInbox')}
       </p>
     </form>

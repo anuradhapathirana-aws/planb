@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { GraduationCap, Menu } from 'lucide-react';
+import { GraduationCap, LogIn, Menu } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
@@ -178,8 +178,10 @@ export function PublicHeader({ onSignIn }: { onSignIn: () => void }) {
             <>
               {/* Sign up is the gold action for a newcomer; Sign in steps back to
                   the outlined style so the bar still has one loudest button. Under
-                  `sm` there is room for one, so Sign up moves into the menu. */}
-              <Button variant="onSurface" size="sm" onClick={onSignIn}>
+                  `sm` there is room for one, so Sign up moves into the menu — and
+                  Sign in, alone there, drops its border (client request, Nov 2026). */}
+              <Button variant="onSurface" size="sm" className="gap-1.5 max-sm:border-0" onClick={onSignIn}>
+                <LogIn className="size-4" aria-hidden="true" />
                 {t('site.nav.signIn')}
               </Button>
               <Button asChild variant="accent" size="sm" className="hidden sm:inline-flex">

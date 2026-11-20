@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, BookOpen } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Container } from '@/components/shared/Container';
@@ -46,7 +46,9 @@ export function ProgrammesSection({
   const { trackRef, page, pageCount, goToPage } = useSnapCarousel();
 
   return (
-    <section id={id} className="scroll-mt-20 py-9 sm:py-11">
+    // `max-sm:pb-4`: on a phone the space under the buttons row matches the
+    // space above it (card to buttons), so the row sits evenly between them.
+    <section id={id} className="scroll-mt-20 py-9 max-sm:pb-7 sm:py-11">
       <Container>
         <SectionHeading
           title={t('site.programmes.heading')}
@@ -90,26 +92,66 @@ export function ProgrammesSection({
               ref={trackRef}
               // `max-sm:gap-0`: one full-width card per page on a phone — see
               // `CAROUSEL_ITEM_CLASSES['4.5']` for why the gap has to go.
-              className={cn(CAROUSEL_TRACK_CLASSES, 'mt-6 pb-4 pt-2 max-sm:gap-0')}
+              // `max-sm:pb-1`: on a phone the buttons row sits close under the
+              // card (client request, Nov 2026); a tap has no hover shadow to clear.
+              className={cn(CAROUSEL_TRACK_CLASSES, 'mt-6 pb-4 pt-2 max-sm:gap-0 max-sm:pb-0')}
               role="list"
               aria-label={t('site.programmes.listLabel')}
             >
               {programmes.map((programme) => (
-                <div key={programme.id} role="listitem" className={CAROUSEL_ITEM_CLASSES['4.5']}>
+                /*
+                  `grid` so the card fills the slide's full height. The strip is as
+                  tall as its tallest card; without this a shorter card stopped
+                  short and left a gap above the phone's buttons row, and its
+                  price row never reached the bottom the way ProgrammeCard's
+                  spacer intends.
+                */
+                <div key={programme.id} role="listitem" className={cn(CAROUSEL_ITEM_CLASSES['4.5'], 'grid')}>
                   <ProgrammeCard programme={programme} />
                 </div>
               ))}
             </div>
 
-            {/* Phones only: the arrows and a "2 / 6" counter, centred under the
-                card (client instruction, 2026-11-17). Larger screens use the
-                pair beside the heading. */}
+            {/*
+              Phones only: ONE centred row under the card — previous arrow, a
+              small "All courses" pill, next arrow (client request, Nov 2026). No
+              "2 / 6" counter; the pill takes its place. It replaces the stacked
+              arrows bar and the full-width button, which took two rows and
+              outweighed the card. Larger screens keep the arrows beside the
+              heading and the pill on the hairline.
+
+              The pill is solid navy with white text and book icon, flat. The
+              arrows either side are transparent with a navy outline and keep
+              the 3D ledge, dropping onto it when pressed (client request).
+            */}
             <CarouselArrows
               page={page}
               pageCount={pageCount}
               onGoTo={goToPage}
-              variant="bar"
-              className="mt-1 sm:hidden"
+              variant="compact"
+              // All three grouped in the centre, not spread to the card's edges
+              // (client request, Nov 2026). The pill is the one item allowed to
+              // shrink, so on a narrow phone it gives way instead of overflowing.
+              // No `min-h-11` on the row: each button already stretches its own
+              // tap area to 44px with an invisible `after:` box, so the row can
+              // sit right under the card without costing touch target.
+              className="mt-3.5 justify-center gap-3 sm:hidden"
+              center={
+                <Link
+                to={paths.courses}
+                className={cn(
+                  'group inline-flex h-9 min-w-0 items-center gap-1.5 rounded-full bg-primary px-4',
+                  'text-[13px] font-semibold text-primary-foreground shadow-sm transition-colors',
+                  'hover:bg-primary-tint active:bg-primary-tint',
+                  'outline-none focus-visible:ring-3 focus-visible:ring-accent/50',
+                  // Stretches the tap target to 44px without growing the pill.
+                  'relative after:absolute after:-inset-y-1 after:inset-x-0 after:content-[""]',
+                )}
+              >
+                <BookOpen className="size-4 shrink-0 transition-transform group-hover:scale-110" aria-hidden="true" />
+                <span className="truncate">{t('site.programmes.allCourses')}</span>
+              </Link>
+              }
             />
 
             {/*
@@ -129,29 +171,11 @@ export function ProgrammesSection({
               target that was doing the spacing, and `mt-2` under the bare strip
               left the button sitting on the cards.
             */}
-            <div className="relative mt-6 flex items-center justify-center">
-              {/* The hairline is for the centred pill on wider screens; on a
-                  phone the button spans the width, so there is nothing to sit on. */}
-              <span
-                className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-border max-sm:hidden"
-                aria-hidden="true"
-              />
+            {/* From `sm` only — a phone has the "All courses" pill in the row above. */}
+            <div className="relative mt-6 flex items-center justify-center max-sm:hidden">
+              <span className="absolute inset-x-0 top-1/2 h-px -translate-y-1/2 bg-border" aria-hidden="true" />
 
-              {/*
-                On a phone: full width, transparent with a navy border (client
-                instruction, 2026-11-17) — a lighter close to the section than a
-                solid navy bar the width of the screen, which would outweigh the
-                course cards above it. From `sm`: the solid pill on the hairline.
-              */}
-              <Button
-                asChild
-                size="lg"
-                className={cn(
-                  'relative rounded-full px-7 shadow-sm',
-                  'max-sm:h-11 max-sm:w-full max-sm:border-[1.5px] max-sm:border-primary max-sm:bg-transparent',
-                  'max-sm:text-primary max-sm:shadow-none max-sm:hover:bg-primary-soft',
-                )}
-              >
+              <Button asChild size="lg" className="relative rounded-full px-7 shadow-sm">
                 <Link to={paths.courses}>
                   {t('site.programmes.viewAll')}
                   <ArrowRight className="size-4" aria-hidden="true" />

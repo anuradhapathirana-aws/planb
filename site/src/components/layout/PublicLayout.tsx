@@ -7,6 +7,7 @@ import { PageLoader } from '@/components/shared/PageLoader';
 import { ScrollManager } from '@/components/shared/ScrollManager';
 import { WhatsAppButton } from '@/components/shared/WhatsAppButton';
 import { safeReturnPath } from '@/lib/safeReturnPath';
+import { paths } from '@/routes/paths';
 import type { PublicLayoutContext } from '@/features/auth/hooks/useSignInDialog';
 
 /*
@@ -33,6 +34,7 @@ interface SignInRedirectState {
  */
 export function PublicLayout() {
   const location = useLocation();
+  const { pathname } = location;
   const navigate = useNavigate();
   const [signInOpen, setSignInOpen] = useState(false);
   // Stays true once set, so the dialog stays mounted and can animate closed.
@@ -90,14 +92,21 @@ export function PublicLayout() {
         </Suspense>
       </main>
 
-      <PublicFooter />
-
       {/*
-        Public pages only. The portal has a bottom tab bar under `md` that this
-        would sit on top of, and a student who is already signed in has better
-        routes to support than a marketing chat button.
+        On a phone, Sign up is the app's full-screen Create Account screen
+        (`RegisterMobileView`): no footer under it, and no chat button floating
+        over its form. `contents` keeps the wrapper out of the layout otherwise.
       */}
-      <WhatsAppButton />
+      <div className={pathname === paths.register ? 'hidden md:contents' : 'contents'}>
+        <PublicFooter />
+
+        {/*
+          Public pages only. The portal has a bottom tab bar under `md` that this
+          would sit on top of, and a student who is already signed in has better
+          routes to support than a marketing chat button.
+        */}
+        <WhatsAppButton />
+      </div>
 
       {signInLoaded ? (
         <Suspense fallback={null}>
