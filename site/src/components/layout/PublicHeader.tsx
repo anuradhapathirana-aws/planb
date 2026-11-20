@@ -206,7 +206,24 @@ export function PublicHeader({ onSignIn }: { onSignIn: () => void }) {
               </Button>
             </SheetTrigger>
 
-            <SheetContent side="right" className="flex w-72 flex-col gap-1 p-4 pt-14">
+            {/*
+              A frosted-glass panel with white text (client request, Nov 2026):
+              a thin navy tint over a strong blur, a bright hairline edge and an
+              inner top highlight, so the page shows through it like glass. The
+              page dimming behind is lighter than the default for the same
+              reason. The blur is what keeps white text readable on so little
+              tint — drop it and the links sit straight on the photo.
+              The close X draws in `currentColor`, so `text-white` covers it.
+            */}
+            <SheetContent
+              side="right"
+              overlayClassName="bg-black/25"
+              className={cn(
+                'flex w-72 flex-col gap-1 p-4 pt-14 text-white',
+                'border-l border-white/25 bg-surface/30 backdrop-blur-xl backdrop-saturate-150',
+                'shadow-[inset_1px_0_0_rgb(255_255_255/0.15)]',
+              )}
+            >
               {/* Radix requires a title for the dialog's accessible name. */}
               <SheetTitle className="sr-only">{t('site.nav.openMenu')}</SheetTitle>
 
@@ -215,13 +232,19 @@ export function PublicHeader({ onSignIn }: { onSignIn: () => void }) {
                   key={item.key}
                   to={item.to}
                   onClick={() => setMenuOpen(false)}
-                  className="flex min-h-11 items-center rounded-md px-3 text-base font-medium hover:bg-secondary"
+                  aria-current={isCurrent(item.to, item.isSection) ? 'page' : undefined}
+                  className={cn(
+                    'flex min-h-11 items-center rounded-md px-3 text-base font-medium text-white transition-colors',
+                    'hover:bg-white/10',
+                    // Gold for the current page, as in the desktop nav.
+                    'aria-[current=page]:text-accent',
+                  )}
                 >
                   {t(`site.nav.${item.key}`)}
                 </NavLink>
               ))}
 
-              <div className="mt-auto space-y-3 border-t pt-3">
+              <div className="mt-auto space-y-3 border-t border-white/15 pt-3">
                 {student ? null : (
                   <Button asChild variant="accent" className="h-11 w-full">
                     <Link to={paths.register} onClick={() => setMenuOpen(false)}>
@@ -229,7 +252,7 @@ export function PublicHeader({ onSignIn }: { onSignIn: () => void }) {
                     </Link>
                   </Button>
                 )}
-                <LanguageSwitcher className="w-full justify-start" />
+                <LanguageSwitcher onDark className="w-full justify-start" />
               </div>
             </SheetContent>
           </Sheet>
