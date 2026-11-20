@@ -69,6 +69,13 @@ const SIZES = {
    * centred on its own row at the top of the footer.
    */
   xl: 'h-28 sm:h-24',
+  /**
+   * The sign-in dialog's badge, drawn exactly as the app's sign-in screen draws
+   * it: a 104px circle. Cropped round because the bundled badge's corners are
+   * opaque black, which shows against the photo there. 80px from `sm` up, where
+   * the dialog is a compact card rather than the whole screen.
+   */
+  auth: 'size-[104px] rounded-full object-cover sm:size-20',
 } as const;
 
 /**

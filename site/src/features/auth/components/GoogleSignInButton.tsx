@@ -33,9 +33,16 @@ const MIN_WIDTH = 200;
 export function GoogleSignInButton({
   onCredential,
   disabled,
+  iconOnly = false,
 }: {
   onCredential: (idToken: string) => void;
   disabled?: boolean;
+  /**
+   * Just the "G" in a white circle, as the app's sign-in screen draws it
+   * (client request). Still Google's own button — GIS's `icon` type — so the
+   * branding rules and the iframe isolation are unchanged.
+   */
+  iconOnly?: boolean;
 }) {
   const { i18n } = useTranslation();
   const hostRef = useRef<HTMLDivElement>(null);
@@ -67,21 +74,34 @@ export function GoogleSignInButton({
           initialisedFor = GOOGLE_CLIENT_ID;
         }
 
-        const width = Math.round(
-          Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, hostRef.current.clientWidth)),
-        );
+        const locale = i18n.language === 'si' ? 'si' : 'en';
 
         hostRef.current.replaceChildren();
-        gis.renderButton(hostRef.current, {
-          type: 'standard',
-          theme: 'outline',
-          size: 'large',
-          text: 'continue_with',
-          shape: 'rectangular',
-          logo_alignment: 'center',
-          width,
-          locale: i18n.language === 'si' ? 'si' : 'en',
-        });
+
+        if (iconOnly) {
+          gis.renderButton(hostRef.current, {
+            type: 'icon',
+            theme: 'outline',
+            size: 'large',
+            shape: 'circle',
+            locale,
+          });
+        } else {
+          const width = Math.round(
+            Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, hostRef.current.clientWidth)),
+          );
+
+          gis.renderButton(hostRef.current, {
+            type: 'standard',
+            theme: 'outline',
+            size: 'large',
+            text: 'continue_with',
+            shape: 'rectangular',
+            logo_alignment: 'center',
+            width,
+            locale,
+          });
+        }
 
         setState('ready');
       })
@@ -92,9 +112,22 @@ export function GoogleSignInButton({
     return () => {
       cancelled = true;
     };
-  }, [i18n.language]);
+  }, [i18n.language, iconOnly]);
 
   if (!GOOGLE_CLIENT_ID || state === 'failed') return null;
+
+  if (iconOnly) {
+    return (
+      <div className="relative shrink-0">
+        {state === 'loading' ? <Skeleton className="absolute inset-0 rounded-full bg-white/30" /> : null}
+        {/* GIS draws the large icon button as a 40px circle; this reserves it. */}
+        <div
+          ref={hostRef}
+          className={cn('flex size-10 items-center justify-center', disabled && 'pointer-events-none opacity-50')}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="relative">

@@ -13,8 +13,11 @@ import { Container } from '@/components/shared/Container';
 import { requestRegistrationCode, signInWithGoogle } from '@/api/auth.api';
 import { isHandledByClient, signInErrorMessage } from '@/features/auth/authHelpers';
 import { RegisterBrandPanel } from '@/features/auth/components/RegisterBrandPanel';
-import { RegisterCodeStep } from '@/features/auth/components/RegisterCodeStep';
+import { RegisterCodeSheetForm, RegisterCodeStep } from '@/features/auth/components/RegisterCodeStep';
 import { RegisterDetailsStep } from '@/features/auth/components/RegisterDetailsStep';
+import { RegisterMobileView } from '@/features/auth/components/RegisterMobileView';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useMediaQuery } from '@/lib/useMediaQuery';
 import { sessionQueryKey } from '@/features/auth/hooks/useSession';
 import { useSignInDialog } from '@/features/auth/hooks/useSignInDialog';
 import { useSessionStore } from '@/stores/sessionStore';
@@ -59,6 +62,15 @@ export function RegisterPage() {
   const { openSignIn } = useSignInDialog();
   const student = useSessionStore((s) => s.student);
   const setStudent = useSessionStore((s) => s.setStudent);
+
+  /*
+   * A phone gets the app's Create Account screen; from `md` up the two-column
+   * page stays as it was (client request, Nov 2026). Chosen in JS rather than by
+   * hiding one with CSS: both layouts bind the same React Hook Form fields, and
+   * two mounted copies would register every field twice. `form` and `step`
+   * live here, so resizing across the line keeps everything typed.
+   */
+  const isDesktop = useMediaQuery('(min-width: 48rem)');
 
   const [step, setStep] = useState<Step>({ name: 'details' });
   const [resendAt, setResendAt] = useState(0);
@@ -127,13 +139,63 @@ export function RegisterPage() {
   if (student) return <Navigate to={paths.app.home} replace />;
 
   const onCode = step.name === 'code';
+  const resend = () => requestRegistrationCode(toPayload(form.getValues()));
+
+  const head = (
+    <Helmet>
+      <title>{t('site.course.metaTitle', { name: t('register.title') })}</title>
+      <meta name="description" content={t('register.subtitle')} />
+    </Helmet>
+  );
+
+  if (!isDesktop) {
+    return (
+      <>
+        {head}
+        <RegisterMobileView
+          form={form}
+          submitting={send.isPending}
+          googlePending={google.isPending}
+          onSubmit={(values) => send.mutate(values)}
+          onGoogleCredential={onGoogleCredential}
+          onSignIn={() => openSignIn()}
+        />
+
+        {/* The code in a bottom sheet over the details; closing it is "edit my details". */}
+        <Dialog open={onCode} onOpenChange={(next) => (next ? undefined : setStep({ name: 'details' }))}>
+          <DialogContent>
+            <DialogHeader className="pr-6">
+              <DialogTitle>{t('register.codeTitle')}</DialogTitle>
+              <DialogDescription className="wrap-break-word">
+                {step.name === 'code'
+                  ? t('register.codeSubtitle', {
+                      length: OTP_LENGTH,
+                      email: step.email,
+                      minutes: step.expiresInMinutes,
+                    })
+                  : null}
+              </DialogDescription>
+            </DialogHeader>
+
+            {step.name === 'code' ? (
+              <RegisterCodeSheetForm
+                key={step.email}
+                email={step.email}
+                resendAt={resendAt}
+                resend={resend}
+                onResent={codeSent}
+                onRegistered={finish}
+              />
+            ) : null}
+          </DialogContent>
+        </Dialog>
+      </>
+    );
+  }
 
   return (
     <section className="relative isolate overflow-hidden bg-linear-to-b from-primary-soft via-background to-background">
-      <Helmet>
-        <title>{t('site.course.metaTitle', { name: t('register.title') })}</title>
-        <meta name="description" content={t('register.subtitle')} />
-      </Helmet>
+      {head}
 
       <div aria-hidden="true" className="absolute -top-40 -right-32 -z-10 size-[28rem] rounded-full bg-accent/10 blur-3xl" />
 
@@ -179,7 +241,7 @@ export function RegisterPage() {
                 <RegisterCodeStep
                   email={step.email}
                   resendAt={resendAt}
-                  resend={() => requestRegistrationCode(toPayload(form.getValues()))}
+                  resend={resend}
                   onResent={codeSent}
                   onBack={() => setStep({ name: 'details' })}
                   onRegistered={finish}

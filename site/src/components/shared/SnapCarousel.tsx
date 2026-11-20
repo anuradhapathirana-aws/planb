@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 
@@ -219,6 +220,7 @@ export function CarouselArrows({
   pageCount,
   onGoTo,
   variant = 'inline',
+  center,
   className,
 }: {
   page: number;
@@ -229,17 +231,28 @@ export function CarouselArrows({
    * `bar`: for phones, under the strip — two 44px buttons (the minimum touch
    * target) with a "2 / 6" counter between them, since a phone shows one card
    * and the counter is the only sign of how many there are.
+   * `compact`: the `bar` layout at 36px, left-aligned, for a phone row that
+   * shares its line with another action (Our Programmes' "All courses"). Each
+   * button's hit area is stretched to 44px with an invisible `after:` box, so
+   * the smaller look costs no touch target.
    */
-  variant?: 'inline' | 'bar';
+  variant?: 'inline' | 'bar' | 'compact';
+  /**
+   * Drawn between the two arrows in place of the "2 / 6" counter — Our
+   * Programmes puts its "All courses" pill there on a phone. Still shown,
+   * alone, when there is nothing to scroll.
+   */
+  center?: ReactNode;
   className?: string;
 }) {
   const { t } = useTranslation();
 
-  if (pageCount < 2) return null;
+  if (pageCount < 2) return center ? <div className={cn('flex justify-center', className)}>{center}</div> : null;
 
   const atStart = page <= 0;
   const atEnd = page >= pageCount - 1;
   const bar = variant === 'bar';
+  const compact = variant === 'compact';
 
   /*
    * The site's own button language (client instruction, 2026-11-17): navy
@@ -254,11 +267,34 @@ export function CarouselArrows({
     'outline-none focus-visible:ring-3 focus-visible:ring-accent/50',
     'disabled:pointer-events-none disabled:bg-muted disabled:text-muted-foreground/50 disabled:shadow-none',
     bar ? 'size-11' : 'size-9',
+    compact && 'relative after:absolute after:-inset-1 after:content-[""]',
+    /*
+     * `compact` is drawn 3D (client request, Nov 2026): a solid ledge under the
+     * button in a darker shade of its own colour, and on press the button drops
+     * onto it. It replaces the hover lift, which would fight the ledge. A
+     * disabled end loses the ledge and lies flat — visibly not pressable.
+     */
+    compact && [
+      // Transparent with a navy outline and arrow (client request, Nov 2026),
+      // so the solid navy pill between the two is the one filled button.
+      'border border-primary bg-transparent text-primary',
+      'shadow-[0_3px_0_0_color-mix(in_srgb,var(--primary)_70%,black)]',
+      'hover:translate-y-0 hover:bg-primary-soft hover:text-primary',
+      'hover:shadow-[0_3px_0_0_color-mix(in_srgb,var(--primary)_70%,black)]',
+      'active:translate-y-[3px] active:shadow-none',
+      'disabled:border-border disabled:bg-transparent',
+    ],
   );
   const iconClass = bar ? 'size-5' : 'size-4';
 
   return (
-    <div className={cn('flex items-center', bar ? 'justify-center gap-4' : 'gap-2', className)}>
+    <div
+      className={cn(
+        'flex items-center',
+        bar ? 'justify-center gap-4' : compact ? 'gap-2.5' : 'gap-2',
+        className,
+      )}
+    >
       <button
         type="button"
         className={buttonClass}
@@ -273,12 +309,15 @@ export function CarouselArrows({
 
       {/* Visual only: a screen reader already hears "list, N items" from the
           strip, and announcing every swipe would talk over the visitor. */}
-      {bar ? (
-        <p className="min-w-14 text-center text-sm font-semibold tabular-nums" aria-hidden="true">
+      {center ?? (bar || compact ? (
+        <p
+          className={cn('text-center font-semibold tabular-nums', compact ? 'min-w-10 text-[13px]' : 'min-w-14 text-sm')}
+          aria-hidden="true"
+        >
           <span className="text-primary">{page + 1}</span>
           <span className="text-muted-foreground"> / {pageCount}</span>
         </p>
-      ) : null}
+      ) : null)}
 
       <button
         type="button"
